@@ -1,0 +1,21 @@
+﻿离线数据库（UTF-8，TSV，Tab 分隔）
+================================
+- hardware_models.tsv ：类别 / 关键词 / 品牌 / 补充名称 / 说明
+- bugcheck_codes.tsv ：停止代码 / 英文名称 / 中文含义 / 排查方向
+- fault_codes.tsv ：日志通道 / 事件来源包含匹配 / 事件 ID / 类别 / 中文说明 / 建议
+- generic_codes.tsv ：分类 / 错误代码 / 名称 / 中文解释 / 建议
+- pci.ids / usb.ids ：可选公开硬件编号清单。编号匹配只代表芯片厂商，通常不能判断板卡商品品牌。
+
+维护方式：
+1. 用记事本或表格软件编辑 TSV，务必以 UTF-8 保存且保持制表符分隔。
+2. 修改后回到工具箱点击“重载数据库”。
+3. 如果 Windows 只返回内存条代工厂编码而无零件号，请保留原始值为“未识别”，不要将不确定的代工码当作零售品牌。
+4. BugCheck 只是异常的类别，不代表唯一原因；Event ID 还必须区分事件来源和日志通道。
+
+可参考微软 Learn 官方检索：
+https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-code-reference2
+https://learn.microsoft.com/en-us/windows-hardware/drivers/install/device-manager-error-messages
+https://learn.microsoft.com/en-us/windows/client-management/troubleshoot-event-id-41-restart
+https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options
+
+V0.3.9 补充：hardware_models_v039.tsv 为常见显示器 EDID 厂商代码和硬件品牌的增量库。与 hardware_models.tsv 同时读取，不覆盖用户原有自定义规则。

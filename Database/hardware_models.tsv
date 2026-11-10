@@ -1,0 +1,87 @@
+# 类别<TAB>关键词<TAB>品牌<TAB>补充名称<TAB>说明；用 TAB 分隔。规则是包含匹配，不等于精确规格识别。
+CPU	Intel(R)	Intel	Intel 处理器	仅标识 CPU 厂商；实际处理器型号以系统检测为准
+CPU	AMD Ryzen	AMD	Ryzen 系列	仅标识处理器系列，不自动推定代数或插槽
+主板	JGINYUE	精粤	JGINYUE 主板	属于商标名称匹配，型号/PCB版本以设备或人工确认值为准
+主板	ASUSTeK	华硕	ASUS 主板	只匹配厂商品牌
+主板	Gigabyte	技嘉	GIGABYTE 主板	只匹配厂商品牌
+主板	Micro-Star	微星	MSI 主板	只匹配厂商品牌
+整机	LENOVO	联想	联想整机	可能是通用 SMBIOS 厂商信息
+整机	Dell	戴尔	戴尔整机	可能是通用 SMBIOS 厂商信息
+整机	HP	惠普	惠普整机	可能是通用 SMBIOS 厂商信息
+显卡	VEN_10DE	NVIDIA	NVIDIA GPU	PCI厂商标识不等于显卡板卡品牌，具体型号以 WMI 数据为准
+显卡	VEN_1002	AMD	AMD GPU	PCI厂商标识不等于显卡板卡品牌
+显卡	VEN_8086	Intel	Intel GPU	PCI厂商标识只识别芯片厂商
+网卡	VEN_8086	Intel	Intel 网卡芯片	不代表电脑整机品牌
+网卡	VEN_10EC	Realtek	瑞昱网卡芯片	只代表 PCI 厂商；产品型号仍以系统检测为准
+网卡	VEN_14E4	Broadcom	博通网卡芯片	只代表 PCI 厂商
+硬盘	Samsung	Samsung	三星存储设备	仅用于标注原厂品牌
+硬盘	KINGSTON	Kingston	金士顿存储设备	仅用于标注原厂品牌
+硬盘	WDC	Western Digital	西部数据存储设备	仅用于标注原厂品牌
+
+# V0.1.1 补充：主要内存品牌、整机和部分设备厂商，只推断品牌/家族，不编造细分 SKU
+# 内存型号前缀和品牌厂商（零件号匹配）；来源：厂商公开规格，仍需检查 WMI 原始零件号。
+内存	CMK	Corsair 美商海盗船	VENGEANCE LPX 内存	CMK 为海盗船 LPX 系列零件号前缀；具体套装/容量/时序必须按完整型号核实
+内存	CMW	Corsair 美商海盗船	VENGEANCE RGB 内存	CMW 系列零件号前缀；不代表特定容量/频率
+内存	CMT	Corsair 美商海盗船	DOMINATOR / VENGEANCE 系列	以完整零件号查询确认型号；不同代产品名称可能不同
+内存	CMP	Corsair 美商海盗船	Corsair 内存	匹配海盗船部分较新系列零件号；具体产品需按完整型号核实
+内存	KF4	Kingston 金士顿	Kingston FURY DDR4	KF4 为 FURY DDR4 零件号的常见前缀；型号需要完整零件号
+内存	KF5	Kingston 金士顿	Kingston FURY DDR5	KF5 为 FURY DDR5 零件号的常见前缀；型号需要完整零件号
+内存	KVR	Kingston 金士顿	ValueRAM 内存	KVR 是金士顿常见 ValueRAM 料号前缀
+内存	KCP	Kingston 金士顿	Kingston 系统专用内存	只用于识别品牌；具体参数看完整料号
+内存	F4-	G.SKILL 芝奇	G.SKILL DDR4 内存	官方型号常见 F4- 前缀；不能凭前缀确定 Trident/Ripjaws 等系列
+内存	F5-	G.SKILL 芝奇	G.SKILL DDR5 内存	官方型号常见 F5- 前缀；不能凭前缀确定具体系列
+内存	CT8G4	Crucial 英睿达	Crucial 8GB DDR4 系列	只匹配部分 CT8G4 开头模块零件号；套装须另查
+内存	CT16G4	Crucial 英睿达	Crucial 16GB DDR4 系列	只匹配部分 CT16G4 开头模块零件号
+内存	CT32G4	Crucial 英睿达	Crucial 32GB DDR4 系列	只匹配部分 CT32G4 开头模块零件号
+内存	CT16G5	Crucial 英睿达	Crucial 16GB DDR5 系列	只匹配部分 CT16G5 开头模块零件号
+内存	CT32G5	Crucial 英睿达	Crucial 32GB DDR5 系列	只匹配部分 CT32G5 开头模块零件号
+内存	M378A	Samsung 三星	三星 DDR4 台式机内存	三星 OEM 模组料号前缀；不等于电脑整机品牌
+内存	M471A	Samsung 三星	三星 DDR4 笔记本内存	三星 OEM 模组料号前缀
+内存	M323R	Samsung 三星	三星 DDR5 内存模组	三星部分 DDR5 模组型号前缀，具体型号需核对
+内存	HMA	SK hynix 海力士	SK hynix DDR4 内存模组	仅对海力士部分 HMA 开头模块料号匹配
+内存	HMCG	SK hynix 海力士	SK hynix DDR5 内存模组	部分海力士 DDR5 模组料号前缀
+内存	MTA	Micron 美光	Micron OEM 内存模组	部分美光 OEM 模组料号前缀
+内存	MTC	Micron 美光	Micron OEM 内存模组	部分美光较新模组料号前缀
+内存	Kingston	Kingston 金士顿	Kingston 内存模组	SMBIOS 厂商字段仅标识所报告制造商
+内存	Corsair	Corsair 美商海盗船	Corsair 内存模组	SMBIOS 厂商字段；具体系列看 PartNumber
+内存	G.SKILL	G.SKILL 芝奇	G.SKILL 内存模组	SMBIOS 厂商字段；具体系列看 PartNumber
+内存	Crucial	Crucial 英睿达	Crucial 内存模组	SMBIOS 厂商字段；具体型号看 PartNumber
+内存	SK Hynix	SK hynix 海力士	SK hynix 内存模组	SMBIOS 厂商字段
+内存	Hynix	SK hynix 海力士	SK hynix 内存模组	SMBIOS 厂商字段
+内存	Micron	Micron 美光	Micron 内存模组	SMBIOS 厂商字段；不等同于 Crucial 零售系列
+内存	Samsung	Samsung 三星	Samsung 内存模组	SMBIOS 厂商字段；可能为 OEM 条
+内存	ADATA	ADATA 威刚	ADATA 内存模组	SMBIOS 厂商字段；具体 XPG/万紫千红系列需核实
+内存	Apacer	Apacer 宇瞻	Apacer 内存模组	SMBIOS 厂商字段
+内存	TEAMGROUP	TEAMGROUP 十铨	TEAMGROUP 内存模组	SMBIOS 厂商字段
+内存	Patriot	Patriot 博帝	Patriot 内存模组	SMBIOS 厂商字段
+整机	ASUSTeK	ASUS 华硕	ASUS 整机	SMBIOS 厂商字段
+整机	Acer	Acer 宏碁	Acer 整机	SMBIOS 厂商字段
+整机	HUAWEI	华为	Huawei 整机	SMBIOS 厂商字段
+整机	HONOR	荣耀	Honor 整机	SMBIOS 厂商字段
+整机	MSI	微星	MSI 整机	SMBIOS 厂商字段
+整机	Xiaomi	小米	Xiaomi 整机	SMBIOS 厂商字段
+主板	ASRock	华擎	ASRock 主板	制造商品牌匹配
+主板	BIOSTAR	映泰	BIOSTAR 主板	制造商品牌匹配
+主板	COLORFUL	七彩虹	Colorful 主板	制造商品牌匹配
+主板	MAXSUN	铭瑄	MAXSUN 主板	制造商品牌匹配
+硬盘	KIOXIA	铠侠	KIOXIA 存储设备	型号需核对
+硬盘	Micron	Micron 美光	Micron 存储设备	型号需核对
+硬盘	SK hynix	SK hynix 海力士	SK hynix 存储设备	型号需核对
+硬盘	Crucial	Crucial 英睿达	Crucial 存储设备	型号需核对
+硬盘	Seagate	希捷	Seagate 存储设备	型号需核对
+硬盘	ST1000	希捷（需复核）	ST 磁盘产品家族	仅特定 ST1xxx 型号前缀；需要完整型号确认，不推断精确盘
+硬盘	TOSHIBA	东芝	Toshiba 存储设备	型号需核对
+显卡	VEN_1022	AMD	AMD PCI 设备	芯片厂商，不保证为显卡；主要见 AMD 芯片组
+网卡	VEN_168C	Qualcomm Atheros	高通 Atheros 芯片	PCI 厂商标识不能推断无线模块板卡品牌
+网卡	VEN_1969	Qualcomm Atheros	Atheros 网络芯片	芯片品牌匹配，部分旧设备可能为 Atheros/Attansic
+网卡	VEN_1AF4	Red Hat VirtIO	VirtIO 虚拟设备	用于识别虚拟机驱动/设备而非实体品牌
+USB设备	VID_046D	Logitech 罗技	Logitech USB 设备	USB VID 仅确定 USB 供应商编号，具体型号需 PID
+USB设备	VID_045E	Microsoft 微软	Microsoft USB 设备	USB VID 仅确定供应商编号
+USB设备	VID_0BDA	Realtek 瑞昱	Realtek USB 设备	USB VID 仅确定供应商编号
+USB设备	VID_1BCF	Sunplus	Sunplus USB 设备	USB VID 仅确定供应商编号
+USB设备	VID_04F2	Chicony 群光	Chicony USB 设备	USB VID 仅确定供应商编号
+
+# V0.1.3：来自用户实测机器上的可辨认整机/硬盘品牌；不能根据数字厂商代号瞎猜内存品牌。
+整机	MECHREVO	MECHREVO（机械革命）	机械革命整机	品牌字段可确定；整机型号以 SMBIOS 清理后的 Name/Model 为准
+硬盘	FORESEE	FORESEE（江波龙旗下品牌）	FORESEE 存储设备	产品品牌匹配；具体容量型号仍读取 WMI
+硬盘	TOSHIBA	TOSHIBA 东芝	东芝硬盘	按磁盘型号中 TOSHIBA 识别，注意不推断盘片或健康状况

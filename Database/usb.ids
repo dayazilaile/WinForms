@@ -1,0 +1,13 @@
+# IT Desktop Toolkit optional offline USB ID subset (vendor IDs only)
+# Identifies USB-registered vendor, not necessarily final retail device brand.
+046d  Logitech, Inc.
+045e  Microsoft Corp.
+05ac  Apple, Inc.
+0bda  Realtek Semiconductor Corp.
+04f2  Chicony Electronics Co., Ltd.
+0b05  ASUSTek Computer, Inc.
+0781  SanDisk Corp.
+0951  Kingston Technology
+0b95  ASIX Electronics Corp.
+0e8d  MediaTek Inc.
+1a40  Terminus Technology Inc.
