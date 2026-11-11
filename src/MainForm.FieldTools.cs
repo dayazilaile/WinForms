@@ -53,7 +53,7 @@ namespace ITDesktopToolkit
                 string current=null;Dictionary<string,string> left=null,right=null;
                 report.Text="先在两台电脑分别采集并导出配置报告，再导入左/右报告比较。包含系统版本、网卡、IP/DNS、网络类别、相关服务与共享策略。\r\n报告包含电脑名、MAC、内网地址与共享路径，请按需分享。";
                 Button collect=null; collect=ToolButton(bar,"采集本机报告",async delegate{
-                    collect.Enabled=false;try{current=await Task.Run(InspectionService.CollectConfiguration);if(!report.IsDisposed){report.Text="本机报告已采集，可导出。\r\n";foreach(var pair in InspectionService.Parse(current))report.AppendText(pair.Key+"："+pair.Value+"\r\n");}}catch(Exception ex){if(!report.IsDisposed)report.Text=ex.Message;}finally{if(!collect.IsDisposed)collect.Enabled=true;}
+                    collect.Enabled=false;try{current=await Task.Run(new Func<string>(InspectionService.CollectConfiguration));if(!report.IsDisposed){report.Text="本机报告已采集，可导出。\r\n";foreach(var pair in InspectionService.Parse(current))report.AppendText(pair.Key+"："+pair.Value+"\r\n");}}catch(Exception ex){if(!report.IsDisposed)report.Text=ex.Message;}finally{if(!collect.IsDisposed)collect.Enabled=true;}
                 });
                 ToolButton(bar,"导出本机对比报告",delegate{if(current==null){MessageBox.Show(f,"请先采集本机报告。");return;}ExportToolReport(f,current,"配置报告_"+Environment.MachineName+".txt");});
                 ToolButton(bar,"导入左侧报告",delegate{try{string s=ReadToolFile(f);if(s!=null){left=InspectionService.Parse(s);report.Text="左侧已载入 "+left.Count+" 项。请载入右侧后点击比较。";}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
