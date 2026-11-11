@@ -113,7 +113,7 @@ namespace ITDesktopToolkit
                 case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集两台电脑的配置报告，比较系统、网络、服务和共享策略。", ConfigurationCompareDialog); break;
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
                 case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
-                case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置本机自动播放及 USB 存储写保护。", UsbProtectionDialog); break;
+                case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置所选 NTFS U 盘普通用户只读权限及本机策略。", UsbProtectionDialog); break;
                 case "离线数据库": BuildDatabase(); break;
             }
             SetStatus("当前页面：" + name + "   |   数据库：硬件 " + db.HardwareRuleCount + " 条 / 蓝屏 " + db.BugcheckRuleCount + " 条");

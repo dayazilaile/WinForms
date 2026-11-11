@@ -15,8 +15,8 @@ namespace ITDesktopToolkit
             {
                 AutoStep s=steps[i];if(s==null)throw new ArgumentException("步骤不能为空。");
                 if(!EmitFlow(s,ignored,stack,i))
-                    foreach(var f in stack)if(f.Type=="retry"&&(s.Type=="格式化指定卷"||s.Type.StartsWith("删除",StringComparison.Ordinal)))
-                        throw new ArgumentException("不允许在自动重试块中格式化或删除文件。请移至重试块之外。");
+                    foreach(var f in stack)if(f.Type=="retry"&&(s.Type=="格式化指定卷"||s.Type=="清空当前用户回收站"||s.Type.StartsWith("删除",StringComparison.Ordinal)))
+                        throw new ArgumentException("不允许在自动重试块中格式化或清理文件。请移至重试块之外。");
             }
             if(stack.Count>0)throw new ArgumentException("条件或重试块未结束，请添加对应的结束动作。");
         }
