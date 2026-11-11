@@ -27,13 +27,22 @@ namespace ITDesktopToolkit
         public int StartupDelaySeconds = 3;
     }
 
-    public static class AutomationService
+    public static partial class AutomationService
     {
-        public static readonly string[] Types = { "运行程序", "等待毫秒", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "格式化指定卷" };
+        public static readonly string[] Types = { "运行程序", "等待毫秒", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
         public static string Guide(string type)
         {
             switch(type)
             {
+                case "如果文件存在": return "参数1=完整文件路径；条件满足执行后续动作，可用『否则』分支，必须以『结束条件』闭合。";
+                case "如果网络可达": return "参数1=单个 IP 或主机名；ICMP 有响应执行后续动作，可接『否则』，必须『结束条件』。无响应也可能是 ICMP 被禁用。";
+                case "如果系统版本": return "参数1=Windows Build 下限（如22000）；参数2=上限（空表示不限）。必须以『结束条件』闭合。";
+                case "否则": return "位于条件块内；条件不满足时执行后续动作。每个条件只能有一个否则。";
+                case "结束条件": return "结束最近的条件分支，不需要参数。";
+                case "重试开始": return "参数1=最多尝试次数（1-10，默认3）；参数2=重试间隔秒（1-300，默认2）。失败会重新执行整个块，需确认操作可重复。";
+                case "重试结束": return "闭合最近的重试块；格式化/删除动作不能放入重试块。";
+                case "运行程序并等待": return "参数1=程序完整路径；参数2=参数（可空）；参数3=超时秒（1-86400，默认60）；非零退出码或超时视为失败。";
+                case "检查文件存在": return "参数1=完整文件路径；文件不存在即失败，可结合重试块使用。";
                 case "运行程序": return "参数1=程序完整路径；参数2=启动参数（可空）；参数3=工作目录（可空）";
                 case "等待毫秒": return "参数1=毫秒，可点击下方 1/2/3/4/5/10 秒快捷按钮，也支持手动填写例如 1500。";
                 case "等待窗口": return "参数1=窗口标题关键词；参数2=超时秒数（默认15）。仅等待，不会激活窗口；按回车前请再加『激活窗口』动作。";
@@ -67,6 +76,7 @@ namespace ITDesktopToolkit
         {
             if (steps == null) throw new ArgumentNullException("steps");
             if (options == null) throw new ArgumentNullException("options");
+            ValidateFlow(steps);
             if (options.StartupDelaySeconds < 0 || options.StartupDelaySeconds > 3600)
                 throw new ArgumentException("启动延时只能在 0 至 3600 秒之间。");
             if (HasFormatStep(steps) && options.HideConsole)
@@ -434,9 +444,12 @@ public static class ITAutomationDiag {
         public static string MakeScript(List<AutoStep> steps, BatInputEngine engine, int startupDelaySeconds, bool diagnostic)
         {
             if (startupDelaySeconds < 0 || startupDelaySeconds > 3600) throw new ArgumentException("启动延时超出范围。");
+            ValidateFlow(steps);
             if (steps.Count == 0) throw new ArgumentException("至少添加一个步骤。 ");
             StringBuilder b = new StringBuilder();
             b.AppendLine("$ErrorActionPreference='Stop'");
+            b.AppendLine("function Test-ITReachable([string]$hostName) { $ping=New-Object Net.NetworkInformation.Ping; try { return ($ping.Send($hostName,1500).Status -eq [Net.NetworkInformation.IPStatus]::Success) } catch {return $false} finally {$ping.Dispose()} }");
+            if(steps.Exists(delegate(AutoStep x){return x.Type=="如果系统版本";})) b.AppendLine("$itWindowsBuild=[int](Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -Name CurrentBuildNumber -ErrorAction Stop).CurrentBuildNumber");
             b.AppendLine("trap { Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red; break }");
             string apiClass = engine == BatInputEngine.Legacy ? "ITAutomationLegacy" : "ITAutomationInput";
             b.AppendLine("Add-Type -TypeDefinition @'\r\n" + (engine == BatInputEngine.Legacy ? LegacyWinApiBridge : WinApiBridge) + "\r\n'@");
@@ -521,14 +534,20 @@ public static class ITAutomationDiag {
             b.AppendLine("Write-Host " + P(engine == BatInputEngine.Legacy ? "传统兼容模式：mouse_event + keybd_event；文字使用剪贴板粘贴（避免中文输入法拦截）" : "新版模式：SendInput + Unicode 键盘输入"));
             b.AppendLine("Write-Host " + P("IT Toolkit: 启动前等待 " + startupDelaySeconds + " 秒。可在可见控制台按 Ctrl+C 中止。"));
             if (startupDelaySeconds > 0) b.AppendLine("Start-Sleep -Seconds " + startupDelaySeconds);
+            var flowStack=new Stack<FlowBlock>();
             for (int i=0;i<steps.Count;i++)
             {
                 AutoStep s = steps[i];
+                if(EmitFlow(s,b,flowStack,i))continue;
                 b.AppendLine("Write-Host " + P("步骤 " + (i+1) + "/" + steps.Count + " - " + s.Type));
                 if (diagnostic && (s.Type == "按键/组合键" || s.Type == "输入文字" || s.Type == "移动鼠标" || s.Type == "鼠标左击" || s.Type == "鼠标双击" || s.Type == "鼠标右击"))
                     b.AppendLine("[ITAutomationDiag]::FocusInfo()");
                 switch(s.Type)
                 {
+                    case "检查文件存在":
+                        b.AppendLine("if(-not(Test-Path -LiteralPath "+P(FlowValue(s.A))+" -PathType Leaf)){throw '所需文件不存在'}");break;
+                    case "运行程序并等待":
+                        b.AppendLine("$itProc=Start-Process -FilePath "+P(FlowValue(s.A))+(String.IsNullOrWhiteSpace(s.B)?"":" -ArgumentList "+P(s.B))+" -PassThru -ErrorAction Stop; if(-not $itProc.WaitForExit("+(FlowInt(s.C,60,86400)*1000)+")){try{$itProc.Kill()}catch{};throw '程序执行超时，已尝试结束主进程'}; if($itProc.ExitCode -ne 0){throw ('程序返回失败码：'+$itProc.ExitCode)}");break;
                     case "运行程序":
                         if (String.IsNullOrWhiteSpace(s.A)) throw new ArgumentException("运行程序路径为空。");
                         string directory = String.IsNullOrWhiteSpace(s.C) ? System.IO.Path.GetDirectoryName(s.A) : s.C;

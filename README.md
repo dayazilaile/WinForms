@@ -1,27 +1,141 @@
-# IT Desktop Toolkit — V0.4.4
+# IT 桌面运维工具箱 V0.4.5
 
-Windows desktop IT operations toolkit (C# WinForms). This repository contains the complete V0.4.4 source package.
+面向 Windows 10 / Windows 11 的 C# WinForms 离线运维工具。本版在 **V0.4.4** 基础上增加现场排障、环境检查、BAT 条件分支和 U 盘本机防护，保留原有硬件、共享、网络设置与自动化功能。
 
-## Build
+## 编译与启动
 
-- Windows 10 / Windows 11 environment.
-- Extract/clone the complete repository folder.
-- Run `Build_And_Run.bat` to compile and launch, or `Build_Only.bat` to compile only.
-- The compiler and framework requirements are checked by the batch scripts. Keep the generated `build` folder and its `Database` subfolder together when copying the app to another PC.
+1. 下载并完整解压源码包，不要只复制 `src` 文件夹。
+2. 在 Windows 10/11 上运行 `Build_Only.bat` 编译，或运行 `Build_And_Run.bat` 编译并启动。
+3. 程序位于 `build/ITDesktopToolkit.exe`。移动程序时须同时携带 `build/Database`。
+4. 普通检查不主动提权；修改打印队列、系统设置或 USB 写保护时按界面提示使用管理员权限。
 
-## Included modules
+编译使用 Windows 自带 .NET Framework C# 编译器，脚本会检查编译器是否存在；不需要还原 NuGet 包。运行依赖 Windows PowerShell 5.1 与相应的 Windows 管理接口。
 
-- System and hardware overview, monitor/EDID information
-- Network configuration and diagnostics
-- Startup and power tools
-- Event and fault-code lookup
-- SMB sharing modes, diagnostics, share and NTFS permissions
-- BAT workflow automation, drag ordering, cross-room environment diagnostics
+## V0.4.5 新功能
 
-## Safety / validation
+### 电脑配置对比
 
-This is the source snapshot labelled V0.4.4. The included `START_HERE.txt` and `版本更新记录_累计.txt` contain detailed version notes and safety limitations. The source package records that Windows 10/11 real-machine build and SMB environment testing were not yet completed for this snapshot. Test on a disposable test machine and test folders before using administrative or sharing functions on production devices.
+入口：左侧 **电脑配置对比 → 打开电脑配置对比**。
 
-## Source integrity
+- 在正常电脑和异常电脑上分别点击“采集本机报告”，再“导出本机对比报告”。
+- 在同一个窗口导入左、右两份报告，点击“比较两份报告”。
+- 对比系统版本/架构、网卡型号与状态、IP/网关/DNS、网络类别、相关服务、SMB 策略及非系统共享目录。
+- 差异结果可另存为文本。报告包含电脑名、MAC、内网地址和共享路径，分享前请检查内容。
 
-`SHA256SUMS.txt` contains hashes for the original source files. The GitHub import package was checked against all entries in that file; added repository files (`README.md` and `.gitignore`) are not part of the original manifest.
+这是用于排障的报告对比，不会自动修改配置或同步两台电脑，也不提供配置快照还原。
+
+### 打印机专项诊断
+
+入口：**打印机与服务 → 打印机专项诊断**。
+
+- 查看默认打印机、脱机状态、驱动、端口和各打印机的排队任务。
+- 输入打印机 IP/主机名与端口（默认 `9100`）测试 TCP 连通性，不发送打印数据。
+- 输入诊断报告中的准确打印机名称，经确认后取消该打印机的全部排队任务，不清空其他打印机队列。
+- 导出诊断结果。取消任务不能撤销；TCP 可连接不等于驱动、耗材或出纸机构正常。
+
+### 网络质量持续检测
+
+入口：左侧 **网络持续检测**。
+
+- 输入网关、内网服务器或外网目标，以逗号分隔，最多 8 个主机名/IP。
+- 设置采样轮数（1–10000）和轮间隔（1–3600 秒），点击开始。
+- 每轮并行检测，之后等待轮间隔；记录带时区时间、响应状态和延迟。
+- 实时显示最近 20 条，统计无响应/错误比例、最小/平均/最大延迟、相邻成功采样的平均延迟变化。
+- 支持停止以及导出完整 CSV。开始新一轮前会提示清空上一轮记录。
+
+检测使用 ICMP。主机禁用 ICMP、名称解析失败、本地权限或网络故障都可能造成检测失败，不能仅凭无响应断定目标断网。DNS 解析耗时也可能影响停止速度。
+
+### 软件清单与环境检查
+
+入口：左侧 **软件环境检查**。
+
+- 读取本机/当前用户、32/64 位注册表中的软件名称与版本，展示 .NET Framework v4 Release 和已登记的 VC++ 运行库。
+- 不使用可能触发 MSI 修复的 `Win32_Product` 查询。
+- 支持导入 UTF-8 软件要求清单、导出模板与检查结果。
+
+清单每行格式为：`软件名称关键词<Tab>最低版本`，最低版本可省略。例如：
+
+```text
+Google Chrome	120.0
+Microsoft Visual C++
+```
+
+关键词匹配不区分大小写。检查结果区分符合、缺失、版本偏低及版本需人工核对。登记清单不能覆盖全部便携软件和其他用户的应用；检查特定运行库架构时，应使用包含年份、x86/x64 的具体名称关键词。
+
+### BAT 条件、分支与失败重试
+
+入口：**BAT 自动化 → 添加动作**，原有工作流文件格式继续兼容。
+
+| 新动作 | 参数与行为 |
+| --- | --- |
+| 如果文件存在 | 参数 1 为完整文件路径；只判断文件，不判断文件夹 |
+| 如果网络可达 | 参数 1 为单个 IP/主机名，按 ICMP 响应分支 |
+| 如果系统版本 | 参数 1 为 Windows Build 下限，参数 2 为上限（可空）；例如 Win11 初始 Build 为 22000 |
+| 否则 / 结束条件 | 对应最近的条件块；否则可省略，每块最多一个 |
+| 重试开始 / 重试结束 | 参数 1 为总尝试次数（1–10，默认 3），参数 2 为失败后等待秒数（1–300，默认 2） |
+| 检查文件存在 | 文件不存在则报错，适合放在重试块中等待外部程序生成结果 |
+| 运行程序并等待 | 参数 1 为路径，参数 2 为启动参数，参数 3 为超时秒（1–86400，默认 60）；非零退出码或超时算失败 |
+
+示例：
+
+```text
+如果文件存在       D:\Tools\check.exe
+  重试开始         3                 2
+    运行程序并等待 D:\Tools\check.exe  /check  60
+  重试结束
+否则
+  运行程序         notepad.exe
+结束条件
+```
+
+条件/重试最多嵌套 8 层，保存及导出时检查结构是否闭合。失败重试会重新执行整个块，使用者须确认其中操作可重复执行；格式化和删除动作不能放入重试块。程序超时仅尝试结束主进程，不能保证结束其启动的全部子进程。
+
+### U 盘检查与本机防护
+
+入口：左侧 **U 盘检查与防护**。按本版需求，**不提供资料恢复、自动删除、格式化或自动清理**。
+
+只读检查：
+
+- 从 Windows 识别的可移动存储中选择 U 盘，检查隐藏属性、`autorun.inf`、文档伪装的双扩展名、同名文件夹/程序。
+- 读取 `.lnk` 快捷方式指向和参数，提示调用命令/脚本解释器的情况，不执行目标。
+- 为不超过 64 MiB 的可疑文件计算 SHA-256；跳过重解析点，最多遍历 50000 个文件/目录、保留 5000 条发现。
+- 支持中止、导出报告、按盘符查看 Defender 历史，以及导入其他杀毒软件的文本报告供人工核对。
+- **可疑迹象不等于病毒确诊，未发现迹象不等于安全。** Defender 历史可能缺失、受权限限制，也可能对应过去使用同一盘符的其他设备。
+
+本机防护：
+
+- **关闭当前账户自动播放**：设置该账户 `NoDriveTypeAutoRun=255`，影响所有驱动器的自动播放，可能需要重新登录。
+- **开启本机 USB 写保护**：管理员设置本机 `StorageDevicePolicies\WriteProtect=1`，通常需要重新插拔，可能影响其他 USB 存储设备。
+- 修改前保存原值，可分别还原首次保存的原策略值；还原按钮恢复的是策略设置，不是 U 盘文件。
+- 备份按当前运行账户保存在 `%LOCALAPPDATA%\ITDesktopToolkit`，还原时请使用相同账户。
+
+**软件写保护仅影响设置过的电脑，不会跟随 U 盘到其他机房电脑，也不阻止手动执行恶意程序。** 组织策略、设备驱动可能影响生效，写入策略成功后仍应重新插拔并验证。需要跨电脑阻止写入时，应选择带物理写保护开关的设备。
+
+## 保留的原有功能
+
+系统与硬件概览、显示器/EDID、网络配置与诊断、蓝屏/异常关机、系统修复、启动项、电源、SMB 共享模式与权限、NTFS 权限、输入法、鼠标键盘自动化及离线故障库。
+
+本版未添加资产管理、维护 U 盘启动器或配置快照功能。
+
+## 测试与验证
+
+当前 Linux 云环境已完成：完整源码 Mono 编译、26 项功能检查、离线数据库加载与查询。编译保留原有 2 条未使用变量警告。
+
+检查涵盖报告序列化/差异、软件版本判定、BAT 嵌套与异常结构、工作流保存加载、U 盘无执行只读扫描、取消处理、网络统计、实际采样结果记录，以及本地 TCP 连接测试。当前 Linux 缺少 ICMP 探测所需组件时，探测错误会按实际结果记录，不算网络连通通过。
+
+Windows 自动验证入口：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1
+```
+
+该脚本重新编译、运行功能检查，解析两种 BAT 引擎生成的 PowerShell，并执行不修改系统的条件/重试用例；不会修改 USB 策略或打印队列。云环境没有 Windows，本次未执行该脚本，也未完成新增界面、真实 U 盘策略、打印机和 Windows 管理接口的实机验证。
+
+Windows 人工验证步骤见 [tests/Windows验收.md](tests/Windows验收.md)。用户反馈 V0.4.4 原有功能已能正常使用；上述待验证项针对本次 V0.4.5 新增内容。
+
+## 文件与日志
+
+- 原始离线库：`Database/`；运行时库：`build/Database/`，编译不会覆盖其中已有的用户编辑。
+- 本地日志与策略原值备份：`%LOCALAPPDATA%\ITDesktopToolkit`。
+- 本版文件校验：`SHA256SUMS.txt`。这是 V0.4.5 的完整发布基线，不能与 V0.4.4 的旧哈希混用。
+- 版本演进与历史记录：[版本更新记录_累计.txt](版本更新记录_累计.txt)。

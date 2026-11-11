@@ -35,7 +35,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.4.4 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.4.5 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -60,13 +60,13 @@ namespace ITDesktopToolkit
             Controls.Add(footer);
             Controls.Add(sidebar);
 
-            Label logo = new Label { Dock = DockStyle.Top, Height = 84, Text = "  IT 桌面运维工具箱\r\n  V0.4.4 · 本地离线运行", ForeColor = Color.White,
+            Label logo = new Label { Dock = DockStyle.Top, Height = 84, Text = "  IT 桌面运维工具箱\r\n  V0.4.5 · 本地离线运行", ForeColor = Color.White,
                 Font = new Font("DengXian", 13F, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
             FlowLayoutPanel menu = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
                 WrapContents = false, AutoScroll = true, Padding = new Padding(10, 11, 3, 8) };
             sidebar.Controls.Add(menu);
             sidebar.Controls.Add(logo);
-            string[] pages = { "系统概览", "详细硬件配置", "网络诊断", "蓝屏与异常关机", "系统修复", "功能开关", "打印机与服务", "启动项管理", "系统优化", "共享文件夹", "BAT 自动化", "Windows 管理入口", "离线数据库" };
+            string[] pages = { "系统概览", "详细硬件配置", "网络诊断", "蓝屏与异常关机", "系统修复", "功能开关", "打印机与服务", "启动项管理", "系统优化", "共享文件夹", "BAT 自动化", "Windows 管理入口", "电脑配置对比", "网络持续检测", "软件环境检查", "U 盘检查与防护", "离线数据库" };
             foreach (string page in pages)
             {
                 string key = page;
@@ -110,6 +110,10 @@ namespace ITDesktopToolkit
                 case "共享文件夹": BuildShares(); break;
                 case "BAT 自动化": BuildAutomation(); break;
                 case "Windows 管理入口": BuildToolLaunchers(); break;
+                case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集两台电脑的配置报告，比较系统、网络、服务和共享策略。", ConfigurationCompareDialog); break;
+                case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
+                case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
+                case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置本机自动播放及 USB 存储写保护。", UsbProtectionDialog); break;
                 case "离线数据库": BuildDatabase(); break;
             }
             SetStatus("当前页面：" + name + "   |   数据库：硬件 " + db.HardwareRuleCount + " 条 / 蓝屏 " + db.BugcheckRuleCount + " 条");
@@ -757,6 +761,7 @@ namespace ITDesktopToolkit
         {
             FlowLayoutPanel bar;
             Panel p = Page("打印机与服务", "读取 Spooler 服务状态，打开打印机、打印队列与服务管理；重启服务需管理员权限。", out bar);
+            Action(bar, "打印机专项诊断", delegate { PrinterDiagnosticsDialog(); }, true);
             RichTextBox box = ReadBox();
             Panel card = ContentCard(box);
             p.Controls["pageBody"].Controls.Add(card);

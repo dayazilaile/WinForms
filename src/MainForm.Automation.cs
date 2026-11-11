@@ -293,7 +293,7 @@ namespace ITDesktopToolkit
                 type.SelectedIndexChanged+=delegate {guide.Text=AutomationService.Guide(type.Text);};
                 Button browse=FormButton("选择 EXE/BAT 文件（自动补全路径）",170,274,300,delegate {
                     using(OpenFileDialog d=new OpenFileDialog()){
-                        d.Filter=type.Text=="删除指定路径文件"?"所有文件 (*.*)|*.*":"程序和批处理 (*.exe;*.bat;*.cmd)|*.exe;*.bat;*.cmd|全部文件 (*.*)|*.*";
+                        d.Filter=(type.Text=="删除指定路径文件"||type.Text=="如果文件存在"||type.Text=="检查文件存在")?"所有文件 (*.*)|*.*":"程序和批处理 (*.exe;*.bat;*.cmd)|*.exe;*.bat;*.cmd|全部文件 (*.*)|*.*";
                         d.CheckFileExists=true;d.CheckPathExists=true;d.RestoreDirectory=true;
                         d.Title=type.Text=="删除指定路径文件"?"选择自动化要删除的文件（不可恢复）":"选择要运行的完整程序文件（不是只选文件夹）";
                         if(d.ShowDialog(f)==DialogResult.OK){a.Text=Path.GetFullPath(d.FileName);if(type.Text=="运行程序")c.Text=Path.GetDirectoryName(d.FileName);}
@@ -362,7 +362,7 @@ namespace ITDesktopToolkit
                     parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,recordKey,selectWindow,delayShortcuts,save});
                 // 只有『运行程序』需要文件浏览；坐标捕获主要用于『移动鼠标』。
                 Action refreshActionOptions=delegate {
-                    browse.Visible=type.Text=="运行程序" || type.Text=="删除指定路径文件";
+                    browse.Visible=type.Text=="运行程序" || type.Text=="运行程序并等待" || type.Text=="如果文件存在" || type.Text=="检查文件存在" || type.Text=="删除指定路径文件";
                     browse.Text=type.Text=="删除指定路径文件"?"浏览选择要删除的文件":"选择 EXE/BAT 文件（自动补全路径）";
                     capture.Visible=type.Text=="移动鼠标";
                     recordKey.Visible=type.Text=="按键/组合键";
