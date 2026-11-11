@@ -35,7 +35,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.4.5 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.4.6 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -60,7 +60,7 @@ namespace ITDesktopToolkit
             Controls.Add(footer);
             Controls.Add(sidebar);
 
-            Label logo = new Label { Dock = DockStyle.Top, Height = 84, Text = "  IT 桌面运维工具箱\r\n  V0.4.5 · 本地离线运行", ForeColor = Color.White,
+            Label logo = new Label { Dock = DockStyle.Top, Height = 84, Text = "  IT 桌面运维工具箱\r\n  V0.4.6 · 本地离线运行", ForeColor = Color.White,
                 Font = new Font("DengXian", 13F, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
             FlowLayoutPanel menu = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
                 WrapContents = false, AutoScroll = true, Padding = new Padding(10, 11, 3, 8) };
