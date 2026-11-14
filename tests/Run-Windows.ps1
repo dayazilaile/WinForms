@@ -11,6 +11,14 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed' }
     & .\build\FeatureTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Feature tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\NetworkToolsTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Xml.dll tests\NetworkToolsTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Network tools test compilation failed' }
+    & .\build\NetworkToolsTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Network tools tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
+    & .\build\NavigationUiTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }
     foreach ($file in Get-ChildItem -LiteralPath build\generated-tests -Filter *.ps1) {
         $tokens = $null; $errors = $null
         [void][System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)

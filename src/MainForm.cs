@@ -20,7 +20,6 @@ namespace ITDesktopToolkit
         private readonly DatabaseService db = new DatabaseService();
         private readonly Panel content = new Panel();
         private readonly Label status = new Label();
-        private readonly Dictionary<string, Button> navButtons = new Dictionary<string, Button>();
         private List<HardwareItem> inventory = new List<HardwareItem>();
         private FaultScanResult lastScan;
         private RichTextBox hardwareDetail;
@@ -35,7 +34,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.4.5 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.0 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -46,7 +45,7 @@ namespace ITDesktopToolkit
             try { db.Reload(); FaultCatalog.Reload(); GenericCodeCatalog.Reload(); }
             catch (Exception ex) { Paths.Log("Load DB error: " + ex.Message); }
 
-            Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 224, BackColor = Navy };
+            Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 242, BackColor = Navy };
             Panel footer = new Panel { Dock = DockStyle.Bottom, Height = 30, BackColor = Color.FromArgb(237, 241, 247) };
             status.Dock = DockStyle.Fill;
             status.TextAlign = ContentAlignment.MiddleLeft;
@@ -60,25 +59,7 @@ namespace ITDesktopToolkit
             Controls.Add(footer);
             Controls.Add(sidebar);
 
-            Label logo = new Label { Dock = DockStyle.Top, Height = 84, Text = "  IT 桌面运维工具箱\r\n  V0.4.5 · 本地离线运行", ForeColor = Color.White,
-                Font = new Font("DengXian", 13F, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
-            FlowLayoutPanel menu = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown,
-                WrapContents = false, AutoScroll = true, Padding = new Padding(10, 11, 3, 8) };
-            sidebar.Controls.Add(menu);
-            sidebar.Controls.Add(logo);
-            string[] pages = { "系统概览", "详细硬件配置", "网络诊断", "蓝屏与异常关机", "系统修复", "功能开关", "打印机与服务", "启动项管理", "系统优化", "共享文件夹", "BAT 自动化", "Windows 管理入口", "电脑配置对比", "网络持续检测", "软件环境检查", "U 盘检查与防护", "离线数据库" };
-            foreach (string page in pages)
-            {
-                string key = page;
-                Button b = new Button { Text = "  " + page, Width = 194, Height = 43, Margin = new Padding(0, 0, 0, 5),
-                    TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.FromArgb(218, 227, 241),
-                    BackColor = Navy, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
-                b.FlatAppearance.BorderSize = 0;
-                b.Click += delegate { ShowPage(key); };
-                menu.Controls.Add(b);
-                navButtons[key] = b;
-            }
-            Shown += delegate { ShowPage("系统概览"); };
+            BuildNavigation(sidebar);
         }
 
         private void SetStatus(string message)
@@ -87,13 +68,9 @@ namespace ITDesktopToolkit
         }
         private void ShowPage(string name)
         {
+            if(NavigationCatalog.Find(name)==null)return;
             currentPage = name;
-            foreach (KeyValuePair<string, Button> kv in navButtons)
-            {
-                kv.Value.BackColor = kv.Key == name ? Color.FromArgb(43, 80, 130) : Navy;
-                kv.Value.ForeColor = Color.White;
-                kv.Value.Font = kv.Key == name ? UiActive : Ui;
-            }
+            SaveNavigationState();
             foreach (Control old in content.Controls) old.Dispose();
             content.Controls.Clear();
             switch (name)
@@ -114,6 +91,13 @@ namespace ITDesktopToolkit
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
                 case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
                 case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置本机自动播放及 USB 存储写保护。", UsbProtectionDialog); break;
+                case "端口扫描": BuildFieldTool(name,"扫描单台主机的指定 TCP 端口，支持停止与导出。",delegate{NetworkScanDialog(false);}); break;
+                case "主机发现": BuildFieldTool(name,"通过 ICMP 与少量 TCP 端口响应发现局域网设备。",delegate{NetworkScanDialog(true);}); break;
+                case "路由与MAC": BuildFieldTool(name,"只读查看本机网卡/IP/MAC、路由表及邻居缓存。",delegate{NetworkInformationDialog(0);}); break;
+                case "DHCP与网络服务": BuildFieldTool(name,"查看 DHCP 租约/服务器配置，检查 DNS、HTTP 与 TCP 服务。",delegate{NetworkInformationDialog(1);}); break;
+                case "Wi-Fi分析": BuildFieldTool(name,"查看无线接口、附近网络的信号与信道，不修改连接。",delegate{NetworkInformationDialog(2);}); break;
+                case "已保存的Wi-Fi": BuildFieldTool(name,"查看本机已保存的无线配置，密码需单独确认显示。",delegate{NetworkInformationDialog(3);}); break;
+                case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
                 case "离线数据库": BuildDatabase(); break;
             }
             SetStatus("当前页面：" + name + "   |   数据库：硬件 " + db.HardwareRuleCount + " 条 / 蓝屏 " + db.BugcheckRuleCount + " 条");

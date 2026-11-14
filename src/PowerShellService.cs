@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
@@ -8,9 +9,11 @@ namespace ITDesktopToolkit
     public static class PowerShellService
     {
         public static string RunScript(string script, int minutes)
+        { return RunScript(script,minutes,CancellationToken.None); }
+        public static string RunScript(string script,int minutes,CancellationToken cancel)
         {
             string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes("$ProgressPreference='SilentlyContinue'; " + script));
-            string raw=CommandService.Run("powershell.exe", "-NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand " + encoded, minutes);
+            string raw=CommandService.Run("powershell.exe", "-NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand " + encoded, minutes,cancel);
             int start=raw.IndexOf("\r\n返回代码：",StringComparison.Ordinal);
             if(start<0)start=raw.IndexOf("\n返回代码：",StringComparison.Ordinal);
             if(start>=0)return FormatErrors("命令：Windows PowerShell（省略编码参数）"+raw.Substring(start));

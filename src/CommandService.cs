@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ITDesktopToolkit
@@ -35,8 +37,13 @@ namespace ITDesktopToolkit
             }
         }
         public static string Run(string fileName, string arguments, int timeoutMinutes)
+        { return Run(fileName,arguments,timeoutMinutes,CancellationToken.None); }
+        public static string Run(string fileName,string arguments,int timeoutMinutes,CancellationToken cancel)
         {
+            if(timeoutMinutes<1||timeoutMinutes>1440)throw new ArgumentException("命令超时须为 1–1440 分钟。");
+            cancel.ThrowIfCancellationRequested();
             StringBuilder stdout = new StringBuilder();
+            var outputDone=new TaskCompletionSource<bool>();var errorDone=new TaskCompletionSource<bool>();
             object guard = new object();
             using (Process p = new Process())
             {
@@ -47,28 +54,38 @@ namespace ITDesktopToolkit
                 p.StartInfo.CreateNoWindow = true;
                 p.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e)
                 {
-                    if (e.Data != null) lock (guard) { if (stdout.Length < 250000) stdout.AppendLine(e.Data); }
+                    if(e.Data==null)outputDone.TrySetResult(true);else lock(guard){if(stdout.Length<250000)stdout.AppendLine(e.Data.Substring(0,Math.Min(e.Data.Length,250000-stdout.Length)));}
                 };
                 p.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e)
                 {
-                    if (e.Data != null) lock (guard) { if (stdout.Length < 250000) stdout.AppendLine("[错误] " + e.Data); }
+                    if(e.Data==null)errorDone.TrySetResult(true);else lock(guard){if(stdout.Length<250000)stdout.AppendLine("[错误] "+e.Data.Substring(0,Math.Min(e.Data.Length,250000-stdout.Length)));}
                 };
                 try
                 {
                     p.Start();
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
-                    if (!p.WaitForExit(timeoutMinutes * 60 * 1000))
+                    var clock=Stopwatch.StartNew();
+                    while(!p.WaitForExit(100))
                     {
-                        try { p.Kill(); } catch { }
-                        return "操作超时，已尝试结束进程。请检查操作是否仍在后台运行。\r\n" + stdout;
+                        if(cancel.IsCancellationRequested){try{p.Kill();}catch{};throw new OperationCanceledException(cancel);}
+                        if(clock.Elapsed.TotalMinutes>=timeoutMinutes){try{p.Kill();}catch{};lock(guard)return "操作超时，已尝试结束主进程。请检查是否仍有子进程运行。\r\n"+stdout;}
                     }
-                    p.WaitForExit();
-                    return "命令：" + fileName + " " + arguments + "\r\n返回代码：" + p.ExitCode + "\r\n\r\n" + stdout.ToString();
+                    cancel.ThrowIfCancellationRequested();
+                    // A child may inherit output handles. Bound stream draining instead of waiting forever.
+                    var drain=Stopwatch.StartNew();
+                    while(!outputDone.Task.IsCompleted||!errorDone.Task.IsCompleted)
+                    {
+                        cancel.ThrowIfCancellationRequested();if(drain.ElapsedMilliseconds>=1000)break;
+                        cancel.WaitHandle.WaitOne(20);
+                    }
+                    lock(guard)return "命令："+fileName+" "+arguments+"\r\n返回代码："+p.ExitCode+"\r\n\r\n"+stdout+((outputDone.Task.IsCompleted&&errorDone.Task.IsCompleted)?"":"\r\n[输出未完整结束：可能有子进程持有输出句柄]");
                 }
+                catch(OperationCanceledException){try{if(!p.HasExited)p.Kill();}catch{};throw;}
                 catch (Exception ex)
                 {
-                    return "命令无法执行：" + ex.Message + "\r\n" + stdout;
+                    try{if(!p.HasExited)p.Kill();}catch{}
+                    lock(guard)return "命令无法执行：" + ex.Message + "\r\n" + stdout;
                 }
             }
         }
