@@ -94,6 +94,8 @@ namespace ITDesktopToolkit
                 b.AppendLine("两种模式都是单个 BAT，目标电脑仅需系统自带 PowerShell，不需要安装工具箱。");
                 if(autoSteps.Exists(delegate(AutoStep x){return x!=null && x.Type=="删除指定路径文件";}))
                     b.AppendLine("指定文件删除：选择完整绝对路径，支持跨盘；不会进入回收站，也不会匹配文件夹或通配符。");
+                if(autoSteps.Exists(delegate(AutoStep x){return x!=null && x.Type=="清空当前用户回收站";}))
+                    b.AppendLine("清空回收站：永久删除 BAT 实际运行账户在所有驱动器的回收站内容；提权使用其他管理员账户时，清理的是该账户。");
                 if(autoSteps.Exists(delegate(AutoStep x){return x!=null && x.Type=="删除桌面指定文件";}))
                     b.AppendLine("桌面文件清理：精确名称，不使用通配符，不清理目录。当前用户桌面指 BAT 实际运行账户；以其他管理员账户提权时需注意账户不同。公共桌面影响所有用户，删除不可从回收站恢复。");
                 b.AppendLine("等待窗口只判断出现，不会自动聚焦；要发送回车前请添加『激活窗口』或点击目标输入框。");
@@ -356,6 +358,11 @@ namespace ITDesktopToolkit
                         string msg="确定要添加格式化 "+target+": 盘的操作吗？\r\n\r\n此操作执行时将清除目标卷中的数据，请确认盘符正确。";
                         if(MessageBox.Show(f,msg,"确认添加格式化动作",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)!=DialogResult.Yes) return;
                     }
+                    if(type.Text=="清空当前用户回收站")
+                    {
+                        if(MessageBox.Show(f,"此动作执行时会永久清空 BAT 运行账户在所有驱动器的回收站。确定添加吗？",
+                            "确认清空回收站动作",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;
+                    }
                     f.DialogResult=DialogResult.OK;f.Close();
                 });
                 f.Controls.AddRange(new Control[]{FormLabel("动作类型",25,23,130),type,parameterALabel,a,
@@ -369,18 +376,20 @@ namespace ITDesktopToolkit
                     selectWindow.Visible=type.Text=="激活窗口";
                     delayShortcuts.Visible=type.Text=="等待毫秒";
                     bool desktopAction=type.Text=="删除桌面指定文件";
+                    bool noParameters=type.Text=="清空当前用户回收站";
                     desktopScope.Visible=desktopAction;
-                    b.Visible=!desktopAction;
-                    c.Visible=!desktopAction;
-                    parameterCLabel.Visible=!desktopAction;
+                    a.Visible=!noParameters;parameterALabel.Visible=!noParameters;
+                    b.Visible=!desktopAction&&!noParameters;
+                    c.Visible=!desktopAction&&!noParameters;
+                    parameterCLabel.Visible=!desktopAction&&!noParameters;
                     parameterALabel.Text=desktopAction?"准确文件名":type.Text=="删除指定路径文件"?"文件完整路径":"参数 1";
                     parameterBLabel.Text=desktopAction?"桌面范围":"参数 2";
-                    if(type.Text=="删除指定路径文件"){b.Visible=false;c.Visible=false;parameterBLabel.Visible=false;parameterCLabel.Visible=false;}else{parameterBLabel.Visible=true;}
+                    if(type.Text=="删除指定路径文件"){b.Visible=false;c.Visible=false;parameterBLabel.Visible=false;parameterCLabel.Visible=false;}else{parameterBLabel.Visible=!noParameters;}
                 };
                 type.SelectedIndexChanged+=delegate {refreshActionOptions();};
                 guide.Text=AutomationService.Guide(type.Text);
                 refreshActionOptions();
-                return f.ShowDialog(this)==DialogResult.OK ? new AutoStep{Type=type.Text,A=a.Text,B=type.Text=="删除桌面指定文件"?desktopScope.Text:b.Text,C=type.Text=="删除桌面指定文件"?"":c.Text}:null;
+                return f.ShowDialog(this)==DialogResult.OK ? new AutoStep{Type=type.Text,A=type.Text=="清空当前用户回收站"?"":a.Text,B=type.Text=="清空当前用户回收站"?"":type.Text=="删除桌面指定文件"?desktopScope.Text:b.Text,C=type.Text=="清空当前用户回收站"||type.Text=="删除桌面指定文件"?"":c.Text}:null;
             }
         }
     }

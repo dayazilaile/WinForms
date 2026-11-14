@@ -135,12 +135,12 @@ namespace ITDesktopToolkit
             FlowLayoutPanel bar;RichTextBox report;
             using(Form f=ToolWindow("U 盘检查与本机防护",out bar,out report))
             {
-                bar.Height=215;
+                bar.Height=270;
                 var drive=new ComboBox{Width=210,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(5,9,5,4)};bar.Controls.Add(drive);
                 Action reload=delegate{drive.Items.Clear();foreach(var d in DriveInfo.GetDrives())try{if(d.DriveType==DriveType.Removable&&d.IsReady)drive.Items.Add(d.RootDirectory.FullName);}catch(IOException){}if(drive.Items.Count>0)drive.SelectedIndex=0;};reload();
                 ToolButton(bar,"刷新 U 盘",delegate{reload();});
                 CancellationTokenSource cancel=null;bool running=false;
-                report.Text="只读检查，不执行盘内文件、不恢复资料、不删除文件。检查隐藏属性、伪装扩展名和快捷方式指向；可疑不等于确诊。\r\n\r\n本机防护：关闭当前账户的所有驱动器自动播放，或开启本机 USB 存储写保护（管理员）。写保护通常需重新插拔，不能跟随 U 盘到其他电脑，也不阻止手动运行程序。请先导出结果，再更改策略。";
+                report.Text="只读检查不执行或删除盘内文件。\r\n\r\nNTFS U 盘权限：选盘后可让普通 Windows 用户只读，SYSTEM 为所有者，管理员保留写入和恢复权限。此方式不限制管理员或不遵守 NTFS 权限的系统；需要所有电脑都只读，请使用硬件写保护。\r\n\r\n本机策略只影响当前电脑。";
                 Button scan=null,stop=null;scan=ToolButton(bar,"开始只读检查",async delegate{
                     if(drive.SelectedItem==null){MessageBox.Show(f,"未发现可移动 U 盘。");return;}
                     string root=drive.Text;cancel=new CancellationTokenSource();running=true;foreach(Control control in bar.Controls)control.Enabled=false;stop.Enabled=true;report.Text="正在只读检查，可点击停止……";
@@ -151,6 +151,30 @@ namespace ITDesktopToolkit
                 ToolButton(bar,"导入其他杀毒报告",delegate{try{string text=ReadToolFile(f);if(text!=null)report.Text="【外部报告原文，未自动判定/验证】\r\n"+text;}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
                 ToolButton(bar,"导出当前报告",delegate{ExportToolReport(f,report.Text,"U盘检查_"+DateTime.Now.ToString("yyyyMMdd_HHmmss")+".txt");});
                 ToolButton(bar,"读取本机防护状态",delegate{try{report.Text=UsbProtectionService.PolicyStatus();}catch(Exception ex){report.Text=ex.Message;}});
+                Button protect=null;protect=ToolButton(bar,"所选 U 盘设为普通用户只读",delegate{
+                    if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}
+                    if(!RequireAdmin())return;
+                    string root=drive.Text;
+                    if(!ConfirmAction("设置 U 盘 NTFS 只读权限","目标："+root+"\r\n将递归修改全部文件和文件夹的 NTFS 权限，并在本机保存原权限。普通用户只能读取；管理员仍可写入。请先备份重要资料。"))return;
+                    DoJob(report,protect,delegate{return UsbAccessService.Protect(root);});
+                });
+                Button restoreAcl=null;restoreAcl=ToolButton(bar,"恢复所选 U 盘原权限",delegate{
+                    if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}
+                    if(!RequireAdmin())return;
+                    string root=drive.Text;
+                    if(!ConfirmAction("恢复 U 盘权限","将按本机备份恢复 "+root+" 的 NTFS 权限。请核对选中的是原 U 盘。"))return;
+                    DoJob(report,restoreAcl,delegate{return UsbAccessService.Restore(root);});
+                });
+                Button folderAccess=null;folderAccess=ToolButton(bar,"取得指定文件夹权限",delegate{
+                    if(!RequireAdmin())return;
+                    using(var picker=new FolderBrowserDialog{Description="选择要取得权限的文件夹（含子文件夹）",ShowNewFolderButton=false})
+                    {
+                        if(picker.ShowDialog(f)!=DialogResult.OK)return;
+                        string path=picker.SelectedPath;
+                        if(!ConfirmAction("取得文件夹权限","将递归把 Administrators 设为 "+path+" 的所有者并授予完全控制。此操作会改变该文件夹及子项的权限。"))return;
+                        DoJob(report,folderAccess,delegate{return UsbAccessService.TakeFolder(path);});
+                    }
+                });
                 foreach(bool wpValue in new bool[]{false,true})foreach(bool restoreValue in new bool[]{false,true})
                 {
                     bool wp=wpValue,restore=restoreValue;string label=wp?(restore?"还原 USB 写保护策略":"开启本机 USB 写保护"):(restore?"还原自动播放策略":"关闭当前账户自动播放");

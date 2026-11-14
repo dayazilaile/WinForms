@@ -35,6 +35,8 @@ class FeatureTests
         Reject(()=>AutomationService.ValidateFlow(new List<AutoStep>{S("重试开始"),S("结束条件")}),"Mismatched block");
         Reject(()=>AutomationService.ValidateFlow(new List<AutoStep>{S("重试开始","0"),S("重试结束")}),"Zero retries rejected");
         Reject(()=>AutomationService.ValidateFlow(new List<AutoStep>{S("重试开始"),S("删除指定路径文件",@"D:\x.txt"),S("重试结束")}),"Destructive auto retry rejected");
+        Reject(()=>AutomationService.ValidateFlow(new List<AutoStep>{S("重试开始"),S("清空当前用户回收站"),S("重试结束")}),"Recycle Bin cleanup cannot be retried");
+        Check(AutomationService.MakeScript(new List<AutoStep>{S("清空当前用户回收站")},BatInputEngine.SendInput,0,false).Contains("Clear-RecycleBin -Force"),"Recycle Bin action emitted for BAT workflow");
         Reject(()=>AutomationService.ValidateFlow(new List<AutoStep>{S("如果网络可达","a,b"),S("结束条件")}),"Multiple hosts rejected in single-host condition");
         var deep=new List<AutoStep>();for(int i=0;i<9;i++)deep.Add(S("如果文件存在","x"));Reject(()=>AutomationService.ValidateFlow(deep),"Excessive nesting rejected");
         string tmp=Path.GetTempFileName();try{AutomationService.Save(tmp,steps);AutoWorkflowSettings settings;var restored=AutomationService.Load(tmp,out settings);Check(restored.Count==steps.Count&&restored[0].A==steps[0].A,"Workflow save/load with new types");}finally{File.Delete(tmp);}

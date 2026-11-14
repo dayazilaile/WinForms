@@ -90,7 +90,7 @@ namespace ITDesktopToolkit
                 case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集两台电脑的配置报告，比较系统、网络、服务和共享策略。", ConfigurationCompareDialog); break;
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
                 case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
-                case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置本机自动播放及 USB 存储写保护。", UsbProtectionDialog); break;
+                case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置所选 NTFS U 盘普通用户只读权限及本机策略。", UsbProtectionDialog); break;
                 case "端口扫描": BuildFieldTool(name,"扫描单台主机的指定 TCP 端口，支持停止与导出。",delegate{NetworkScanDialog(false);}); break;
                 case "主机发现": BuildFieldTool(name,"通过 ICMP 与少量 TCP 端口响应发现局域网设备。",delegate{NetworkScanDialog(true);}); break;
                 case "路由与MAC": BuildFieldTool(name,"只读查看本机网卡/IP/MAC、路由表及邻居缓存。",delegate{NetworkInformationDialog(0);}); break;

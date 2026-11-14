@@ -29,7 +29,7 @@ namespace ITDesktopToolkit
 
     public static partial class AutomationService
     {
-        public static readonly string[] Types = { "运行程序", "等待毫秒", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
+        public static readonly string[] Types = { "运行程序", "等待毫秒", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
         public static string Guide(string type)
         {
             switch(type)
@@ -56,6 +56,7 @@ namespace ITDesktopToolkit
                 case "设置静态 IPv4": return "参数1=网卡名称或 自动有线/自动无线；参数2=IPv4地址；参数3=子网掩码|网关，例如 255.255.255.0|192.168.1.1。";
                 case "IP及DNS切换 DHCP": return "参数1=网卡名称或 自动有线/自动无线；参数2/3留空。将IP和DNS都改为自动获取。";
                 case "删除指定路径文件": return "参数1=选择或填写文件的完整绝对路径（支持本地盘/UNC），参数2/3留空；只删除一个文件，不删除目录或匹配通配符，不进入回收站。";
+                case "清空当前用户回收站": return "无需参数。永久清除 BAT 实际运行账户在所有驱动器的回收站内容；以其他管理员账户提权时会清理该管理员的回收站。";
                 case "删除桌面指定文件": return "参数1=完整文件名（包含扩展名，例如 错误通知.docx、错误快捷方式.lnk）；参数2=当前用户桌面 / 公共桌面 / 两者；参数3留空。只按精确文件名删除，不支持文件夹、路径或通配符。删除不进入回收站。";
                 case "格式化指定卷": return "参数1=D/E等明确盘符（仅D-Z）；参数2=NTFS或exFAT（默认NTFS）；参数3=新卷标（可空）。添加动作时会先确认一次；执行到此步骤即尝试清空目标卷，并自动阻止系统/启动盘和非固定盘。";
                 default: return "不需要参数。";
@@ -632,6 +633,9 @@ public static class ITAutomationDiag {
                         b.AppendLine("Remove-SelectedExactFile " + P(targetPath));
                         break;
                     }
+                    case "清空当前用户回收站":
+                        b.AppendLine("Clear-RecycleBin -Force -Confirm:$false -ErrorAction Stop; Write-Host '[OK] 已清空当前运行账户的回收站' -ForegroundColor Green");
+                        break;
                     case "删除桌面指定文件":
                     {
                         string fileName=CheckDesktopFileName(s.A);
