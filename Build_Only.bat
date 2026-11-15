@@ -20,7 +20,7 @@ if not exist "src\Program.cs" (
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== IT Desktop Toolkit V0.5.1 =====
+echo ===== IT Desktop Toolkit V0.5.2 =====
 echo Compiler: "%CSC%"
 pushd "src"
 "%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
@@ -48,6 +48,12 @@ if not exist "build\Database\fault_codes.tsv" copy /Y "Database\fault_codes.tsv"
 if not exist "build\Database\usb.ids" copy /Y "Database\usb.ids" "build\Database\usb.ids" >nul
 if not exist "build\Database\offline_database_README.txt" copy /Y "Database\offline_database_README.txt" "build\Database\offline_database_README.txt" >nul
 echo.
+REM Versioned supplements are additive; never overwrite user database files.
+for %%F in (pci.v052.ids usb.v052.ids board_models_v052.tsv component_models_v052.tsv SOURCES-v052.md) do if not exist "build\Database\%%F" copy /Y "Database\%%F" "build\Database\%%F" >nul
+if not exist "build\Database\Licenses" mkdir "build\Database\Licenses"
+if not exist "build\Database\Sources" mkdir "build\Database\Sources"
+for %%F in ("Database\Licenses\*") do if not exist "build\Database\Licenses\%%~nxF" copy /Y "%%~fF" "build\Database\Licenses\%%~nxF" >nul
+for %%F in ("Database\Sources\*") do if not exist "build\Database\Sources\%%~nxF" copy /Y "%%~fF" "build\Database\Sources\%%~nxF" >nul
 echo [SUCCESS] build\ITDesktopToolkit.exe
  echo [NOTE] Keep the complete build folder including Database when moving to other computers.
 if /I not "%~1"=="--no-pause" pause

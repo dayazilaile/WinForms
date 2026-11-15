@@ -40,10 +40,10 @@ class NavigationUiTests
             using(var main=new MainForm())
             {
                 main.Show();Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
-                Check(tree.Nodes.Count==5&&Leaves(tree)==24,"Five categories / 24 features, no duplicate system category");
+                Check(tree.Nodes.Count==6&&Leaves(tree)==29,"Six categories / 29 features (including trial), no duplicate system category");
                 Check(Field<string>(main,"currentPage")=="U 盘检查与防护"&&tree.Nodes[0].IsExpanded,"Legacy safety category state migrates to system/hardware");
                 Click(tree,tree.Nodes[0]);Check(!tree.Nodes[0].IsExpanded,"Category text click collapses");Click(tree,tree.Nodes[1]);Check(tree.Nodes[1].IsExpanded&&tree.Nodes.Cast<TreeNode>().Count(n=>n.IsExpanded)==1,"Accordion expands only one group");
-                search.Text="DNS";Application.DoEvents();Check(Leaves(tree)==2,"Search DNS aliases");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");search.Clear();
+                search.Text="DNS";Application.DoEvents();Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");search.Clear();
                 foreach(string key in new[]{"端口扫描","主机发现","路由与MAC","Wi-Fi分析"})
                 {
                     Navigate(main,tree,key);Application.DoEvents();var body=Field<Panel>(main,"content");
@@ -51,6 +51,16 @@ class NavigationUiTests
                     Check(Application.OpenForms.Count==1,"Inline navigation never launches modal: "+key);
                     if(key=="路由与MAC"||key=="Wi-Fi分析"){var button=Find<Button>(body).Single(b=>b.Text=="刷新信息");Pump(()=>button.Enabled,30000);Check(Find<Panel>(body).Count(p=>p.Name=="resultTabs")==1,"Auto-read completes with structured tables: "+key);}
                 }
+                foreach(string key in new[]{"DNS记录查询","ICMP路由跟踪","本机连接与监听","系统代理诊断","网络配置核对"})
+                {
+                    Navigate(main,tree,key);Application.DoEvents();var trial=Field<Panel>(main,"content");
+                    Check(tree.SelectedNode.Parent.Text.Contains("新增")&&Find<DataGridView>(trial).Single().Rows.Count==0&&Find<Button>(trial).Single(b=>b.Text=="停止").Enabled==false&&Find<Label>(trial).Any(l=>l.Text.StartsWith("待试用")),"Trial remains separate and idle until explicit action: "+key);
+                }
+                var audit=Field<Panel>(main,"content");var read=Find<Button>(audit).Single(b=>b.Text=="读取本机信息");read.PerformClick();Pump(()=>read.Enabled,30000);
+                Check(Find<DataGridView>(audit).Single().Rows.Count>0,"Trial local IPv4 audit executes and fills table without probing network");
+                Navigate(main,tree,"DNS记录查询");Application.DoEvents();var dnsPage=Field<Panel>(main,"content");Find<TextBox>(dnsPage).Single(t=>t.AccessibleName=="DNS 名称 / PTR 地址").Text="bad; exit";var query=Find<Button>(dnsPage).Single(b=>b.Text=="查询记录");query.PerformClick();Pump(()=>query.Enabled);
+                Check(Find<DataGridView>(dnsPage).Single().Rows.Count==0&&Find<Label>(dnsPage).Any(l=>l.Text.Contains("格式无效")),"Trial UI displays validation error without DNS query");
+                Navigate(main,tree,"ICMP路由跟踪");Application.DoEvents();Navigate(main,tree,"DNS记录查询");Application.DoEvents();Screenshot(main,"trial-v052.png");
                 Navigate(main,tree,"主机发现");Application.DoEvents();Check(!Find<TextBox>(Field<Panel>(main,"content")).Any(t=>t.AccessibleName=="TCP 端口（逗号或范围）"),"Ping page has no TCP port input");
                 Navigate(main,tree,"端口扫描");Application.DoEvents();var panel=Field<Panel>(main,"content");var ports=Find<TextBox>(panel).Single(t=>t.AccessibleName=="TCP 端口（逗号或范围）");Check(NetworkDiscoveryService.ParsePorts(ports.Text).Length==CommonPorts.Count,"Inline scanner defaults to complete common preset");
                 var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();

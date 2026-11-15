@@ -1,22 +1,27 @@
-PCI/USB 厂商 ID 数据库（可选，离线运行）
+PCI/USB 厂商与设备 ID 数据库（V0.5.2 已附带，离线运行）
 ========================================
 
 本工具箱自带 Database\hardware_models.tsv 和 bugcheck_codes.tsv，可以直接离线识别常见硬件和蓝屏代码。
-如果你想补充数千个 PCI/USB 注册厂商和设备型号，可以自己下载两个公开的文本库：
+V0.5.2 已附带 pci.v052.ids（2026.11.15）与 usb.v052.ids（2026.06.26）。
+原 pci.ids/usb.ids 保留为用户覆盖条目，同编号优先，不覆盖本地编辑。
+另附 406 条主板名称与 23 条内存/SSD 家族规则，总计 572 条硬件规则。
+详细来源、SHA-256 和许可见 SOURCES-v052.md；许可及主板提取源文件见 Licenses/、Sources/。
+
+若需要更新或添加自己的 ID 条目，可取得以下公开文本库：
 
 1) pci.ids 官方： https://pci-ids.ucw.cz/
    下载 pci.ids（文本文件，不是 .gz）放到 EXE 同级的 Database 文件夹。
 2) usb.ids 官方： http://www.linux-usb.org/usb-ids.html
    取得 usb.ids 原始文本，放到同一个 Database 文件夹。
 
-这是可选的一次性离线资料准备：程序不自动下载，也不会联网。
+更新文件是可选操作；硬件库读取不联网，不自动下载。
 放好后，进入“离线数据库”点击“重载数据库”，无须重新编译。
 ID 库提供芯片厂商/设备名称，不代表零售品牌，也不能凭芯片 ID 推断笔记本厂商。
 另外，注册 ID 的设备名称并非一定足以确认最终商品准确型号。
 
 版权许可：原 PCI 数据库可按 BSD-3-Clause 或 GPL-2.0-or-later 分发，
 详见官网 https://pci-ids.ucw.cz/ ；USB 数据库详见其官方许可说明。
-本源码包没有捆绑两份完整的上游数据库，由用户自行取得。
+本版捆绑原始完整 PCI/USB 文本快照；分发时请保留对应许可、来源和主板源文件。
 
 已包含的部分公开型号验证参考：
 - Microsoft Win32_PhysicalMemory（Manufacturer、PartNumber、Speed 等）

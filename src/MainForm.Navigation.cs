@@ -23,7 +23,7 @@ namespace ITDesktopToolkit
                     if(lines.Length>=2&&NavigationCatalog.Find(lines[1])!=null){expandedNavigationGroup=lines[0];lastNavigationPage=lines[1];}
                 }
             }catch(Exception ex){Paths.Log("Read navigation state: "+ex.Message);}
-            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.1 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
+            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.2 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
             var searchPanel=new Panel{Dock=DockStyle.Top,Height=66,Padding=new Padding(10,24,10,8)};
             var caption=new Label{Text="搜索功能（如 DNS / 打印机）",Left=10,Top=3,AutoSize=true,ForeColor=Color.LightSteelBlue};searchPanel.Controls.Add(caption);
             navigationSearch=new TextBox{Dock=DockStyle.Fill,AccessibleName="搜索功能"};

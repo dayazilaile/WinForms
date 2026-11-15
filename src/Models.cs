@@ -16,6 +16,8 @@ namespace ITDesktopToolkit
         public string DatabaseBrand = "";
         public string DatabaseLabel = "";
         public string DatabaseNote = "";
+        public string DatabaseSource = "";
+        public string DatabaseMatchMode = "";
         public string DatabaseKey = "";
         public string IdVendor = "";
         public string IdDevice = "";
@@ -62,8 +64,8 @@ namespace ITDesktopToolkit
         }
         public string MatchState
         {
-            get { return !String.IsNullOrEmpty(DatabaseKey) ? "本地型号库" :
-                !String.IsNullOrEmpty(IdVendor) ? "PCI/USB ID" : "系统检测"; }
+            get { return !String.IsNullOrEmpty(DatabaseKey) ? (DatabaseMatchMode=="exact"?"型号名称匹配":DatabaseMatchMode=="prefix"?"家族前缀匹配":"关键词匹配") :
+                !String.IsNullOrEmpty(IdDevice)?"PCI/USB设备ID":!String.IsNullOrEmpty(IdVendor)?"PCI/USB厂商ID":"系统检测"; }
         }
         public string Details()
         {
@@ -91,6 +93,7 @@ namespace ITDesktopToolkit
                 b.AppendLine("数据库品牌：" + DatabaseBrand);
                 b.AppendLine("数据库补充名称：" + DatabaseLabel);
                 b.AppendLine("数据库备注：" + DatabaseNote);
+                if(!String.IsNullOrWhiteSpace(DatabaseSource))b.AppendLine("规则来源："+DatabaseSource);
             }
             b.AppendLine();
             b.AppendLine("注意：品牌可能是 SMBIOS 报告的模组厂商，而不是零售品牌；本地库只是型号关键词推断。");

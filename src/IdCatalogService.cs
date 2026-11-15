@@ -10,6 +10,9 @@ namespace ITDesktopToolkit
     // ID 识别的是总线注册厂商/设备系列，不意味着板卡零售品牌或笔记本整机品牌。
     public sealed class IdCatalogService
     {
+        private readonly string directory;
+        public IdCatalogService():this(Paths.DbDir){}
+        internal IdCatalogService(string directory){this.directory=directory;}
         private readonly Dictionary<string, string> pciVendors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> pciDevices = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> usbVendors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -33,13 +36,15 @@ namespace ITDesktopToolkit
             foreach (string line in File.ReadLines(path, Encoding.UTF8))
             {
                 if (String.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+                // Upstream class/audio/HID sections are not USB/PCI vendors.
+                if(line.StartsWith("C ",StringComparison.Ordinal)||line.StartsWith("AT ",StringComparison.Ordinal)||line.StartsWith("HUT ",StringComparison.Ordinal))break;
                 bool deviceLine = line[0] == '\t' && line.Length > 1 && line[1] != '\t';
                 bool vendorLine = line[0] != '\t' && line[0] != ' ';
                 if (!vendorLine && !deviceLine) continue;
                 string l = line.Trim();
-                if (l.Length < 6 || !Char.IsWhiteSpace(l[4])) continue;
+                if(l.Length<6||!Char.IsWhiteSpace(l[4])){if(vendorLine)currentVendor="";continue;}
                 string id = l.Substring(0, 4);
-                if (!IsHex4(id)) continue;
+                if (!IsHex4(id)){if(vendorLine)currentVendor="";continue;}
                 string name = l.Substring(5).Trim();
                 if (name.Length == 0) continue;
                 if (vendorLine)
@@ -54,9 +59,9 @@ namespace ITDesktopToolkit
         public void Reload()
         {
             pciVendors.Clear(); pciDevices.Clear(); usbVendors.Clear(); usbDevices.Clear();
-            try { LoadFile(Path.Combine(Paths.DbDir, "pci.ids"), pciVendors, pciDevices); }
+            try { LoadFile(Path.Combine(directory,"pci.v052.ids"),pciVendors,pciDevices);LoadFile(Path.Combine(directory, "pci.ids"), pciVendors, pciDevices); }
             catch (Exception ex) { Paths.Log("PCI ID database unavailable: " + ex.Message); }
-            try { LoadFile(Path.Combine(Paths.DbDir, "usb.ids"), usbVendors, usbDevices); }
+            try { LoadFile(Path.Combine(directory,"usb.v052.ids"),usbVendors,usbDevices);LoadFile(Path.Combine(directory, "usb.ids"), usbVendors, usbDevices); }
             catch (Exception ex) { Paths.Log("USB ID database unavailable: " + ex.Message); }
         }
         public void MatchHardware(HardwareItem item)

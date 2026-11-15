@@ -1,10 +1,10 @@
-﻿离线数据库（UTF-8，TSV，Tab 分隔）
+离线数据库（UTF-8，TSV，Tab 分隔）
 ================================
 - hardware_models.tsv ：类别 / 关键词 / 品牌 / 补充名称 / 说明
 - bugcheck_codes.tsv ：停止代码 / 英文名称 / 中文含义 / 排查方向
 - fault_codes.tsv ：日志通道 / 事件来源包含匹配 / 事件 ID / 类别 / 中文说明 / 建议
 - generic_codes.tsv ：分类 / 错误代码 / 名称 / 中文解释 / 建议
-- pci.ids / usb.ids ：可选公开硬件编号清单。编号匹配只代表芯片厂商，通常不能判断板卡商品品牌。
+- pci.v052.ids / usb.v052.ids：本版附带完整上游编号快照；pci.ids / usb.ids 为用户覆盖条目。编号匹配只代表芯片厂商，通常不能判断板卡商品品牌。
 
 维护方式：
 1. 用记事本或表格软件编辑 TSV，务必以 UTF-8 保存且保持制表符分隔。
@@ -19,3 +19,11 @@ https://learn.microsoft.com/en-us/windows/client-management/troubleshoot-event-i
 https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options
 
 V0.3.9 补充：hardware_models_v039.tsv 为常见显示器 EDID 厂商代码和硬件品牌的增量库。与 hardware_models.tsv 同时读取，不覆盖用户原有自定义规则。
+
+V0.5.2 补充：
+- board_models_v052.tsv：406 条主板名称精确规则；component_models_v052.tsv：23 条内存/SSD 家族规则。
+- hardware_models TSV 原有五列继续支持，可追加：第6列来源 URL、第7列匹配方式 contains/exact/prefix（默认 contains）、第8列制造商包含条件（可空）。
+- exact 比较系统 Name/Model 完整名称（忽略大小写与两端空白），prefix 匹配它们的开头；contains 沿用原关键词匹配。
+- 精确名称优先于家族前缀，前缀优先于普通关键词；同等分数保留先加载的原有用户规则。品牌与型号可独立匹配，主板补充库不猜测品牌。
+- PCI/USB 先载入版本快照，再载入用户 pci.ids/usb.ids；同编号用户条目优先。不覆盖或重写用户文件。
+- 编译只复制运行目录缺少的文件，已有文件保留；来源、哈希、许可见 SOURCES-v052.md、Licenses/ 与 Sources/。

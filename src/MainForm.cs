@@ -34,7 +34,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.1 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.2 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -97,6 +97,7 @@ namespace ITDesktopToolkit
                 case "Wi-Fi分析": BuildWifiWorkspace(); break;
                 case "已保存的Wi-Fi": BuildFieldTool(name,"查看本机已保存的无线配置，密码需单独确认显示。",delegate{NetworkInformationDialog(3);}); break;
                 case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
+                case "DNS记录查询":case "ICMP路由跟踪":case "本机连接与监听":case "系统代理诊断":case "网络配置核对":BuildTrialWorkspace(name);break;
                 case "离线数据库": BuildDatabase(); break;
             }
             SetStatus("当前页面：" + name + "   |   数据库：硬件 " + db.HardwareRuleCount + " 条 / 蓝屏 " + db.BugcheckRuleCount + " 条");
@@ -834,20 +835,20 @@ namespace ITDesktopToolkit
                 "目录：" + Paths.DbDir + "\r\n" +
                 "硬件规则：" + db.HardwareRuleCount + " 条\r\n" +
                 "蓝屏停止代码：" + db.BugcheckRuleCount + " 条\r\n" +
-                "可选 PCI 厂商/设备 ID：" + db.Ids.PciVendorCount + " / " + db.Ids.PciDeviceCount + " 条\r\n" +
-                "可选 USB 厂商/设备 ID：" + db.Ids.UsbVendorCount + " / " + db.Ids.UsbDeviceCount + " 条\r\n" +
+                "PCI 厂商/设备 ID（内置扩充库 + 用户覆盖）：" + db.Ids.PciVendorCount + " / " + db.Ids.PciDeviceCount + " 条\r\n" +
+                "USB 厂商/设备 ID（内置扩充库 + 用户覆盖）：" + db.Ids.UsbVendorCount + " / " + db.Ids.UsbDeviceCount + " 条\r\n" +
                 "事件故障字典：" + FaultCatalog.Count + " 条 / 通用错误码：" + GenericCodeCatalog.Count + " 条\r\n\r\n" +
                 "【hardware_models.tsv 字段】\r\n" +
                 "类别<TAB>关键词<TAB>品牌<TAB>补充名称<TAB>说明\r\n" +
                 "示例：显卡<TAB>VEN_10DE<TAB>NVIDIA<TAB>英伟达 GPU<TAB>只识别 GPU 厂商，不能推出具体板卡品牌\r\n\r\n" +
                 "类别可用：CPU、主板、整机、内存、硬盘、显卡、有线网卡、无线网卡、异常设备、已禁用设备，或 *（所有类别）。\r\n" +
-                "匹配规则：大小写不敏感，字符串包含匹配；同类别命中多个关键词时优先采用最长关键词。\r\n" +
+                "匹配规则：旧五列保持包含匹配；新增库支持型号精确匹配/前缀与制造商条件，精确命中优先。\r\n" +
                 "如果多个硬件共用同一关键词，只能表示家族或芯片厂商，不能强行确定具体型号。\r\n\r\n" +
                 "【bugcheck_codes.tsv 字段】\r\n" +
                 "停止代码<TAB>英文名称<TAB>简要含义<TAB>排查建议\r\n" +
                 "例：0x0000003B<TAB>SYSTEM_SERVICE_EXCEPTION<TAB>系统服务异常<TAB>分析 DMP 和驱动\r\n\r\n" +
                 "还可以将公开 PCI/USB 厂商库 pci.ids、usb.ids 放到此目录，重载后离线补充芯片厂商与设备名。\r\n" +
-                "下载网址及许可见 Database\\离线数据库来源和使用.txt；程序不会联网下载。\r\n" +
+                "版本、来源和许可见 Database\\SOURCES-v052.md；内置数据只在本地读取，不会自动联网。\r\n" +
                 "保存文本后点击“重载数据库”即可生效，无需编译 EXE。\r\n" +
                 "数据库补充内容仅供参考；系统原始检测值会保留。\r\n" +
                 "日志位置：" + Path.Combine(Paths.UserDir, "toolkit.log");

@@ -7,7 +7,7 @@ namespace ITDesktopToolkit
 {
     public sealed class HardwareRule
     {
-        public string Type, Keyword, Brand, Label, Note;
+        public string Type, Keyword, Brand, Label, Note, Source="", Mode="contains", Manufacturer="";
     }
     public sealed class BugcheckRule
     {
@@ -15,14 +15,17 @@ namespace ITDesktopToolkit
     }
     public sealed class DatabaseService
     {
-        public readonly IdCatalogService Ids = new IdCatalogService();
+        private readonly string directory;
+        public readonly IdCatalogService Ids;
+        public DatabaseService():this(Paths.DbDir){}
+        internal DatabaseService(string directory){this.directory=directory;Ids=new IdCatalogService(directory);}
         private readonly List<HardwareRule> hardwareRules = new List<HardwareRule>();
         private readonly Dictionary<string, BugcheckRule> bugcheckRules = new Dictionary<string, BugcheckRule>(StringComparer.OrdinalIgnoreCase);
         public int HardwareRuleCount { get { return hardwareRules.Count; } }
         public int BugcheckRuleCount { get { return bugcheckRules.Count; } }
-        public string HardwarePath { get { return Path.Combine(Paths.DbDir, "hardware_models.tsv"); } }
-        public string BugcheckPath { get { return Path.Combine(Paths.DbDir, "bugcheck_codes.tsv"); } }
-        public string HardwareSupplementPath { get { return Path.Combine(Paths.DbDir, "hardware_models_v039.tsv"); } }
+        public string HardwarePath { get { return Path.Combine(directory, "hardware_models.tsv"); } }
+        public string BugcheckPath { get { return Path.Combine(directory, "bugcheck_codes.tsv"); } }
+        public string HardwareSupplementPath { get { return Path.Combine(directory, "hardware_models_v039.tsv"); } }
         private void LoadHardwareRules(string file)
         {
             if (!File.Exists(file)) return;
@@ -31,7 +34,8 @@ namespace ITDesktopToolkit
                 if (String.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
                 string[] x = line.Split('\t');
                 if (x.Length < 5 || x[0].Trim().Length == 0 || x[1].Trim().Length == 0) continue;
-                hardwareRules.Add(new HardwareRule { Type = x[0].Trim(), Keyword = x[1].Trim(), Brand = x[2].Trim(), Label = x[3].Trim(), Note = x[4].Trim() });
+                string mode=x.Length>6&&!String.IsNullOrWhiteSpace(x[6])?x[6].Trim():"contains";if(mode!="contains"&&mode!="exact"&&mode!="prefix")throw new FormatException("硬件规则匹配方式无效："+file);
+                hardwareRules.Add(new HardwareRule { Type = x[0].Trim(), Keyword = x[1].Trim(), Brand = x[2].Trim(), Label = x[3].Trim(), Note = x[4].Trim(),Source=x.Length>5?x[5].Trim():"",Mode=mode,Manufacturer=x.Length>7?x[7].Trim():"" });
             }
         }
         public void Reload()
@@ -43,6 +47,8 @@ namespace ITDesktopToolkit
             // build folders receive new monitor/vendor mappings without overwriting local edits.
             LoadHardwareRules(HardwarePath);
             LoadHardwareRules(HardwareSupplementPath);
+            LoadHardwareRules(Path.Combine(directory,"board_models_v052.tsv"));
+            LoadHardwareRules(Path.Combine(directory,"component_models_v052.tsv"));
             if (File.Exists(BugcheckPath))
             {
                 foreach (string line in File.ReadAllLines(BugcheckPath, Encoding.UTF8))
@@ -64,21 +70,25 @@ namespace ITDesktopToolkit
             item.DatabaseLabel = "";
             item.DatabaseNote = "";
             string combined = item.Name + "\n" + item.Manufacturer + "\n" + item.Model + "\n" + item.Identifier;
-            HardwareRule selected = null;
-            foreach (HardwareRule r in hardwareRules)
+            item.DatabaseSource="";item.DatabaseMatchMode="";HardwareRule selected=null,brand=null;int best=-1,brandScore=-1;
+            foreach(HardwareRule r in hardwareRules)
             {
-                if (!r.Type.Equals(item.Type, StringComparison.OrdinalIgnoreCase) && r.Type != "*") continue;
-                if (combined.IndexOf(r.Keyword, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                if (selected == null || r.Keyword.Length > selected.Keyword.Length) selected = r;
+                int score=RuleScore(r,item,combined);if(score<0)continue;
+                if(score>best){best=score;selected=r;}if(r.Brand.Length>0&&score>brandScore){brand=r;brandScore=score;}
             }
-            if (selected != null)
-            {
-                item.DatabaseBrand = selected.Brand;
-                item.DatabaseLabel = selected.Label;
-                item.DatabaseNote = selected.Note;
-                item.DatabaseKey = selected.Keyword;
-            }
+            if(selected!=null){item.DatabaseBrand=selected.Brand.Length>0?selected.Brand:brand==null?"":brand.Brand;item.DatabaseLabel=selected.Label;item.DatabaseNote=selected.Note;item.DatabaseKey=selected.Keyword;item.DatabaseSource=selected.Source;item.DatabaseMatchMode=selected.Mode;}
         }
+        internal static int RuleScore(HardwareRule rule,HardwareItem item,string combined)
+        {
+            if(!rule.Type.Equals(item.Type,StringComparison.OrdinalIgnoreCase)&&rule.Type!="*")return -1;
+            if(rule.Manufacturer.Length>0&&(item.Manufacturer??"").IndexOf(rule.Manufacturer,StringComparison.OrdinalIgnoreCase)<0)return -1;
+            string name=(item.Name??"").Trim(),model=(item.Model??"").Trim();bool exact=name.Equals(rule.Keyword,StringComparison.OrdinalIgnoreCase)||model.Equals(rule.Keyword,StringComparison.OrdinalIgnoreCase);
+            if(rule.Mode=="exact")return exact?3000+rule.Keyword.Length:-1;
+            if(rule.Mode=="prefix")return name.StartsWith(rule.Keyword,StringComparison.OrdinalIgnoreCase)||model.StartsWith(rule.Keyword,StringComparison.OrdinalIgnoreCase)?2000+rule.Keyword.Length:-1;
+            if(combined.IndexOf(rule.Keyword,StringComparison.OrdinalIgnoreCase)<0)return -1;
+            return (exact?3000:0)+rule.Keyword.Length;
+        }
+
         public BugcheckRule FindBugcheck(string code)
         {
             BugcheckRule r;
@@ -101,7 +111,7 @@ namespace ITDesktopToolkit
                 if (p.Contains("\n") || p.Contains("\r") || p.Contains("\t")) throw new ArgumentException("字段不能包含换行或 Tab。");
             if (String.IsNullOrWhiteSpace(type) || String.IsNullOrWhiteSpace(keyword))
                 throw new ArgumentException("类别和关键词必填。");
-            Directory.CreateDirectory(Paths.DbDir);
+            Directory.CreateDirectory(directory);
             File.AppendAllText(HardwarePath, String.Join("\t", parts) + Environment.NewLine, new UTF8Encoding(false));
             Reload();
         }

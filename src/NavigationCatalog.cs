@@ -35,6 +35,11 @@ namespace ITDesktopToolkit
             new NavigationEntry("自动化与工具","电脑配置对比","差异 对比 报告"),
             new NavigationEntry("自动化与工具","Windows 管理入口","控制面板 工具"),
             new NavigationEntry("自动化与工具","离线数据库","故障码 数据库 查询"),
+            new NavigationEntry("新增 · 待试用","DNS记录查询","新增 试用 DNS A AAAA MX TXT SRV PTR"),
+            new NavigationEntry("新增 · 待试用","ICMP路由跟踪","新增 试用 tracert traceroute 跳数 路径 Ping"),
+            new NavigationEntry("新增 · 待试用","本机连接与监听","新增 试用 TCP UDP 本机连接 监听 进程 PID"),
+            new NavigationEntry("新增 · 待试用","系统代理诊断","新增 试用 代理 WinHTTP PAC 环境变量"),
+            new NavigationEntry("新增 · 待试用","网络配置核对","新增 试用 IPv4 网关 DNS APIPA 子网 本机"),
         };
         public static NavigationEntry[] All {get{return (NavigationEntry[])entries.Clone();}}
         public static List<NavigationEntry> Search(string query)
