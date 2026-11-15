@@ -34,55 +34,17 @@ namespace ITDesktopToolkit
             }
             public void Dispose(){if(cancel!=null)cancel.Cancel();}
         }
-        private void NetworkScanDialog(bool discovery)
-        {
-            FlowLayoutPanel bar;RichTextBox report;
-            using(Form f=ToolWindow(discovery?"主机发现":"TCP 端口扫描",out bar,out report))
-            {
-                bar.Height=180;
-                TextBox target=ToolInput(bar,discovery?"IPv4 / CIDR":"主机名 / IP","",235);
-                TextBox ports=discovery?null:ToolInput(bar,"TCP 端口","80,443,445,3389",180);
-                TextBox concurrency=ToolInput(bar,"并发","16",45);TextBox timeout=ToolInput(bar,"超时毫秒","800",55);
-                report.Text=discovery?"输入例如 192.168.1.0/24（支持 /24–/32）。最多 256 个地址，逐个检查 ICMP 与 TCP 80/445/3389。未获响应不能证明离线，不进行密码尝试。":"输入单台目标与端口，例如 80,443,8000-8010。每次最多 1024 个 TCP 端口，并发上限 32；不发送应用数据，拒绝连接与超时分别记录。";
-                Button start=ToolButton(bar,"开始检查",delegate{}),stop=ToolButton(bar,"停止",delegate{});
-                using(var operation=new DialogOperation(f,bar,report,stop))
-                {
-                    ToolButton(bar,"导出结果",delegate{ExportToolReport(f,report.Text,discovery?"主机发现.txt":"端口扫描.txt");});
-                    start.Click+=async delegate{
-                        int workers,ms;
-                        if(!Int32.TryParse(concurrency.Text,out workers)||workers<1||workers>32||!Int32.TryParse(timeout.Text,out ms)||ms<100||ms>10000){MessageBox.Show(f,"并发 1–32，超时 100–10000 毫秒。");return;}
-                        string host=target.Text.Trim();int[] selected=null;
-                        try{if(discovery)NetworkDiscoveryService.ParseSubnet(host);else{NetworkDiscoveryService.SingleHost(host);selected=NetworkDiscoveryService.ParsePorts(ports.Text);}}catch(Exception ex){MessageBox.Show(f,ex.Message);return;}
-                        var results=new List<string>();object gate=new object();int responded=0,completed=0;
-                        Action refresh=delegate{lock(gate){var b=new StringBuilder("已完成 "+completed+"，"+(discovery?"有响应主机":"开放端口")+" "+responded+"\r\n");foreach(string line in results)b.AppendLine(line);report.Text=b.ToString();}};
-                        using(var timer=new System.Windows.Forms.Timer{Interval=500})
-                        {
-                            timer.Tick+=delegate{refresh();};timer.Start();
-                            try{await operation.Execute(async delegate(CancellationToken token){
-                                try
-                                {
-                                    if(discovery)await NetworkDiscoveryService.Discover(host,workers,ms,token,delegate(HostProbe r){lock(gate){completed++;if(r.Responded)responded++;results.Add(r.ToString());}});
-                                    else await NetworkDiscoveryService.ScanPorts(host,selected,workers,ms,token,delegate(PortProbe r){lock(gate){completed++;if(r.State=="开放")responded++;results.Add(r.ToString());}});
-                                    refresh();return report.Text+"\r\n本轮完成。";
-                                }
-                                catch(OperationCanceledException){refresh();throw;}
-                            });}finally{timer.Stop();}
-                        }
-                    };
-                    f.ShowDialog(this);
-                }
-            }
-        }
         private void NetworkInformationDialog(int mode)
         {
+            if(mode!=1&&mode!=3)throw new ArgumentOutOfRangeException("mode");
             FlowLayoutPanel bar;RichTextBox report;
-            string title=mode==0?"路由表、IP 与 MAC":mode==1?"DHCP 与网络服务":mode==2?"Wi-Fi 分析":"本机已保存的 Wi-Fi";
+            string title=mode==1?"DHCP 与网络服务":"本机已保存的 Wi-Fi";
             using(Form f=ToolWindow(title,out bar,out report))
             {
                 bar.Height=180;Button read=ToolButton(bar,"读取信息",delegate{}),stop=ToolButton(bar,"停止",delegate{});
                 using(var operation=new DialogOperation(f,bar,report,stop))
                 {
-                    read.Click+=async delegate{await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{switch(mode){case 0:return NetworkSystemService.Routes(token);case 1:return NetworkSystemService.Dhcp(token);case 2:return NetworkSystemService.WifiAnalysis(token);default:return NetworkSystemService.WifiProfiles(token);}}));});};
+                    read.Click+=async delegate{await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{if(mode==1)return NetworkSystemService.Dhcp(token);return NetworkSystemService.WifiProfiles(token);}));});};
                     ToolButton(bar,"导出普通报告",delegate{ExportToolReport(f,report.Text,title+".txt");});
                     if(mode==1)
                     {

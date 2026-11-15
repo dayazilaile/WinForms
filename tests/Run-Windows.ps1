@@ -15,6 +15,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Network tools test compilation failed' }
     & .\build\NetworkToolsTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Network tools tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\WorkspaceTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\WorkspaceTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Workspace test compilation failed' }
+    & .\build\WorkspaceTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed' }
     & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe

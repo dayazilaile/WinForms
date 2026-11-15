@@ -12,11 +12,11 @@ namespace ITDesktopToolkit
 {
     public sealed partial class MainForm : Form
     {
-        private static readonly Color Navy = Color.FromArgb(23, 35, 54);
-        private static readonly Color Accent = Color.FromArgb(43, 105, 220);
-        private static readonly Color Canvas = Color.FromArgb(246, 248, 252);
-        private static readonly Font Ui = new Font("DengXian", 9.5F, FontStyle.Regular);
-        private static readonly Font UiActive = new Font("DengXian", 10F, FontStyle.Bold);
+        private static readonly Color Navy = Color.FromArgb(15, 23, 42);
+        private static readonly Color Accent = Color.FromArgb(37, 99, 235);
+        private static readonly Color Canvas = Color.FromArgb(244, 247, 251);
+        private static readonly Font Ui = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Regular);
+        private static readonly Font UiActive = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
         private readonly DatabaseService db = new DatabaseService();
         private readonly Panel content = new Panel();
         private readonly Label status = new Label();
@@ -34,7 +34,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.0 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.1 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -45,13 +45,13 @@ namespace ITDesktopToolkit
             try { db.Reload(); FaultCatalog.Reload(); GenericCodeCatalog.Reload(); }
             catch (Exception ex) { Paths.Log("Load DB error: " + ex.Message); }
 
-            Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 242, BackColor = Navy };
+            Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 260, BackColor = Navy };
             Panel footer = new Panel { Dock = DockStyle.Bottom, Height = 30, BackColor = Color.FromArgb(237, 241, 247) };
             status.Dock = DockStyle.Fill;
             status.TextAlign = ContentAlignment.MiddleLeft;
             status.Padding = new Padding(12, 0, 0, 0);
             status.ForeColor = Color.FromArgb(64, 74, 91);
-            status.Font = new Font("DengXian", 9F);
+            status.Font = new Font("Microsoft YaHei UI", 9F);
             footer.Controls.Add(status);
             content.Dock = DockStyle.Fill;
             content.BackColor = Canvas;
@@ -71,8 +71,7 @@ namespace ITDesktopToolkit
             if(NavigationCatalog.Find(name)==null)return;
             currentPage = name;
             SaveNavigationState();
-            foreach (Control old in content.Controls) old.Dispose();
-            content.Controls.Clear();
+            while(content.Controls.Count>0){Control old=content.Controls[0];content.Controls.Remove(old);old.Dispose();}
             switch (name)
             {
                 case "系统概览": BuildOverview(); break;
@@ -91,11 +90,11 @@ namespace ITDesktopToolkit
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
                 case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
                 case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置所选 NTFS U 盘普通用户只读权限及本机策略。", UsbProtectionDialog); break;
-                case "端口扫描": BuildFieldTool(name,"扫描单台主机的指定 TCP 端口，支持停止与导出。",delegate{NetworkScanDialog(false);}); break;
-                case "主机发现": BuildFieldTool(name,"通过 ICMP 与少量 TCP 端口响应发现局域网设备。",delegate{NetworkScanDialog(true);}); break;
-                case "路由与MAC": BuildFieldTool(name,"只读查看本机网卡/IP/MAC、路由表及邻居缓存。",delegate{NetworkInformationDialog(0);}); break;
+                case "端口扫描": BuildScanWorkspace(false); break;
+                case "主机发现": BuildScanWorkspace(true); break;
+                case "路由与MAC": BuildRouteWorkspace(); break;
                 case "DHCP与网络服务": BuildFieldTool(name,"查看 DHCP 租约/服务器配置，检查 DNS、HTTP 与 TCP 服务。",delegate{NetworkInformationDialog(1);}); break;
-                case "Wi-Fi分析": BuildFieldTool(name,"查看无线接口、附近网络的信号与信道，不修改连接。",delegate{NetworkInformationDialog(2);}); break;
+                case "Wi-Fi分析": BuildWifiWorkspace(); break;
                 case "已保存的Wi-Fi": BuildFieldTool(name,"查看本机已保存的无线配置，密码需单独确认显示。",delegate{NetworkInformationDialog(3);}); break;
                 case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
                 case "离线数据库": BuildDatabase(); break;
@@ -108,9 +107,9 @@ namespace ITDesktopToolkit
             Panel p = new Panel { Dock = DockStyle.Fill, BackColor = Canvas };
             Panel header = new Panel { Dock = DockStyle.Top, Height = 92, BackColor = Canvas };
             Label title = new Label { Text = name, Location = new Point(25, 13), AutoSize = true, ForeColor = Navy,
-                Font = new Font("DengXian", 18F, FontStyle.Bold) };
+                Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold) };
             Label subtitle = new Label { Text = description, Location = new Point(27, 55), AutoSize = true,
-                ForeColor = Color.FromArgb(99, 110, 125), Font = new Font("DengXian", 9F) };
+                ForeColor = Color.FromArgb(99, 110, 125), Font = new Font("Microsoft YaHei UI", 9F) };
             header.Controls.Add(title);
             header.Controls.Add(subtitle);
             toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 58, BackColor = Canvas, Padding = new Padding(21, 8, 5, 5),
@@ -137,7 +136,7 @@ namespace ITDesktopToolkit
         private RichTextBox ReadBox()
         {
             return new RichTextBox { ReadOnly = true, DetectUrls = false, BorderStyle = BorderStyle.None,
-                Font = new Font("DengXian", 10F), BackColor = Color.White, ForeColor = Color.FromArgb(37, 50, 68),
+                Font = new Font("Microsoft YaHei UI", 10F), BackColor = Color.White, ForeColor = Color.FromArgb(37, 50, 68),
                 WordWrap = true, ScrollBars = RichTextBoxScrollBars.Vertical, Dock = DockStyle.Fill };
         }
         private Panel ContentCard(Control child)
@@ -170,11 +169,14 @@ namespace ITDesktopToolkit
             g.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             g.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             g.DefaultCellStyle.Padding = new Padding(5, 0, 5, 0);
-            g.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(238, 242, 248);
-            g.ColumnHeadersDefaultCellStyle.ForeColor = Navy;
-            g.DefaultCellStyle.SelectionBackColor = Color.FromArgb(221, 235, 252);
+            g.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
+            g.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(71,85,105);
+            g.ColumnHeadersDefaultCellStyle.Font = UiActive;
+            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248,250,252);
+            g.DefaultCellStyle.ForeColor = Navy;
+            g.DefaultCellStyle.SelectionBackColor = Color.FromArgb(219, 234, 254);
             g.DefaultCellStyle.SelectionForeColor = Navy;
-            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(246, 248, 252);
+            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(244, 247, 251);
             g.Font = Ui;
             return g;
         }

@@ -17,10 +17,11 @@ namespace ITDesktopToolkit
     }
     public sealed class HostProbe
     {
-        public string Address,Icmp;public int[] OpenPorts;
-        public bool Responded{get{return Icmp=="Success"||OpenPorts.Length>0;}}
-        public override string ToString(){return Address+"  ICMP="+Icmp+"  TCP开放="+(OpenPorts.Length==0?"无":String.Join(",",Array.ConvertAll(OpenPorts,p=>p.ToString(CultureInfo.InvariantCulture))))+(!Responded?"（未获响应，不能据此判定离线）":"");}
+        public string Address,Icmp;public long? Milliseconds;
+        public bool Responded{get{return Icmp=="Success";}}
+        public override string ToString(){return Address+"  ICMP="+Icmp+"  延迟="+(Milliseconds.HasValue?Milliseconds.Value+" ms":"未知")+(!Responded?"（未响应不等于离线）":"");}
     }
+
     public static class NetworkDiscoveryService
     {
         public static int[] ParsePorts(string text)
@@ -115,13 +116,27 @@ namespace ITDesktopToolkit
         {
             ValidateSettings(concurrency,timeout);
             string[] hosts=ParseSubnet(subnet);
-            await Bounded(hosts.Length,concurrency,cancel,async delegate(int index){
-                var result=new HostProbe{Address=hosts[index],Icmp="未响应"};
-                using(var ping=new Ping())try{var reply=await ping.SendPingAsync(hosts[index],timeout);result.Icmp=reply.Status.ToString();}catch(Exception ex){result.Icmp="探测错误："+ex.GetType().Name;}
-                var open=new List<int>();
-                foreach(int p in new int[]{80,445,3389}){cancel.ThrowIfCancellationRequested();PortProbe r=await Probe(IPAddress.Parse(hosts[index]),p,timeout,cancel);if(r.State=="开放")open.Add(p);}
-                result.OpenPorts=open.ToArray();cancel.ThrowIfCancellationRequested();receive(result);
-            });
+            await DiscoverCore(hosts,concurrency,timeout,cancel,PingHost,receive);
+        }
+        internal static Task DiscoverCore(string[] hosts,int concurrency,int timeout,CancellationToken cancel,Func<string,int,CancellationToken,Task<HostProbe>> probe,Action<HostProbe> receive)
+        {
+            ValidateSettings(concurrency,timeout);
+            return Bounded(hosts.Length,concurrency,cancel,async delegate(int index){var result=await probe(hosts[index],timeout,cancel);cancel.ThrowIfCancellationRequested();receive(result);});
+        }
+        private static async Task<HostProbe> PingHost(string host,int timeout,CancellationToken cancel)
+        {
+            cancel.ThrowIfCancellationRequested();var result=new HostProbe{Address=host,Icmp="未响应"};
+            using(var ping=new Ping())
+            try
+            {
+                Task<PingReply> sending=ping.SendPingAsync(host,timeout);
+                using(cancel.Register(delegate{ThreadPool.QueueUserWorkItem(delegate{try{ping.SendAsyncCancel();}catch{}});}))
+                {
+                    var reply=await sending;result.Icmp=reply.Status.ToString();if(reply.Status==IPStatus.Success)result.Milliseconds=reply.RoundtripTime;
+                }
+            }
+            catch(Exception ex){cancel.ThrowIfCancellationRequested();result.Icmp="探测错误："+ex.GetType().Name;}
+            cancel.ThrowIfCancellationRequested();return result;
         }
     }
 }

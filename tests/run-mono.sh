@@ -12,3 +12,6 @@ bash "$setup/build.sh"
 
 "${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NetworkToolsTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll -r:System.Xml.dll "$repo/tests/NetworkToolsTests.cs"
 "${mono[@]}" "$repo/build/NetworkToolsTests.exe"
+
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/WorkspaceTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/WorkspaceTests.cs"
+"${mono[@]}" "$repo/build/WorkspaceTests.exe"

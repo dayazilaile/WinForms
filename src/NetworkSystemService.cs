@@ -16,16 +16,6 @@ namespace ITDesktopToolkit
             foreach(char c in value){if(c=='\\'){slashes++;continue;}if(c=='"'){b.Append('\\',slashes*2+1);b.Append('"');}else{b.Append('\\',slashes);b.Append(c);}slashes=0;}
             b.Append('\\',slashes*2);return b.Append('"').ToString();
         }
-        public static string Routes(CancellationToken cancel)
-        {
-            return PowerShellService.RunScript(@"$ErrorActionPreference='Stop';try {
-'=== 网卡 / IP / MAC ==='; Get-NetAdapter | Select-Object Name,InterfaceDescription,Status,MacAddress,LinkSpeed | Format-Table -AutoSize | Out-String -Width 240;
-Get-NetIPAddress | Select-Object InterfaceAlias,IPAddress,PrefixLength,AddressFamily,PrefixOrigin | Format-Table -AutoSize | Out-String -Width 240;
-'=== 路由表 ==='; Get-NetRoute | Sort-Object AddressFamily,DestinationPrefix,RouteMetric | Select-Object InterfaceAlias,DestinationPrefix,NextHop,RouteMetric,AddressFamily | Format-Table -AutoSize | Out-String -Width 240;
-'=== ARP / IPv6 邻居缓存 ==='; Get-NetNeighbor | Select-Object InterfaceAlias,IPAddress,LinkLayerAddress,State | Format-Table -AutoSize | Out-String -Width 240;
-'邻居缓存只反映已知邻居，不是完整设备清单；MAC 前缀不能保证识别整机品牌。'
-}catch{Write-Output ('读取未完成：'+$_.Exception.Message);exit 1}",2,cancel);
-        }
         public static string Dhcp(CancellationToken cancel)
         {
             return PowerShellService.RunScript(@"$ErrorActionPreference='Stop';try {
@@ -33,10 +23,6 @@ Get-NetIPAddress | Select-Object InterfaceAlias,IPAddress,PrefixLength,AddressFa
 '=== 相关服务 ===';Get-Service Dhcp,Dnscache,NlaSvc | Select-Object Name,Status,StartType | Format-Table -AutoSize | Out-String -Width 240;
 '当前信息来自本机配置与租约，不发送 DHCP 申请，不修改网络，不能用来排除其他 DHCP 服务器或服务器冲突。'
 }catch{Write-Output ('读取未完成：'+$_.Exception.Message);exit 1}",2,cancel);
-        }
-        public static string WifiAnalysis(CancellationToken cancel)
-        {
-            return "=== 无线接口 ===\r\n"+CommandService.Run("netsh.exe","wlan show interfaces",1,cancel)+"\r\n=== 附近网络 / BSSID / 信道 / 信号 ===\r\n"+CommandService.Run("netsh.exe","wlan show networks mode=bssid",1,cancel)+"\r\n部分 Windows 版本要求开启位置服务才能读取附近无线信息。无无线网卡/权限不足时以系统返回结果为准。";
         }
         public static string WifiProfiles(CancellationToken cancel){return CommandService.Run("netsh.exe","wlan show profiles",1,cancel);}
         public static string WifiSecret(string profile,CancellationToken cancel)
