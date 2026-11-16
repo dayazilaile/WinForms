@@ -1,0 +1,7 @@
+# ITDesktopToolkit configuration report v2
+电脑名：排版样例
+系统：Windows 11 64 位
+CPU：示例 CPU
+内存：金百达 16G 3200MHz ×2
+显卡：示例显卡
+网卡1：示例 示例网卡 | MAC 02:00:00:00:00:01 | IPv4 192.0.2.1/24 | IPv6 2001:db8::1/64

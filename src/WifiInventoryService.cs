@@ -11,12 +11,12 @@ namespace ITDesktopToolkit
     public sealed class WifiAdapterRow
     {
         public string Name="未知",Mac="未知",State="未知",Ssid="未连接",Bssid="未知",Type="未知",Phy="未知",Frequency="未知",Band="未知",Channel="未知",Signal="未知",Rx="未知",Tx="未知";
-        public object[] Cells(){return new object[]{Name,Mac,Frequency,Rx,Tx,Signal,Ssid,Bssid,Phy,Band,Channel,Type,State};}
+        public object[] Cells(){return new object[]{Ssid,Mac,Bssid,WifiInventoryService.SignalText(Signal),Frequency,Rx,Tx,Phy,Band,Channel,Type,State,Name};}
     }
     public sealed class WifiBssRow
     {
         public string Adapter="未知",Ssid="未知",Bssid="未知",Type="未知",Phy="未知",Frequency="未知",Band="未知",Channel="未知",Signal="未知",Rssi="未知",BasicRates="未知",SupportedRates="未知",Security="未知";
-        public object[] Cells(){return new object[]{Ssid,Bssid,Phy,Band,Frequency,Channel,BasicRates,Signal,SupportedRates,Type,Rssi,Security,Adapter};}
+        public object[] Cells(){return new object[]{Ssid,Bssid,Rssi,WifiInventoryService.SignalText(Signal),Phy,Band,Frequency,Channel,BasicRates,Security,Type,Adapter,SupportedRates};}
     }
     public sealed class WifiInventory
     {
@@ -26,6 +26,9 @@ namespace ITDesktopToolkit
     }
     public static class WifiInventoryService
     {
+        internal static string SignalText(string signal)
+        {int value;return Int32.TryParse(signal,NumberStyles.Integer,CultureInfo.InvariantCulture,out value)&&value>=0&&value<=100?value.ToString(CultureInfo.InvariantCulture)+"%":signal;}
+
         [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)] internal struct InterfaceInfo
         {public Guid Id;[MarshalAs(UnmanagedType.ByValTStr,SizeConst=256)]public string Description;public uint State;}
         [StructLayout(LayoutKind.Sequential)] internal struct Ssid

@@ -59,8 +59,27 @@ namespace ITDesktopToolkit
         {
             DataGridView grid=Grid();grid.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.None;grid.MultiSelect=true;grid.ColumnHeadersHeight=40;grid.Font=Ui;
             foreach(string header in headers){int index=grid.Columns.Add("c"+grid.Columns.Count,header);grid.Columns[index].Width=Math.Max(110,Math.Min(220,header.Length*12+34));grid.Columns[index].SortMode=DataGridViewColumnSortMode.Automatic;}
-            grid.SortCompare+=delegate(object sender,DataGridViewSortCompareEventArgs e){double a,b;string x=Convert.ToString(e.CellValue1,CultureInfo.InvariantCulture),y=Convert.ToString(e.CellValue2,CultureInfo.InvariantCulture);if(Double.TryParse(x,NumberStyles.Float,CultureInfo.InvariantCulture,out a)&&Double.TryParse(y,NumberStyles.Float,CultureInfo.InvariantCulture,out b))e.SortResult=a.CompareTo(b);else e.SortResult=StringComparer.OrdinalIgnoreCase.Compare(x,y);e.Handled=true;};
+            grid.SortCompare+=delegate(object sender,DataGridViewSortCompareEventArgs e){double a,b;string x=Convert.ToString(e.CellValue1,CultureInfo.InvariantCulture),y=Convert.ToString(e.CellValue2,CultureInfo.InvariantCulture);if(Double.TryParse(x.TrimEnd('%'),NumberStyles.Float,CultureInfo.InvariantCulture,out a)&&Double.TryParse(y.TrimEnd('%'),NumberStyles.Float,CultureInfo.InvariantCulture,out b))e.SortResult=a.CompareTo(b);else e.SortResult=StringComparer.OrdinalIgnoreCase.Compare(x,y);e.Handled=true;};
             grid.AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.None;grid.RowTemplate.Height=36;return grid;
+        }
+        private sealed class SignalRowComparer : System.Collections.IComparer
+        {
+            private readonly int column,direction;
+            public SignalRowComparer(int column,bool ascending){this.column=column;direction=ascending?1:-1;}
+            public int Compare(object left,object right)
+            {
+                string x=Convert.ToString(((DataGridViewRow)left).Cells[column].Value,CultureInfo.InvariantCulture),y=Convert.ToString(((DataGridViewRow)right).Cells[column].Value,CultureInfo.InvariantCulture);double a,b;
+                bool hasA=Double.TryParse(x.TrimEnd('%'),NumberStyles.Float,CultureInfo.InvariantCulture,out a),hasB=Double.TryParse(y.TrimEnd('%'),NumberStyles.Float,CultureInfo.InvariantCulture,out b);
+                return direction*(hasA&&hasB?a.CompareTo(b):hasA?-1:hasB?1:StringComparer.OrdinalIgnoreCase.Compare(x,y));
+            }
+        }
+        private static void ConfigureSignalSort(DataGridView grid,int index)
+        {
+            grid.Columns[index].SortMode=DataGridViewColumnSortMode.Programmatic;
+            grid.ColumnHeaderMouseClick+=delegate(object sender,DataGridViewCellMouseEventArgs e){
+                if(e.ColumnIndex!=index||e.Button!=MouseButtons.Left)return;bool ascending=grid.Columns[index].HeaderCell.SortGlyphDirection!=SortOrder.Ascending;
+                grid.Sort(new SignalRowComparer(index,ascending));foreach(DataGridViewColumn column in grid.Columns)column.HeaderCell.SortGlyphDirection=SortOrder.None;grid.Columns[index].HeaderCell.SortGlyphDirection=ascending?SortOrder.Ascending:SortOrder.Descending;
+            };
         }
         private DataGridView AddResultTab(ResultTabs results,string title,string[] headers)
         {
@@ -127,40 +146,45 @@ namespace ITDesktopToolkit
             var rows=new List<DataGridViewRow>();foreach(var cells in source){var row=new DataGridViewRow();row.CreateCells(grid,cells);rows.Add(row);}
             grid.SuspendLayout();try{grid.Rows.Clear();if(rows.Count>0)grid.Rows.AddRange(rows.ToArray());}finally{grid.ResumeLayout();}
         }
+        private Func<CancellationToken,RouteInventory> routeReader=RouteInventoryService.Read;
         private void BuildRouteWorkspace()
         {
-            FlowLayoutPanel bar;Label state;Panel root=Workspace("路由与 MAC","默认 IPv4，可切换 IPv6；地址、网关、DNS 按地址族分开 · 进入自动读取",out bar,out state);
+            FlowLayoutPanel bar;Label state;Panel root=Workspace("路由与 MAC","IPv4、掩码位数、IPv6 相邻显示；切换地址族查看网关、DNS、路由与邻居",out bar,out state);
             var family=new ComboBox{Width=110,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(0,23,12,0),AccessibleName="地址族"};family.Items.AddRange(new object[]{"IPv4","IPv6"});family.SelectedIndex=0;bar.Controls.Add(family);
             Button refresh=WorkspaceButton(bar,"刷新信息",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前表",false);
-            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC 地址","IPv4 地址","IPv4 掩码","网关","DNS","速率 Mb/s"});
+            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC","IPv4","掩码","IPv6","IPv4 网关","IPv4 DNS","速率 Mb"});
             DataGridView routes=AddResultTab(tabs,"路由表",new[]{"网卡","地址族","目标网段","下一跳","跃点数","协议"}),neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});
-            SetColumnWidths(adapters,new[]{180,84,180,180,160,200,260,110});SetColumnWidths(routes,new[]{180,80,230,230,85,120});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
-            adapters.Columns[1].MinimumWidth=84;neighbors.Columns[3].MinimumWidth=90;
-            adapters.Columns[7].ToolTipText="接口链路速率，单位 Mb/s（Mbps）；不是实际下载速度";
+            SetColumnWidths(adapters,new[]{125,78,150,155,58,270,175,220,95});SetColumnWidths(routes,new[]{180,80,230,230,85,120});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
+            adapters.Columns[1].MinimumWidth=78;neighbors.Columns[3].MinimumWidth=90;
+            adapters.Columns[4].ToolTipText="IPv4 子网掩码的前缀长度，例如 255.255.255.0 显示为 24";
+            adapters.Columns[8].ToolTipText="接口链路速率，单位 Mb/s（Mbps）；不是实际下载速度";
             root.Controls["pageBody"].Controls.Add(tabs);tabs.BringToFront();
             var session=new PageSession(root,bar,stop,state);RouteInventory data=null;
             Action render=delegate {
                 string selected=family.Text;bool ipv6=selected=="IPv6";
-                adapters.Columns[3].HeaderText=selected+" 地址";adapters.Columns[3].Width=ipv6?350:180;adapters.Columns[4].Visible=!ipv6;
-                adapters.Columns[5].Width=ipv6?350:200;adapters.Columns[6].Width=ipv6?350:260;neighbors.Columns[1].Width=ipv6?350:200;routes.Columns[2].Width=ipv6?350:230;routes.Columns[3].Width=ipv6?350:230;
+                adapters.Columns[6].HeaderText=selected+" 网关";adapters.Columns[7].HeaderText=selected+" DNS";
+                adapters.Columns[6].Width=ipv6?290:175;adapters.Columns[7].Width=ipv6?320:220;neighbors.Columns[1].Width=ipv6?330:175;routes.Columns[2].Width=ipv6?330:200;routes.Columns[3].Width=ipv6?330:200;
                 var ar=new List<object[]>();var rr=new List<object[]>();var nr=new List<object[]>();
-                if(data!=null){foreach(var row in data.Adapters)if(RouteInventoryService.AdapterFamily(row,selected))ar.Add(row);foreach(var row in data.Routes)if(Convert.ToString(row[1])==selected)rr.Add(row);foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
+                if(data!=null){foreach(var row in data.Adapters)ar.Add(row.Cells(selected));foreach(var row in data.Routes)if(Convert.ToString(row[1])==selected)rr.Add(row);foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
                 FillTable(adapters,ar);FillTable(routes,rr);FillTable(neighbors,nr);
                 if(data!=null)state.Text=data.Warning.Length==0?"已读取 · 当前 "+selected+" · 邻居缓存不是完整设备清单":data.Warning;
             };
             family.SelectedIndexChanged+=delegate{render();};
             export.Click+=delegate{ExportToolReport(this,TableCsv(tabs.Grids[tabs.SelectedIndex]),"路由与MAC_"+family.Text+".csv");};
-            refresh.Click+=async delegate{await session.Run(async delegate(CancellationToken token){var fresh=await Task.Run(new Func<RouteInventory>(delegate{return RouteInventoryService.Read(token);}));if(!session.Alive)return;data=fresh;render();});};
+            refresh.Click+=async delegate{await session.Run(async delegate(CancellationToken token){var fresh=await Task.Run(new Func<RouteInventory>(delegate{return routeReader(token);}));if(!session.Alive)return;data=fresh;render();});};
             root.BeginInvoke(new Action(delegate{if(session.Alive)refresh.PerformClick();}));
         }
         private void BuildWifiWorkspace()
         {
             FlowLayoutPanel bar;Label state;Panel root=Workspace("Wi-Fi 分析","接口 MAC 与热点 BSSID 分开显示 · 基本速率、声明速率集与连接收发速率分别列出",out bar,out state);
             Button refresh=WorkspaceButton(bar,"刷新信息",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前表",false);
-            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"无线接口 / 当前连接",new[]{"无线网卡","接口 MAC","频率（MHz）","接收（Mbps）","发送（Mbps）","信号（%）","SSID","BSSID / AP MAC","无线制式","频段","信道","网络类型","状态"});
-            DataGridView networks=AddResultTab(tabs,"附近热点（系统缓存）",new[]{"SSID","BSSID / AP MAC","无线制式","频段","频率（MHz）","信道","基本速率（Mbps）","信号（%）","声明速率集（Mbps）","网络类型","RSSI（dBm）","加密","所属网卡"});root.Controls["pageBody"].Controls.Add(tabs.Tabs);tabs.Tabs.BringToFront();
-            SetColumnWidths(networks,new[]{120,145,85,58,85,50,128,70,220,100,100,80,200});
-            SetColumnWidths(adapters,new[]{150,145,90,105,105,70,140,156,90,58,50,100,90});
+            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"无线接口 / 当前连接",new[]{"SSID","MAC","BSSID","信号","频率","接收 Mb","发送 Mb","制式","频段","信道","类型","状态","网卡"});
+            DataGridView networks=AddResultTab(tabs,"附近热点（系统缓存）",new[]{"SSID","BSSID","RSSI","信号","制式","频段","频率","信道","基本速率 Mb","加密","类型","网卡","声明速率集 Mb"});root.Controls["pageBody"].Controls.Add(tabs.Tabs);tabs.Tabs.BringToFront();
+            SetColumnWidths(networks,new[]{240,150,65,65,85,58,70,55,115,80,95,190,230});
+            networks.Columns[0].MinimumWidth=220;networks.Columns[2].ToolTipText="RSSI，单位 dBm";networks.Columns[6].ToolTipText="频率，单位 MHz";networks.Columns[8].ToolTipText="基本速率，单位 Mb/s";networks.Columns[12].ToolTipText="声明支持速率集，单位 Mb/s；不是下载速度";
+            SetColumnWidths(adapters,new[]{240,150,150,65,75,95,95,90,58,55,95,85,190});
+            adapters.Columns[0].MinimumWidth=220;adapters.Columns[4].ToolTipText="频率，单位 MHz";adapters.Columns[5].ToolTipText="接收链路速率，单位 Mb/s";adapters.Columns[6].ToolTipText="发送链路速率，单位 Mb/s";
+            ConfigureSignalSort(adapters,3);ConfigureSignalSort(networks,3);
             tabs.SelectedIndex=1;
             root.Tag=new object[]{adapters,networks,state};var session=new PageSession(root,bar,stop,state);
             export.Click+=delegate{ExportToolReport(this,TableCsv(tabs.Grids[tabs.Tabs.SelectedIndex]),"WiFi分析.csv");};

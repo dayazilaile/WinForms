@@ -13,9 +13,19 @@ class DesktopTests
     static void Reports()
     {
         var fields=new Dictionary<string,string>{{"系统/名称","测试系统"},{"系统/架构","64 位"},{"CPU/1/型号","测试 CPU"},{"主板/1/型号","测试主板"},{"网卡/示例/型号","测试网卡"}};
-        string report=InspectionService.ConfigurationFromOutput(Output(fields));Check(InspectionService.Parse(report).Count==5&&InspectionService.ConfigurationSummary(report).Contains("CPU/1/型号：测试 CPU"),"Hardware configuration remains comparable and has a readable summary");
+        string report=InspectionService.ConfigurationFromOutput(Output(fields));Check(InspectionService.Parse(report).Count==5&&InspectionService.ConfigurationSummary(report).Contains("CPU：测试 CPU"),"Hardware configuration remains comparable and has a readable summary");
         bool failed=false;try{InspectionService.ConfigurationFromOutput(Output(fields).Replace("返回代码：0","返回代码：1"));}catch(InvalidOperationException){failed=true;}Check(failed,"Failed configuration process cannot return a success report");
         fields.Remove("CPU/1/型号");failed=false;try{InspectionService.ConfigurationFromOutput(Output(fields));}catch(InvalidOperationException){failed=true;}Check(failed,"Missing CPU data cannot masquerade as a complete configuration");
+        var compactFields=new Dictionary<string,string>{{"报告/电脑名","排版样例"},{"系统/名称","Windows 11"},{"系统/架构","64 位"},{"CPU/1/型号","示例 CPU"},{"内存/1/厂商","KINGBANK"},{"内存/1/容量","16 GiB"},{"内存/1/配置频率 MHz","3200"},{"内存/1/零件号","not-for-export"},{"内存/2/厂商","KINGBANK"},{"内存/2/容量","16 GiB"},{"内存/2/配置频率 MHz","3200"},{"显卡/1/型号","示例显卡"},{"网卡/示例/型号","示例网卡"},{"网卡/示例/MAC","02:00:00:00:00:01"},{"网络/示例/IPv4","192.0.2.1/24"},{"网络/示例/IPv6","2001:db8::1/64"}};
+        string original=InspectionService.Serialize(compactFields),exported=InspectionService.ExportConfiguration(original);var compact=InspectionService.Parse(exported);
+        Check(compact["内存"]=="金百达 16G 3200MHz ×2"&&!exported.Contains("not-for-export"),"Export groups identical RAM into one readable brand/capacity/frequency line");
+        Check(exported.StartsWith(InspectionService.CompactHeader)&&exported.Contains("CPU：示例 CPU")&&exported.Contains("IPv6 2001:db8::1/64"),"Compact TXT exports readable text and preserves separate address families");
+        Check(InspectionService.CompareConfigurations(compactFields,compact).Contains("差异项：0"),"Old structured and new compact reports compare without format-only differences");
+        compact["内存"]="金百达 16G 3600MHz ×2";string diff=InspectionService.CompareConfigurations(compactFields,compact);Check(diff.Contains("差异项：1")&&diff.Contains("内存：左")&&diff.Split('\n').Length==2,"A memory change produces one component difference rather than scattered fields");
+        bool duplicate=false;try{InspectionService.Parse(InspectionService.CompactHeader+"\n内存：16G\n内存：32G");}catch(FormatException){duplicate=true;}Check(duplicate,"Ambiguous duplicate compact report rows are rejected");
+        compactFields["内存/1/厂商"]="Unknown";compactFields["内存/1/配置频率 MHz"]="0";Check(!InspectionService.ExportConfiguration(InspectionService.Serialize(compactFields)).Contains(" 0MHz"),"Unknown memory vendor or frequency is not invented in compact output");
+        compactFields["CPU/1/型号"]="示例 CPU\n内存：伪造行";Check(InspectionService.Parse(InspectionService.ExportConfiguration(InspectionService.Serialize(compactFields)))["内存"].Contains("16G"),"Embedded hardware line breaks cannot inject another report field");
+        File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"configuration-v054.txt"),exported,new UTF8Encoding(true));
         string dir=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(dir);
         // No system calls: production script is run with CIM/adapter fixtures on Windows.
         string fixture=@"function Get-CimInstance { param($ClassName,$ErrorAction)
@@ -53,8 +63,12 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         Check(data.Entries[0].Cells().Length==6&&data.Entries[0].Cells()[4].ToString().Contains("登记区"),"Software columns distinguish registration view from actual binary architecture");
     }
     static int Main(){try{
-        Reports();Software();var row=new object[]{"NIC","已连接","02:00:00:00:00:01","192.0.2.1","255.255.255.0","","","1000"};
-        Check(RouteInventoryService.AdapterFamily(row,"IPv4")&&!RouteInventoryService.AdapterFamily(row,"IPv6"),"IPv4 adapter rows excluded from IPv6 view");row[3]="2001:db8::1";Check(RouteInventoryService.AdapterFamily(row,"IPv6")&&!RouteInventoryService.AdapterFamily(row,"IPv4"),"IPv6 adapter rows excluded from IPv4 view");
+        Reports();Software();
+        Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
+        Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
+        Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");
+        var nic=new RouteAdapterRow{IPv4="192.0.2.1",Prefix="24",IPv6="2001:db8::1",Gateway4="192.0.2.254",Gateway6="fe80::1"};
+        Check((string)nic.Cells("IPv4")[3]=="192.0.2.1"&&(string)nic.Cells("IPv4")[4]=="24"&&(string)nic.Cells("IPv4")[5]=="2001:db8::1"&&(string)nic.Cells("IPv6")[6]=="fe80::1","IPv4 and prefix remain separate beside IPv6; gateway follows selected family");
         using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool stopped=false;try{HardwareService.Inventory(new DatabaseService(),cancel.Token);}catch(OperationCanceledException){stopped=true;}Check(stopped,"Cancelled hardware inventory performs no WMI queries");}
         Console.WriteLine("DESKTOP TOTAL PASS "+passed);return 0;
     }catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}

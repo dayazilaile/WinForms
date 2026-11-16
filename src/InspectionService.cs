@@ -10,6 +10,7 @@ namespace ITDesktopToolkit
     public static class InspectionService
     {
         public const string Header = "# ITDesktopToolkit configuration report v1";
+        public const string CompactHeader = "# ITDesktopToolkit configuration report v2";
         private static string Encode(string s) { return Convert.ToBase64String(Encoding.UTF8.GetBytes(s ?? "")); }
         public static string Serialize(IDictionary<string,string> values)
         {
@@ -23,11 +24,17 @@ namespace ITDesktopToolkit
             var result = new Dictionary<string,string>(StringComparer.Ordinal);
             using (StringReader r = new StringReader(text.TrimStart('\uFEFF')))
             {
-                if (r.ReadLine() != Header) throw new FormatException("请选择工具箱导出的配置对比报告。");
+                string header=r.ReadLine();bool compact=header==CompactHeader;
+                if(header!=Header&&!compact)throw new FormatException("请选择工具箱导出的配置对比报告。");
                 string line;
                 while ((line = r.ReadLine()) != null)
                 {
                     if (line.Length == 0) continue;
+                    if(compact)
+                    {
+                        int split=line.IndexOf('：');if(split<=0)throw new FormatException("紧凑配置报告字段无效。");
+                        string name=line.Substring(0,split).Trim();if(name.Length==0||result.ContainsKey(name))throw new FormatException("紧凑报告含空项或重复项。");result.Add(name,line.Substring(split+1).Trim());continue;
+                    }
                     string[] p = line.Split('\t');
                     if (p.Length != 2) throw new FormatException("报告字段无效。");
                     string key = Encoding.UTF8.GetString(Convert.FromBase64String(p[0]));
@@ -87,11 +94,17 @@ foreach($name in $readWarnings.Keys){Emit ('读取状态/'+$name) $readWarnings[
             if(!parsed.ContainsKey("系统/名称")||!parsed.ContainsKey("CPU/1/型号")||String.IsNullOrWhiteSpace(parsed["系统/名称"])||String.IsNullOrWhiteSpace(parsed["CPU/1/型号"]))throw new InvalidOperationException("系统或 CPU 配置未完整读取。\r\n"+raw);
             return Serialize(parsed);
         }
+        public static string ExportConfiguration(string current){return ConfigurationReportFormatter.Export(current);}
         public static string ConfigurationSummary(string current)
         {
-            var text=new StringBuilder("本机配置报告已采集\r\n\r\n");
-            foreach(var pair in Parse(current))text.AppendLine(pair.Key+"："+pair.Value);
-            return text.ToString();
+            string exported=ExportConfiguration(current);return "本机配置报告已采集\r\n\r\n"+exported.Substring(exported.IndexOf('\n')+1);
+        }
+        public static string CompareConfigurations(IDictionary<string,string> left,IDictionary<string,string> right)
+        {
+            var a=ConfigurationReportFormatter.ForComparison(left);var b=ConfigurationReportFormatter.ForComparison(right);
+            var keys=new SortedSet<string>(a.Keys,StringComparer.Ordinal);keys.UnionWith(b.Keys);var differences=new List<string>();
+            foreach(string key in keys){string x,y;bool hasA=a.TryGetValue(key,out x),hasB=b.TryGetValue(key,out y);if(hasA==hasB&&x==y)continue;differences.Add(key+"：左 "+(hasA?x:"（无此项）")+" → 右 "+(hasB?y:"（无此项）"));}
+            return "配置对比 · 差异项："+differences.Count+"\r\n"+String.Join("\r\n",differences.ToArray());
         }
         public static Dictionary<string,string> InstalledSoftware()
         {

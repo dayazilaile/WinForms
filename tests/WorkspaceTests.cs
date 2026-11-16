@@ -33,10 +33,12 @@ class WorkspaceTests
             Array.Copy(rates,entry.Rates.Values,4);Marshal.WriteInt32(buffer,size);Marshal.WriteInt32(buffer,4,1);Marshal.StructureToPtr(entry,IntPtr.Add(buffer,8),false);
             var rows=WifiInventoryService.ParseBssList(buffer,"样例网卡");var row=rows.Single();
             Check(row.Bssid=="02:00:00:00:00:01"&&row.Frequency=="5180"&&row.Phy=="802.11ac"&&row.BasicRates=="1, 2"&&row.SupportedRates=="1, 2, 5.5, 54","Native BSS buffer parsed into explicit table columns");
-            Check(row.Cells().Length==13&&(string)row.Cells()[6]==row.BasicRates&&(string)row.Cells()[4]==row.Frequency&&new WifiAdapterRow().Cells().Length==13&&(string)new WifiAdapterRow{Rx="866.7"}.Cells()[3]=="866.7","Adapter and hotspot table schemas stable");
+            Check(row.Cells().Length==13&&(string)row.Cells()[8]==row.BasicRates&&(string)row.Cells()[6]==row.Frequency&&new WifiAdapterRow().Cells().Length==13&&(string)new WifiAdapterRow{Rx="866.7"}.Cells()[5]=="866.7","Adapter and hotspot table mappings retain basic, frequency and link-rate values");
             Marshal.WriteInt32(buffer,4,2);FormatReject(()=>WifiInventoryService.ParseBssList(buffer,"test"),"Truncated native BSS list rejected before traversal");
         }finally{Marshal.FreeHGlobal(buffer);}
         FormatReject(()=>WifiInventoryService.ParseBssList(IntPtr.Zero,"test"),"Null native WLAN pointer rejected");
+        Check((string)new WifiBssRow{Signal="82",Rssi="-48"}.Cells()[3]=="82%"&&(string)new WifiBssRow{Rssi="-48"}.Cells()[2]=="-48","Percent suffix is in signal values and RSSI remains numeric in leading columns");
+        Check(WifiInventoryService.SignalText("未知")=="未知"&&WifiInventoryService.SignalText("0")=="0%"&&WifiInventoryService.SignalText("100")=="100%","Unknown signals never receive a misleading percent suffix");
     }
     static async Task Discovery()
     {

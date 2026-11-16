@@ -8,9 +8,15 @@ using System.Text;
 using System.Threading;
 namespace ITDesktopToolkit
 {
+    public sealed class RouteAdapterRow
+    {
+        public string Name="",State="",Mac="",IPv4="无地址",Prefix="—",IPv6="无地址",Gateway4="",Gateway6="",Dns4="",Dns6="",Speed="未知";
+        public object[] Cells(string family){return new object[]{Name,State,Mac,IPv4,Prefix,IPv6,family=="IPv6"?Gateway6:Gateway4,family=="IPv6"?Dns6:Dns4,Speed};}
+    }
     public sealed class RouteInventory
     {
-        public readonly List<object[]> Adapters=new List<object[]>(),Routes=new List<object[]>(),Neighbors=new List<object[]>();public string Warning="";
+        public readonly List<RouteAdapterRow> Adapters=new List<RouteAdapterRow>();
+        public readonly List<object[]> Routes=new List<object[]>(),Neighbors=new List<object[]>();public string Warning="";
     }
     public static class RouteInventoryService
     {
@@ -21,8 +27,9 @@ namespace ITDesktopToolkit
             {
                 cancel.ThrowIfCancellationRequested();var ip=nic.GetIPProperties();byte[] mac=nic.GetPhysicalAddress().GetAddressBytes();string hardware=mac.Length==0?"未知":BitConverter.ToString(mac).Replace('-',':');
                 string speed="未知";try{if(nic.Speed>0)speed=(nic.Speed/1000000.0).ToString("0.###",CultureInfo.InvariantCulture);}catch(NetworkInformationException){}
-                if(ip.UnicastAddresses.Count==0)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,"无地址","未知",GatewayText(ip,AddressFamily.InterNetwork),DnsText(ip,AddressFamily.InterNetwork),speed});
-                foreach(var a in ip.UnicastAddresses)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,a.Address.ToString(),a.Address.AddressFamily==AddressFamily.InterNetwork?a.IPv4Mask.ToString():"未知",GatewayText(ip,a.Address.AddressFamily),DnsText(ip,a.Address.AddressFamily),speed});
+                var v4=new SortedDictionary<string,string>(StringComparer.Ordinal);var v6=new SortedSet<string>(StringComparer.Ordinal);
+                foreach(var a in ip.UnicastAddresses){if(a.Address.AddressFamily==AddressFamily.InterNetwork)v4[a.Address.ToString()]=PrefixText(a.IPv4Mask==null?null:a.IPv4Mask.ToString());else if(a.Address.AddressFamily==AddressFamily.InterNetworkV6)v6.Add(a.Address.ToString());}
+                result.Adapters.Add(new RouteAdapterRow{Name=nic.Name,State=AdapterState(nic.OperationalStatus),Mac=hardware,IPv4=v4.Count==0?"无地址":String.Join("; ",v4.Keys),Prefix=v4.Count==0?"—":String.Join("; ",v4.Values),IPv6=v6.Count==0?"无地址":String.Join("; ",v6),Gateway4=GatewayText(ip,AddressFamily.InterNetwork),Gateway6=GatewayText(ip,AddressFamily.InterNetworkV6),Dns4=DnsText(ip,AddressFamily.InterNetwork),Dns6=DnsText(ip,AddressFamily.InterNetworkV6),Speed=speed});
             }
             string raw=PowerShellService.RunScript(@"$ErrorActionPreference='Stop';function Emit([string]$kind,[object[]]$cells){$values=@($cells|ForEach-Object{[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_))});'ITNET|'+$kind+'|'+($values -join '|')};try{
 foreach($r in Get-NetRoute){Emit 'route' @($r.InterfaceAlias,$r.AddressFamily,$r.DestinationPrefix,$r.NextHop,$r.RouteMetric,$r.Protocol)}
@@ -35,8 +42,13 @@ foreach($n in Get-NetNeighbor){Emit 'neighbor' @($n.InterfaceAlias,$n.IPAddress,
         {var values=new List<string>();foreach(var g in properties.GatewayAddresses)if(g.Address.AddressFamily==family)values.Add(g.Address.ToString());return String.Join(", ",values.ToArray());}
         private static string DnsText(IPInterfaceProperties properties,AddressFamily family)
         {var values=new List<string>();foreach(var d in properties.DnsAddresses)if(d.AddressFamily==family)values.Add(d.ToString());return String.Join(", ",values.ToArray());}
-        internal static bool AdapterFamily(object[] row,string family)
-        {IPAddress ip;return IPAddress.TryParse(Convert.ToString(row[3]),out ip)?(ip.AddressFamily==AddressFamily.InterNetwork?"IPv4":"IPv6")==family:family=="IPv4";}
+        internal static int? MaskPrefix(string mask)
+        {
+            IPAddress address;if(!IPAddress.TryParse(mask,out address)||address.AddressFamily!=AddressFamily.InterNetwork)return null;
+            int bits=0;bool zero=false;foreach(byte value in address.GetAddressBytes())for(int bit=7;bit>=0;bit--){bool one=(value&(1<<bit))!=0;if(one&&zero)return null;if(one)bits++;else zero=true;}return bits;
+        }
+        internal static string PrefixText(string mask)
+        {int? prefix=MaskPrefix(mask);return prefix.HasValue?prefix.Value.ToString(CultureInfo.InvariantCulture):"未知";}
         private static string AdapterState(OperationalStatus state){switch(state){case OperationalStatus.Up:return "已连接";case OperationalStatus.Down:return "未连接";case OperationalStatus.Dormant:return "休眠";case OperationalStatus.NotPresent:return "设备未就绪";default:return state.ToString();}}
         private static string Family(string value){return value=="2"?"IPv4":value=="23"?"IPv6":value;}
         private static string NeighborState(string value){switch(value){case "0":case "Unreachable":return "不可达";case "1":case "Incomplete":return "解析中";case "2":case "Probe":return "探测中";case "3":case "Delay":return "延迟";case "4":case "Stale":return "缓存过期";case "5":case "Reachable":return "可达";case "6":case "Permanent":return "静态";default:return value;}}

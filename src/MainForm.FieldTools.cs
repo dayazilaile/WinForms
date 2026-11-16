@@ -54,7 +54,7 @@ namespace ITDesktopToolkit
             {
                 string current=null;Dictionary<string,string> left=null,right=null;CancellationTokenSource collectCancel=null;
                 f.FormClosing+=delegate{if(collectCancel!=null)collectCancel.Cancel();};
-                report.Text="先在两台电脑分别采集并导出配置报告，再导入左/右报告比较。包含系统、架构、CPU、主板、内存、显卡、磁盘与网卡配置。\r\n报告包含电脑名、MAC 与 IP 地址。";
+                report.Text="先在两台电脑分别采集并导出配置报告，再导入左/右报告比较。按部件一行展示系统、CPU、主板、内存、显卡、磁盘与网卡，导出同样的紧凑格式。\r\n报告包含电脑名、MAC 与 IP 地址。";
                 Button collect=null; collect=ToolButton(bar,"采集本机报告",async delegate{
                     collect.Enabled=false;current=null;report.Text="正在后台采集系统与硬件配置…";collectCancel=new CancellationTokenSource();CancellationToken token=collectCancel.Token;
                     try {
@@ -62,15 +62,15 @@ namespace ITDesktopToolkit
                         if(report.IsDisposed||f.IsDisposed)return;current=captured;
                         report.Text=InspectionService.ConfigurationSummary(current);
                         if(configurationExportPrompt(f))
-                            ExportToolReport(f,current,"配置报告_"+Environment.MachineName+".txt");
+                            ExportToolReport(f,InspectionService.ExportConfiguration(current),"配置报告_"+Environment.MachineName+".txt");
                     }catch(OperationCanceledException){if(!report.IsDisposed)report.Text="采集已取消。";}
                     catch(Exception ex){if(!report.IsDisposed)report.Text="采集失败："+ex.Message;}
                     finally{collectCancel.Dispose();collectCancel=null;if(!collect.IsDisposed)collect.Enabled=true;}
                 });
-                ToolButton(bar,"导出本机对比报告",delegate{if(current==null){MessageBox.Show(f,"请先采集本机报告。");return;}ExportToolReport(f,current,"配置报告_"+Environment.MachineName+".txt");});
+                ToolButton(bar,"导出本机对比报告",delegate{if(current==null){MessageBox.Show(f,"请先采集本机报告。");return;}ExportToolReport(f,InspectionService.ExportConfiguration(current),"配置报告_"+Environment.MachineName+".txt");});
                 ToolButton(bar,"导入左侧报告",delegate{try{string s=ReadToolFile(f);if(s!=null){left=InspectionService.Parse(s);report.Text="左侧已载入 "+left.Count+" 项。请载入右侧后点击比较。";}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
                 ToolButton(bar,"导入右侧报告",delegate{try{string s=ReadToolFile(f);if(s!=null){right=InspectionService.Parse(s);report.Text="右侧已载入 "+right.Count+" 项。";}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
-                ToolButton(bar,"比较两份报告",delegate{if(left==null||right==null){MessageBox.Show(f,"请分别导入左右报告。");return;}report.Text=InspectionService.Compare(left,right);});
+                ToolButton(bar,"比较两份报告",delegate{if(left==null||right==null){MessageBox.Show(f,"请分别导入左右报告。");return;}report.Text=InspectionService.CompareConfigurations(left,right);});
                 ToolButton(bar,"导出对比结果",delegate{ExportToolReport(f,report.Text,"配置差异.txt");}); f.ShowDialog(this);
             }
         }
