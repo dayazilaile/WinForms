@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.5 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.6 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -109,7 +109,7 @@ namespace ITDesktopToolkit
                 case "路由与MAC": BuildRouteWorkspace(); break;
                 case "DHCP与网络服务": BuildFieldTool(name,"查看 DHCP 租约/服务器配置，检查 DNS、HTTP 与 TCP 服务。",delegate{NetworkInformationDialog(1);}); break;
                 case "Wi-Fi分析": BuildWifiWorkspace(); break;
-                case "已保存的Wi-Fi": BuildFieldTool(name,"查看本机已保存的无线配置，密码需单独确认显示。",delegate{NetworkInformationDialog(3);}); break;
+                case "已保存的Wi-Fi": BuildSavedWifiWorkspace(); break;
                 case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
                 case "DNS记录查询":case "ICMP路由跟踪":case "本机连接与监听":case "系统代理诊断":case "网络配置核对":BuildDiagnosticWorkspace(name);break;
                 case "学生机与网络唤醒": BuildStudentWorkspace(); break;

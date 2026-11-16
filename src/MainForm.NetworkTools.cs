@@ -36,48 +36,20 @@ namespace ITDesktopToolkit
         }
         private void NetworkInformationDialog(int mode)
         {
-            if(mode!=1&&mode!=3)throw new ArgumentOutOfRangeException("mode");
+            if(mode!=1)throw new ArgumentOutOfRangeException("mode");
             FlowLayoutPanel bar;RichTextBox report;
-            string title=mode==1?"DHCP 与网络服务":"本机已保存的 Wi-Fi";
-            using(Form f=ToolWindow(title,out bar,out report))
+            using(Form f=ToolWindow("DHCP 与网络服务",out bar,out report))
             {
                 bar.Height=180;Button read=ToolButton(bar,"读取信息",delegate{}),stop=ToolButton(bar,"停止",delegate{});
                 using(var operation=new DialogOperation(f,bar,report,stop))
                 {
-                    read.Click+=async delegate{await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{if(mode==1)return NetworkSystemService.Dhcp(token);return NetworkSystemService.WifiProfiles(token);}));});};
-                    ToolButton(bar,"导出普通报告",delegate{ExportToolReport(f,report.Text,title+".txt");});
-                    if(mode==1)
-                    {
-                        TextBox host=ToolInput(bar,"DNS / TCP 目标","",190),port=ToolInput(bar,"端口","443",55),url=ToolInput(bar,"HTTP URL","https://",230);
-                        ToolButton(bar,"检查 DNS",async delegate{string name=host.Text.Trim();await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{return NetworkSystemService.DnsCheck(name,token);}));});});
-                        ToolButton(bar,"检查 TCP",async delegate{int p;if(!Int32.TryParse(port.Text,out p)||p<1||p>65535){MessageBox.Show(f,"端口须为 1–65535。");return;}string name=host.Text.Trim();await operation.Execute(async delegate(CancellationToken token){IPAddress ip=await NetworkDiscoveryService.Resolve(name,token);PortProbe r=await NetworkDiscoveryService.Probe(ip,p,3000,token);return r.ToString()+"\r\n仅验证 TCP 握手，不能证明业务正常。";});});
-                        ToolButton(bar,"检查 HTTP",async delegate{string value=url.Text.Trim();await operation.Execute(delegate(CancellationToken token){return NetworkSystemService.HttpCheck(value,token);});});
-                    }
-                    if(mode==3)
-                    {
-                        TextBox profile=ToolInput(bar,"准确配置名称","",230);
-                        ToolButton(bar,"单独显示所选配置密码",delegate{
-                            if(String.IsNullOrWhiteSpace(profile.Text)){MessageBox.Show(f,"先读取列表，再填写准确配置名称。");return;}
-                            if(MessageBox.Show(f,"仅查看本机已保存的配置。下一窗口可能显示无线密码，请确认当前屏幕适合显示。","显示敏感信息",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;
-                            ShowWifiSecret(profile.Text);
-                        });
-                    }
-                    report.Text=mode==3?"读取本机已保存配置列表；密码不会进入普通报告。选择准确名称后单独确认显示。系统权限/组织策略可能阻止读取。":mode==2?"查看附近无线的 BSSID、信号和信道。此操作可能需要 Windows 位置权限。不会连接或修改无线配置。":"只读检查，不修改网卡、路由、DHCP 或服务设置。";
-                    f.ShowDialog(this);
-                }
-            }
-        }
-        private void ShowWifiSecret(string name)
-        {
-            FlowLayoutPanel bar;RichTextBox secret;
-            using(Form f=ToolWindow("敏感信息 · "+name,out bar,out secret))
-            {
-                Button read=ToolButton(bar,"读取所选配置",delegate{}),stop=ToolButton(bar,"停止",delegate{});
-                using(var operation=new DialogOperation(f,bar,secret,stop))
-                {
-                    read.Click+=async delegate{await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{return NetworkSystemService.WifiSecret(name,token);}));});};
-                    ToolButton(bar,"清空显示",delegate{secret.Clear();});secret.Text="点击读取以显示。此窗口不提供导出，关闭后清空，不自动保存密码。";
-                    try{f.ShowDialog(this);}finally{secret.Clear();}
+                    read.Click+=async delegate{await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{return NetworkSystemService.Dhcp(token);}));});};
+                    ToolButton(bar,"导出普通报告",delegate{ExportToolReport(f,report.Text,"DHCP与网络服务.txt");});
+                    TextBox host=ToolInput(bar,"DNS / TCP 目标","",190),port=ToolInput(bar,"端口","443",55),url=ToolInput(bar,"HTTP URL","https://",230);
+                    ToolButton(bar,"检查 DNS",async delegate{string name=host.Text.Trim();await operation.Execute(delegate(CancellationToken token){return Task.Run(new Func<string>(delegate{return NetworkSystemService.DnsCheck(name,token);}));});});
+                    ToolButton(bar,"检查 TCP",async delegate{int p;if(!Int32.TryParse(port.Text,out p)||p<1||p>65535){MessageBox.Show(f,"端口须为 1–65535。");return;}string name=host.Text.Trim();await operation.Execute(async delegate(CancellationToken token){IPAddress ip=await NetworkDiscoveryService.Resolve(name,token);PortProbe r=await NetworkDiscoveryService.Probe(ip,p,3000,token);return r.ToString()+"\r\n仅验证 TCP 握手，不能证明业务正常。";});});
+                    ToolButton(bar,"检查 HTTP",async delegate{string value=url.Text.Trim();await operation.Execute(delegate(CancellationToken token){return NetworkSystemService.HttpCheck(value,token);});});
+                    report.Text="只读检查，不修改网卡、路由、DHCP 或服务设置。";f.ShowDialog(this);
                 }
             }
         }

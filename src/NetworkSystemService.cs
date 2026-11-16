@@ -24,12 +24,6 @@ namespace ITDesktopToolkit
 '当前信息来自本机配置与租约，不发送 DHCP 申请，不修改网络，不能用来排除其他 DHCP 服务器或服务器冲突。'
 }catch{Write-Output ('读取未完成：'+$_.Exception.Message);exit 1}",2,cancel);
         }
-        public static string WifiProfiles(CancellationToken cancel){return CommandService.Run("netsh.exe","wlan show profiles",1,cancel);}
-        public static string WifiSecret(string profile,CancellationToken cancel)
-        {
-            if(String.IsNullOrWhiteSpace(profile)||profile.Length>256)throw new ArgumentException("请输入本机已保存配置的准确名称（不是附近网络列表中的任意 SSID）。");
-            return CommandService.Run("netsh.exe","wlan show profile name="+Argument(profile)+" key=clear",1,cancel);
-        }
         public static string DnsCheck(string host,CancellationToken cancel)
         {
             host=NetworkDiscoveryService.SingleHost(host);

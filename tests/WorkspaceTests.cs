@@ -40,6 +40,30 @@ class WorkspaceTests
         Check((string)new WifiBssRow{Signal="82",Rssi="-48"}.Cells()[3]=="82%"&&(string)new WifiBssRow{Rssi="-48"}.Cells()[2]=="-48","Percent suffix is in signal values and RSSI remains numeric in leading columns");
         Check(WifiInventoryService.SignalText("未知")=="未知"&&WifiInventoryService.SignalText("0")=="0%"&&WifiInventoryService.SignalText("100")=="100%","Unknown signals never receive a misleading percent suffix");
     }
+    static string ProfileXml(string protection,string material,string auth="WPA2PSK",string cipher="AES",bool shared=true)
+    {
+        return "<WLANProfile xmlns='http://www.microsoft.com/networking/WLAN/profile/v1'><name>配置名</name><SSIDConfig><SSID><hex>E6B58BE8AF95</hex><name>测试</name></SSID></SSIDConfig><MSM><security><authEncryption><authentication>"+auth+"</authentication><encryption>"+cipher+"</encryption>"+(auth=="WPA2"?"<useOneX>true</useOneX>":"")+"</authEncryption>"+(shared?"<sharedKey><protected>"+protection+"</protected><keyMaterial>"+System.Security.SecurityElement.Escape(material)+"</keyMaterial></sharedKey>":"")+"</security></MSM></WLANProfile>";
+    }
+    static void SavedWifi()
+    {
+        Check(Marshal.SizeOf(typeof(SavedWifiService.ProfileInfo))==516&&Marshal.OffsetOf(typeof(SavedWifiService.ProfileInfo),"Flags").ToInt32()==512,"Saved WLAN profile ABI has 256 Unicode characters and DWORD flags");
+        string password="  Demo-only <&> 密码  ";var profile=SavedWifiService.ParseProfile("配置名","样例网卡",ProfileXml("false",password));
+        Check(profile.HasPassword&&profile.Password==password&&profile.Ssid=="测试"&&profile.Name=="配置名","Plaintext password preserves spaces and XML characters while SSID remains separate from profile name");
+        profile=SavedWifiService.ParseProfile("配置名","样例网卡",ProfileXml("true","encrypted-demo-only"));Check(!profile.HasPassword&&!String.Join("|",profile.Cells()).Contains("encrypted-demo-only")&&profile.Status.Contains("未返回明文"),"Protected material never appears as plaintext password");
+        profile=SavedWifiService.ParseProfile("配置名","样例网卡",ProfileXml("","unknown-protection-demo"));Check(!profile.HasPassword&&profile.Password=="无法读取","Missing protection flag cannot make key material look decrypted");
+        Check(SavedWifiService.ParseProfile("name","adapter",ProfileXml("0","Demo-only-56")).HasPassword,"XML boolean zero means an explicit plaintext key");
+        profile=SavedWifiService.ParseProfile("name","adapter",ProfileXml("false","","open","none",false));Check(!profile.HasPassword&&profile.Password=="无密码"&&profile.Status=="开放网络","Open network is distinguished from unavailable password");
+        profile=SavedWifiService.ParseProfile("name","adapter",ProfileXml("false","","WPA2","AES",false));Check(!profile.HasPassword&&profile.Status.Contains("企业认证"),"Enterprise authentication is not misrepresented as a shared password");
+        profile=SavedWifiService.ParseProfile("name","adapter",ProfileXml("false",""));Check(!profile.HasPassword&&profile.Password=="未保存","Missing shared key is not a readable empty password");
+        profile=SavedWifiService.ParseProfile("name","adapter",ProfileXml("false",new string('x',257)));Check(!profile.HasPassword&&profile.Password=="无法读取","Unexpected oversized key is not displayed");
+        bool rejected=false;try{SavedWifiService.ParseProfile("name","adapter","<!DOCTYPE x [<!ENTITY e SYSTEM 'file:///do-not-read'>]><WLANProfile>&e;</WLANProfile>");}catch(FormatException){rejected=true;}Check(rejected,"Profile XML cannot load external entities");
+        rejected=false;try{SavedWifiService.ParseProfile("name","adapter","<WLANProfile><secret>Demo-do-not-log</bad>");}catch(FormatException ex){rejected=!ex.ToString().Contains("Demo-do-not-log");}Check(rejected,"Malformed profile errors omit raw XML and possible secrets");
+        int size=8+Marshal.SizeOf(typeof(SavedWifiService.ProfileInfo));IntPtr memory=Marshal.AllocHGlobal(size);
+        try{Marshal.WriteInt32(memory,1);Marshal.WriteInt32(memory,4,0);Marshal.StructureToPtr(new SavedWifiService.ProfileInfo{Name="中文配置",Flags=2},IntPtr.Add(memory,8),false);var items=SavedWifiService.ParseProfileList(memory,size);Check(items.Count==1&&items[0].Name=="中文配置"&&items[0].Flags==2,"Native profile list retains Unicode names and scope flags");FormatReject(()=>SavedWifiService.ParseProfileList(memory,8),"Truncated profile list rejected before traversal");Marshal.WriteInt32(memory,2049);FormatReject(()=>SavedWifiService.ParseProfileList(memory,size),"Profile count cap enforced before traversal");}finally{Marshal.FreeHGlobal(memory);}
+        FormatReject(()=>SavedWifiService.ParseProfileList(IntPtr.Zero),"Null saved profile pointer rejected");
+        var inventory=new SavedWifiInventory();profile=SavedWifiService.ParseProfile("name","adapter",ProfileXml("false","Demo-only-clear"));inventory.Profiles.Add(profile);inventory.Dispose();Check(profile.Password==""&&!profile.HasPassword&&inventory.Profiles.Count==0,"Clearing inventory releases password references and readable flags");
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool stopped=false;try{SavedWifiService.Read(cancel.Token);}catch(OperationCanceledException){stopped=true;}Check(stopped,"Cancelled saved-WiFi read performs no native profile retrieval");}
+    }
     static async Task Discovery()
     {
         int calls=0;var results=new List<HostProbe>();object gate=new object();
@@ -64,5 +88,5 @@ class WorkspaceTests
         string neighbor=String.Join("|",new[]{"以太网","::1","00:00:00:00:00:00","5","23"}.Select(x=>Convert.ToBase64String(Encoding.UTF8.GetBytes(x))));RouteInventoryService.ParseRows("ITNET|neighbor|"+neighbor,result);Check((string)result.Neighbors[0][3]=="可达"&&(string)result.Neighbors[0][4]=="IPv6","Numeric native neighbor/family enums normalized for readable tables");
         FormatReject(()=>RouteInventoryService.ParseRows("ITNET|route|bad",new RouteInventory()),"Incomplete route record not silently accepted");
     }
-    static int Main(){try{Wifi();Catalogs();Discovery().GetAwaiter().GetResult();Console.WriteLine("WORKSPACE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{Wifi();SavedWifi();Catalogs();Discovery().GetAwaiter().GetResult();Console.WriteLine("WORKSPACE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

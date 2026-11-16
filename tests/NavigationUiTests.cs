@@ -26,7 +26,7 @@ class NavigationUiTests
         bool opened=false;
         using(var timer=new Timer{Interval=50})
         {
-            timer.Tick+=delegate{foreach(Form form in Application.OpenForms.Cast<Form>().ToArray())if(form!=main){opened=true;if(method=="ShowWifiSecret")Check(!Find<Button>(form).Any(b=>b.Text.Contains("导出")),"Password window has no export action");Check(form.Width>=780&&Find<RichTextBox>(form).Length==1,"Dialog renders: "+form.Text);form.Close();return;}};
+            timer.Tick+=delegate{foreach(Form form in Application.OpenForms.Cast<Form>().ToArray())if(form!=main){opened=true;Check(form.Width>=780&&Find<RichTextBox>(form).Length==1,"Dialog renders: "+form.Text);form.Close();return;}};
             timer.Start();try{Call(main,method,args);}finally{timer.Stop();}
         }
         Check(opened,"Modal closed cleanly: "+method);
@@ -66,6 +66,25 @@ class NavigationUiTests
                     bool clicked=false;timer.Tick+=delegate{foreach(Form f in Application.OpenForms.Cast<Form>().ToArray())if(f.Text=="电脑配置对比"){if(!clicked){clicked=true;Find<Button>(f).Single(b=>b.Text=="采集本机报告").PerformClick();}else if(prompts>0){Check(Find<RichTextBox>(f).Single().Text.Contains("测试 CPU")&&prompts==1,"Collect shows hardware configuration and asks once to export; No preserves the report");Screenshot(f,"configuration-v054.png");f.Close();}break;}};
                     timer.Start();Call(main,"ConfigurationCompareDialog");timer.Stop();
                 }
+                var sensitiveRows=new System.Collections.Generic.List<SavedWifiProfile>();int savedReads=0;
+                Func<System.Threading.CancellationToken,SavedWifiInventory> fakeSaved=delegate{
+                    savedReads++;var data=new SavedWifiInventory();var saved=new SavedWifiProfile{Name="样例配置（测试数据）",Ssid="样例网络",Authentication="WPA2PSK",Encryption="AES",Password="Demo-only-56!",HasPassword=true,Status="已读取",Adapter="样例无线网卡"};data.Profiles.Add(saved);sensitiveRows.Add(saved);
+                    data.Profiles.Add(new SavedWifiProfile{Name="受限样例（测试数据）",Ssid="受限网络",Authentication="WPA3SAE",Encryption="AES",Password="无法读取",Status="系统未返回明文密码，可能受权限或策略限制",Adapter="样例无线网卡"});return data;
+                };
+                main.GetType().GetField("savedWifiReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,fakeSaved);
+                Navigate(main,tree,"已保存的Wi-Fi");Application.DoEvents();var savedBody=Field<Panel>(main,"content");Pump(()=>Find<Button>(savedBody).Single(b=>b.Text=="刷新配置").Enabled,30000);var savedGrid=Find<DataGridView>(savedBody).Single();
+                Check(savedReads==1&&savedGrid.Rows.Count==2&&(string)savedGrid.Rows[0].Cells[4].Value=="Demo-only-56!"&&Application.OpenForms.Count==1,"Saved Wi-Fi opens directly and automatically shows allowed plaintext without confirmation or another dialog");
+                Check(savedGrid.AutoSizeColumnsMode==DataGridViewAutoSizeColumnsMode.Fill&&savedGrid.Columns[4].MinimumWidth>=180&&savedGrid.Columns[4].DefaultCellStyle.WrapMode==DataGridViewTriState.True&&savedGrid.Columns.Count==7,"Saved Wi-Fi uses a full-width seven-column grid with room for passwords");
+                Check((string)savedGrid.Rows[1].Cells[4].Value=="无法读取"&&Convert.ToString(savedGrid.Rows[1].Cells[5].Value).Contains("权限"),"Protected profile keeps an explicit permission state instead of fake plaintext");Screenshot(main,"saved-wifi-v056.png");
+                Find<TextBox>(savedBody).Single(t=>t.AccessibleName=="搜索配置 / SSID / 网卡").Text="受限";Application.DoEvents();Check(savedGrid.Rows.Count==1&&savedReads==1,"Saved profile search filters current rows without another password read");
+                Find<Button>(savedBody).Single(b=>b.Text=="清空显示").PerformClick();Check(savedGrid.Rows.Count==0&&sensitiveRows[0].Password==""&&!sensitiveRows[0].HasPassword,"Clear removes visible passwords and releases the current inventory");
+                Find<TextBox>(savedBody).Single(t=>t.AccessibleName=="搜索配置 / SSID / 网卡").Clear();var reloadSaved=Find<Button>(savedBody).Single(b=>b.Text=="刷新配置");reloadSaved.PerformClick();Pump(()=>reloadSaved.Enabled,30000);
+                using(var started=new System.Threading.ManualResetEventSlim()){
+                    var lateProfile=new SavedWifiProfile{Name="取消测试",Password="Demo-only-cancel",HasPassword=true};
+                    main.GetType().GetField("savedWifiReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Threading.CancellationToken,SavedWifiInventory>(delegate(System.Threading.CancellationToken token){started.Set();token.WaitHandle.WaitOne(5000);var result=new SavedWifiInventory();result.Profiles.Add(lateProfile);return result;}));
+                    reloadSaved.PerformClick();Pump(()=>started.IsSet,10000);Check(sensitiveRows[1].Password==""&&savedGrid.Rows.Count==0,"Refresh clears previous passwords before the next read finishes");Find<Button>(savedBody).Single(b=>b.Text=="停止").PerformClick();Pump(()=>reloadSaved.Enabled,10000);Check(savedGrid.Rows.Count==0&&lateProfile.Password==""&&!lateProfile.HasPassword,"Stopped password read discards a late result instead of displaying it");
+                }
+                main.GetType().GetField("savedWifiReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,fakeSaved);reloadSaved.PerformClick();Pump(()=>reloadSaved.Enabled,30000);Navigate(main,tree,"端口扫描");Application.DoEvents();Check(sensitiveRows.All(x=>x.Password==""&&!x.HasPassword),"Leaving saved Wi-Fi clears password references from that page");
                 foreach(string key in new[]{"端口扫描","主机发现","路由与MAC","Wi-Fi分析"})
                 {
                     Navigate(main,tree,key);Application.DoEvents();var body=Field<Panel>(main,"content");
@@ -147,7 +166,7 @@ class NavigationUiTests
                     bool cancelled=false;Func<System.Threading.CancellationToken,System.Threading.Tasks.Task> waiting=async delegate(System.Threading.CancellationToken token){try{await System.Threading.Tasks.Task.Delay(30000,token);}catch(OperationCanceledException){cancelled=true;throw;}};
                     var running=(System.Threading.Tasks.Task)sessionType.GetMethod("Run").Invoke(operation,new object[]{waiting});testPage.Dispose();Pump(()=>running.IsCompleted);Check(cancelled&&!running.IsFaulted,"Disposing an active page cancels work without updating disposed controls");
                 }
-                Modal(main,"NetworkInformationDialog",1);Modal(main,"NetworkInformationDialog",3);Modal(main,"CameraDiscoveryDialog");Modal(main,"ShowWifiSecret","test-profile-not-read");
+                Modal(main,"NetworkInformationDialog",1);Modal(main,"CameraDiscoveryDialog");
                 main.Close();Application.DoEvents();Check(uiErrors==0,"No unhandled UI exceptions");
             }
             Console.WriteLine("NAVIGATION UI TOTAL PASS "+passed);return 0;
