@@ -39,11 +39,33 @@ class NavigationUiTests
             File.WriteAllLines(path,new[]{"安全与维护","U 盘检查与防护"},Encoding.UTF8);
             using(var main=new MainForm())
             {
-                main.Show();Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
+                var originalLoad=Field<System.Threading.Tasks.Task<DatabaseService>>(main,"databaseLoad");var gate=new System.Threading.Tasks.TaskCompletionSource<DatabaseService>();main.GetType().GetField("databaseLoad",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,gate.Task);
+                main.Show();Application.DoEvents();Check(main.Visible&&!gate.Task.IsCompleted&&Field<string>(main,"currentPage")=="系统概览","Overview renders while database task is still pending");Pump(()=>originalLoad.IsCompleted,30000);gate.SetResult(originalLoad.GetAwaiter().GetResult());Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
                 Check(tree.Nodes.Count==6&&Leaves(tree)==29,"Six categories / 29 features (including trial), no duplicate system category");
-                Check(Field<string>(main,"currentPage")=="U 盘检查与防护"&&tree.Nodes[0].IsExpanded,"Legacy safety category state migrates to system/hardware");
+                Check(Field<string>(main,"currentPage")=="系统概览"&&tree.Nodes[0].IsExpanded,"Every launch opens system overview despite saved prior page");
                 Click(tree,tree.Nodes[0]);Check(!tree.Nodes[0].IsExpanded,"Category text click collapses");Click(tree,tree.Nodes[1]);Check(tree.Nodes[1].IsExpanded&&tree.Nodes.Cast<TreeNode>().Count(n=>n.IsExpanded)==1,"Accordion expands only one group");
-                search.Text="DNS";Application.DoEvents();Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");search.Clear();
+                var clearSearch=Find<Button>(main).Single(b=>b.Name=="navigationClear");Check(!clearSearch.Visible,"Search clear icon is hidden for empty input");
+                search.Text="DNS";Application.DoEvents();Check(clearSearch.Visible&&clearSearch.Parent.Name=="navigationSearchFrame"&&clearSearch.FlatAppearance.BorderSize==0,"Clear icon stays inside the search field without a separate border");Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");clearSearch.PerformClick();Application.DoEvents();Check(search.Text==""&&!clearSearch.Visible&&Leaves(tree)==29,"Inline clear resets search and restores all navigation entries");
+                var software=new SoftwareSnapshot();for(int i=0;i<500;i++)software.Entries.Add(new SoftwareEntry{Name="样例软件 "+i,Version="1.0",Publisher="测试发布者",Scope="当前用户",Architecture="64 位登记区",Location="C:\\Example",Key="sample"+i});
+                main.GetType().GetField("softwareCache",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,software);
+                Navigate(main,tree,"软件环境检查");Application.DoEvents();var softwareBody=Field<Panel>(main,"content");var softwareGrid=Find<DataGridView>(softwareBody).Single();
+                Check(softwareGrid.Rows.Count==500&&softwareGrid.Columns.Count==6&&Application.OpenForms.Count==1,"Software inventory opens directly as six-column list from cache");
+                Find<TextBox>(softwareBody).Single(t=>t.AccessibleName=="搜索名称 / 版本 / 发布者").Text="样例软件 123";Application.DoEvents();Check(softwareGrid.Rows.Count==1,"Software search filters cached list without a new registry read");
+                Screenshot(main,"software-v053.png");search.Text="软件";Application.DoEvents();Screenshot(main,"search-v053.png");clearSearch.PerformClick();Application.DoEvents();
+                Navigate(main,tree,"启动项管理");Application.DoEvents();var startupBody=Field<Panel>(main,"content");Pump(()=>Find<Button>(startupBody).Single(b=>b.Text=="刷新启动项").Enabled,30000);var startup=Find<DataGridView>(startupBody).Single();
+                Check(startup.Columns["icon"].Width>=64&&startup.ColumnHeadersDefaultCellStyle.WrapMode==DataGridViewTriState.False&&startup.Columns["command"].MinimumWidth>=280,"Startup icon header remains horizontal and command column cannot collapse");
+                var actions=Field<System.Collections.Generic.List<AutoStep>>(main,"autoSteps");actions.Add(new AutoStep{Type="运行程序并等待",A="notepad.exe",B="example.txt",C="30"});Navigate(main,tree,"BAT 自动化");Application.DoEvents();var autoBody=Field<Panel>(main,"content");var actionGrid=Find<DataGridView>(autoBody).Single();
+                Check(!Find<Button>(autoBody).Any(b=>b.Text=="上移"||b.Text=="下移"),"BAT editor removes old move buttons while retaining drag handle");
+                Find<Button>(autoBody).Single(b=>b.Text=="复制动作").PerformClick();Check(actions.Count==2&&!Object.ReferenceEquals(actions[0],actions[1])&&actions[1].A==actions[0].A&&actions[1].B==actions[0].B&&actions[1].C==actions[0].C&&actionGrid.CurrentRow.Index==1,"Copy duplicates all step parameters independently immediately after selection");
+                actions[1].A="other.exe";Check(actions[0].A=="notepad.exe","Editing a copy leaves the original step unchanged");
+                Call(actionGrid,"OnKeyDown",new KeyEventArgs(Keys.Control|Keys.D));Check(actions.Count==3&&actionGrid.CurrentRow.Index==2,"Ctrl+D creates another editable step copy");Screenshot(main,"automation-v053.png");
+                int prompts=0;string fake=InspectionService.Serialize(new System.Collections.Generic.Dictionary<string,string>{{"系统/名称","测试系统"},{"CPU/1/型号","测试 CPU"},{"网卡/样例/型号","测试网卡"}});
+                main.GetType().GetField("configurationReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Threading.CancellationToken,string>(delegate{return fake;}));
+                main.GetType().GetField("configurationExportPrompt",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<Form,bool>(delegate{prompts++;return false;}));
+                using(var timer=new Timer{Interval=40}){
+                    bool clicked=false;timer.Tick+=delegate{foreach(Form f in Application.OpenForms.Cast<Form>().ToArray())if(f.Text=="电脑配置对比"){if(!clicked){clicked=true;Find<Button>(f).Single(b=>b.Text=="采集本机报告").PerformClick();}else if(prompts>0){Check(Find<RichTextBox>(f).Single().Text.Contains("测试 CPU")&&prompts==1,"Collect shows hardware configuration and asks once to export; No preserves the report");f.Close();}break;}};
+                    timer.Start();Call(main,"ConfigurationCompareDialog");timer.Stop();
+                }
                 foreach(string key in new[]{"端口扫描","主机发现","路由与MAC","Wi-Fi分析"})
                 {
                     Navigate(main,tree,key);Application.DoEvents();var body=Field<Panel>(main,"content");
@@ -51,12 +73,15 @@ class NavigationUiTests
                     Check(Application.OpenForms.Count==1,"Inline navigation never launches modal: "+key);
                     if(key=="路由与MAC"||key=="Wi-Fi分析"){var button=Find<Button>(body).Single(b=>b.Text=="刷新信息");Pump(()=>button.Enabled,30000);Check(Find<Panel>(body).Count(p=>p.Name=="resultTabs")==1,"Auto-read completes with structured tables: "+key);}
                 }
+                Navigate(main,tree,"路由与MAC");Application.DoEvents();var routeBody=Field<Panel>(main,"content");Pump(()=>Find<Button>(routeBody).Single(b=>b.Text=="刷新信息").Enabled,30000);var af=Find<ComboBox>(routeBody).Single(c=>c.AccessibleName=="地址族");var adapter=Find<DataGridView>(routeBody).Single(g=>g.Columns.Count==8);
+                Check(af.Text=="IPv4"&&adapter.Columns[2].Width>=180&&adapter.Columns[3].Width>=180&&adapter.Columns[1].Width<=90&&adapter.Columns[7].HeaderText=="速率 Mb/s","Route defaults to IPv4 with wide MAC/IP and compact state/rate columns");
+                af.SelectedIndex=1;Application.DoEvents();Check(adapter.Columns[3].HeaderText=="IPv6 地址"&&adapter.Columns[3].Width>=340&&!adapter.Columns[4].Visible,"IPv6 has a separate wide address view without IPv4 mask column");af.SelectedIndex=0;Screenshot(main,"route-v053.png");
                 foreach(string key in new[]{"DNS记录查询","ICMP路由跟踪","本机连接与监听","系统代理诊断","网络配置核对"})
                 {
                     Navigate(main,tree,key);Application.DoEvents();var trial=Field<Panel>(main,"content");
                     Check(tree.SelectedNode.Parent.Text.Contains("新增")&&Find<DataGridView>(trial).Single().Rows.Count==0&&Find<Button>(trial).Single(b=>b.Text=="停止").Enabled==false&&Find<Label>(trial).Any(l=>l.Text.StartsWith("待试用")),"Trial remains separate and idle until explicit action: "+key);
                 }
-                var audit=Field<Panel>(main,"content");var read=Find<Button>(audit).Single(b=>b.Text=="读取本机信息");read.PerformClick();Pump(()=>read.Enabled,30000);
+                var audit=Field<Panel>(main,"content");var auditGrid=Find<DataGridView>(audit).Single();Check(auditGrid.AutoSizeColumnsMode==DataGridViewAutoSizeColumnsMode.Fill&&auditGrid.Columns[3].MinimumWidth>=260,"Trial IPv4 audit table fills available width with room for explanations");var read=Find<Button>(audit).Single(b=>b.Text=="读取本机信息");read.PerformClick();Pump(()=>read.Enabled,30000);
                 Check(Find<DataGridView>(audit).Single().Rows.Count>0,"Trial local IPv4 audit executes and fills table without probing network");
                 Navigate(main,tree,"DNS记录查询");Application.DoEvents();var dnsPage=Field<Panel>(main,"content");Find<TextBox>(dnsPage).Single(t=>t.AccessibleName=="DNS 名称 / PTR 地址").Text="bad; exit";var query=Find<Button>(dnsPage).Single(b=>b.Text=="查询记录");query.PerformClick();Pump(()=>query.Enabled);
                 Check(Find<DataGridView>(dnsPage).Single().Rows.Count==0&&Find<Label>(dnsPage).Any(l=>l.Text.Contains("格式无效")),"Trial UI displays validation error without DNS query");

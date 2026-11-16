@@ -50,48 +50,52 @@ namespace ITDesktopToolkit
             }
             return report.Insert(0,"差异项：" + changed + "\r\n").ToString();
         }
+        internal static string ConfigurationScript()
+        {
+            return @"$ErrorActionPreference='Stop';$readWarnings=@{};
+function Emit($key,$value) { 'ITCFG:'+ [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$key)) + ""`t"" + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$value)) }
+function Read-Cim($class) { try { Get-CimInstance $class -ErrorAction Stop } catch { $readWarnings[$class]=$_.Exception.Message } }
+function GiB($value) { if($null -eq $value){return '未提供'};([double]$value/1GB).ToString('0.##',[Globalization.CultureInfo]::InvariantCulture)+' GiB' }
+Emit '报告/电脑名' $env:COMPUTERNAME
+foreach($os in Read-Cim 'Win32_OperatingSystem'){Emit '系统/名称' $os.Caption;Emit '系统/版本' $os.Version;Emit '系统/Build' $os.BuildNumber;Emit '系统/架构' $os.OSArchitecture}
+foreach($c in Read-Cim 'Win32_ComputerSystem'){Emit '整机/厂商' $c.Manufacturer;Emit '整机/型号' $c.Model;Emit '整机/内存' (GiB $c.TotalPhysicalMemory);Emit '整机/域或工作组' $c.Domain}
+$i=0;foreach($c in (Read-Cim 'Win32_Processor' | Sort-Object DeviceID)){$i++;$k='CPU/'+$i+'/';Emit ($k+'型号') $c.Name;Emit ($k+'核心数') $c.NumberOfCores;Emit ($k+'逻辑处理器') $c.NumberOfLogicalProcessors;Emit ($k+'最大报告频率 MHz') $c.MaxClockSpeed}
+$i=0;foreach($c in (Read-Cim 'Win32_BaseBoard' | Sort-Object Tag)){$i++;$k='主板/'+$i+'/';Emit ($k+'厂商') $c.Manufacturer;Emit ($k+'型号') $c.Product;Emit ($k+'版本') $c.Version}
+foreach($c in Read-Cim 'Win32_BIOS'){Emit 'BIOS/厂商' $c.Manufacturer;Emit 'BIOS/版本' $c.SMBIOSBIOSVersion}
+$i=0;foreach($c in (Read-Cim 'Win32_PhysicalMemory' | Sort-Object DeviceLocator,BankLabel)){$i++;$k='内存/'+$i+'/';Emit ($k+'插槽') $c.DeviceLocator;Emit ($k+'厂商') $c.Manufacturer;Emit ($k+'零件号') ([string]$c.PartNumber).Trim();Emit ($k+'容量') (GiB $c.Capacity);Emit ($k+'配置频率 MHz') $c.ConfiguredClockSpeed}
+$i=0;foreach($c in (Read-Cim 'Win32_VideoController' | Sort-Object DeviceID)){$i++;$k='显卡/'+$i+'/';Emit ($k+'型号') $c.Name;Emit ($k+'驱动版本') $c.DriverVersion}
+$i=0;foreach($c in (Read-Cim 'Win32_DiskDrive' | Sort-Object Index)){$i++;$k='磁盘/'+$i+'/';Emit ($k+'型号') $c.Model;Emit ($k+'容量') (GiB $c.Size);Emit ($k+'接口') $c.InterfaceType}
+foreach($n in Get-NetAdapter){$k='网卡/'+$n.Name+'/';Emit ($k+'型号') $n.InterfaceDescription;Emit ($k+'MAC') $n.MacAddress;Emit ($k+'接口速率') $n.LinkSpeed}
+foreach($n in Get-NetIPConfiguration){$k='网络/'+$n.InterfaceAlias+'/';Emit ($k+'IPv4') (($n.IPv4Address|ForEach-Object {$_.IPAddress+'/'+$_.PrefixLength}|Sort-Object)-join ',');Emit ($k+'IPv6') (($n.IPv6Address|ForEach-Object {$_.IPAddress+'/'+$_.PrefixLength}|Sort-Object)-join ',');Emit ($k+'网关') (($n.IPv4DefaultGateway.NextHop|Sort-Object)-join ',');Emit ($k+'DNS') (($n.DNSServer.ServerAddresses)-join ',')}
+foreach($name in $readWarnings.Keys){Emit ('读取状态/'+$name) $readWarnings[$name]}
+";
+        }
         public static string CollectConfiguration()
         {
-            string script = @"$ErrorActionPreference='Stop';
-function Emit($key,$value) { 'ITCFG:'+ [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$key)) + ""`t"" + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$value)) }
-Emit '报告/电脑名' $env:COMPUTERNAME
-$os=Get-CimInstance Win32_OperatingSystem; Emit '系统/名称' $os.Caption; Emit '系统/版本' $os.Version; Emit '系统/架构' $os.OSArchitecture
-foreach($n in Get-NetAdapter){$k='网卡/'+$n.Name+'/'; Emit ($k+'型号') $n.InterfaceDescription; Emit ($k+'状态') $n.Status; Emit ($k+'MAC') $n.MacAddress}
-foreach($n in Get-NetIPConfiguration){$k='网络/'+$n.InterfaceAlias+'/'; Emit ($k+'IPv4') (($n.IPv4Address|ForEach-Object {$_.IPAddress+'/'+$_.PrefixLength}|Sort-Object)-join ','); Emit ($k+'网关') (($n.IPv4DefaultGateway.NextHop|Sort-Object)-join ','); Emit ($k+'DNS') (($n.DNSServer.ServerAddresses)-join ',')}
-foreach($n in Get-NetConnectionProfile){Emit ('网络/'+$n.InterfaceAlias+'/类别') $n.NetworkCategory}
-foreach($name in @('Spooler','LanmanServer','LanmanWorkstation','Dnscache','Dhcp','FDResPub')){$s=Get-Service $name; Emit ('服务/'+$name) ($s.Status.ToString()+'/'+$s.StartType)}
-$c=Get-SmbClientConfiguration; $s=Get-SmbServerConfiguration; Emit '共享/客户端Guest' $c.EnableInsecureGuestLogons; Emit '共享/客户端强制签名' $c.RequireSecuritySignature; Emit '共享/服务端强制签名' $s.RequireSecuritySignature; Emit '共享/服务端加密' $s.EncryptData
-foreach($s in Get-SmbShare | Where-Object {-not $_.Special}) {Emit ('共享目录/'+$s.Name) $s.Path}
-";
-            string raw = PowerShellService.RunScript(script, 3);
-            if (!raw.Contains("返回代码：0")) throw new InvalidOperationException(raw);
-            StringBuilder records = new StringBuilder(Header + "\n");
-            foreach (string line in raw.Split('\n')) if(line.StartsWith("ITCFG:",StringComparison.Ordinal)) records.AppendLine(line.Substring(6).TrimEnd('\r'));
-            var parsed = Parse(records.ToString());
-            if(parsed.Count < 4) throw new InvalidOperationException("未收到完整配置报告。\r\n"+raw);
+            return CollectConfiguration(System.Threading.CancellationToken.None);
+        }
+        public static string CollectConfiguration(System.Threading.CancellationToken cancel)
+        {
+            return ConfigurationFromOutput(PowerShellService.RunScript(ConfigurationScript(),3,cancel));
+        }
+        internal static string ConfigurationFromOutput(string raw)
+        {
+            if(!raw.Replace("\r","").Contains("\n返回代码：0\n"))throw new InvalidOperationException(raw);
+            var records=new StringBuilder(Header+"\n");
+            foreach(string line in raw.Split('\n'))if(line.StartsWith("ITCFG:",StringComparison.Ordinal))records.AppendLine(line.Substring(6).TrimEnd('\r'));
+            var parsed=Parse(records.ToString());
+            if(!parsed.ContainsKey("系统/名称")||!parsed.ContainsKey("CPU/1/型号")||String.IsNullOrWhiteSpace(parsed["系统/名称"])||String.IsNullOrWhiteSpace(parsed["CPU/1/型号"]))throw new InvalidOperationException("系统或 CPU 配置未完整读取。\r\n"+raw);
             return Serialize(parsed);
+        }
+        public static string ConfigurationSummary(string current)
+        {
+            var text=new StringBuilder("本机配置报告已采集\r\n\r\n");
+            foreach(var pair in Parse(current))text.AppendLine(pair.Key+"："+pair.Value);
+            return text.ToString();
         }
         public static Dictionary<string,string> InstalledSoftware()
         {
-            var apps = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-            foreach (RegistryHive hive in new RegistryHive[]{RegistryHive.LocalMachine,RegistryHive.CurrentUser})
-            foreach (RegistryView view in new RegistryView[]{RegistryView.Registry32,RegistryView.Registry64})
-            {
-                if(view==RegistryView.Registry64 && !Environment.Is64BitOperatingSystem) continue;
-                using (RegistryKey root=RegistryKey.OpenBaseKey(hive,view))
-                using (RegistryKey uninstall=root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"))
-                {
-                    if(uninstall==null)continue;
-                    foreach(string name in uninstall.GetSubKeyNames()) using(RegistryKey k=uninstall.OpenSubKey(name))
-                    {
-                        if(k==null)continue; string display=Convert.ToString(k.GetValue("DisplayName"));
-                        if(String.IsNullOrWhiteSpace(display))continue;
-                        string version=Convert.ToString(k.GetValue("DisplayVersion"));
-                        apps[display+" ["+hive+"/"+view+"]"]=version;
-                    }
-                }
-            }
-            return apps;
+            return SoftwareInventoryService.Read(System.Threading.CancellationToken.None).Versions();
         }
         public static string SoftwareReport(string requirements)
         {

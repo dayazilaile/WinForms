@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -17,16 +18,12 @@ namespace ITDesktopToolkit
         private static readonly Color Canvas = Color.FromArgb(244, 247, 251);
         private static readonly Font Ui = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Regular);
         private static readonly Font UiActive = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
-        private readonly DatabaseService db = new DatabaseService();
+        private DatabaseService db = new DatabaseService();
+        private Task<DatabaseService> databaseLoad;
         private readonly Panel content = new Panel();
         private readonly Label status = new Label();
         private List<HardwareItem> inventory = new List<HardwareItem>();
         private FaultScanResult lastScan;
-        private RichTextBox hardwareDetail;
-        private RichTextBox eventDetail;
-        private DataGridView hardwareGrid;
-        private DataGridView eventGrid;
-        private ComboBox daysSelector;
         private string currentPage = "";
 
         [DllImport("shell32.dll")]
@@ -34,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.2 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.3 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -42,8 +39,7 @@ namespace ITDesktopToolkit
             BackColor = Canvas;
             Font = Ui;
             AutoScaleMode = AutoScaleMode.Dpi;
-            try { db.Reload(); FaultCatalog.Reload(); GenericCodeCatalog.Reload(); }
-            catch (Exception ex) { Paths.Log("Load DB error: " + ex.Message); }
+            BeginDatabaseLoad();
 
             Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 260, BackColor = Navy };
             Panel footer = new Panel { Dock = DockStyle.Bottom, Height = 30, BackColor = Color.FromArgb(237, 241, 247) };
@@ -62,6 +58,25 @@ namespace ITDesktopToolkit
             BuildNavigation(sidebar);
         }
 
+        private void BeginDatabaseLoad()
+        {
+            databaseLoad=Task.Run(new Func<DatabaseService>(delegate {
+                var snapshot=new DatabaseService();snapshot.Reload();FaultCatalog.Reload();GenericCodeCatalog.Reload();return snapshot;
+            }));
+        }
+        private async Task<DatabaseService> ReadyDatabase()
+        {
+            Task<DatabaseService> pending;
+            DatabaseService snapshot;
+            do { pending=databaseLoad; snapshot=await pending; } while(pending!=databaseLoad);
+            db=snapshot;return snapshot;
+        }
+        private async void UpdateDatabaseDescription(RichTextBox box)
+        {
+            box.Text="正在后台读取离线数据库…";
+            try { await ReadyDatabase(); if(!box.IsDisposed)box.Text=DbDescription(); }
+            catch(Exception ex){if(!box.IsDisposed)box.Text="数据库读取失败："+ex.Message;Paths.Log("Load DB: "+ex);}
+        }
         private void SetStatus(string message)
         {
             status.Text = "权限：" + (CommandService.IsAdministrator() ? "管理员" : "普通用户") + "     |     " + message;
@@ -70,7 +85,6 @@ namespace ITDesktopToolkit
         {
             if(NavigationCatalog.Find(name)==null)return;
             currentPage = name;
-            SaveNavigationState();
             while(content.Controls.Count>0){Control old=content.Controls[0];content.Controls.Remove(old);old.Dispose();}
             switch (name)
             {
@@ -86,9 +100,9 @@ namespace ITDesktopToolkit
                 case "共享文件夹": BuildShares(); break;
                 case "BAT 自动化": BuildAutomation(); break;
                 case "Windows 管理入口": BuildToolLaunchers(); break;
-                case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集两台电脑的配置报告，比较系统、网络、服务和共享策略。", ConfigurationCompareDialog); break;
+                case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集系统、架构、CPU、主板、内存、显卡、磁盘和网卡配置，导出或对比。", ConfigurationCompareDialog); break;
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;
-                case "软件环境检查": BuildFieldTool("软件环境检查", "读取软件及运行库登记信息，并按自定义清单检查缺项与最低版本。", SoftwareInspectionDialog); break;
+                case "软件环境检查": BuildSoftwareWorkspace(); break;
                 case "U 盘检查与防护": BuildFieldTool("U 盘检查与防护", "只读检查可疑迹象、查看杀毒记录，设置所选 NTFS U 盘普通用户只读权限及本机策略。", UsbProtectionDialog); break;
                 case "端口扫描": BuildScanWorkspace(false); break;
                 case "主机发现": BuildScanWorkspace(true); break;
@@ -164,6 +178,8 @@ namespace ITDesktopToolkit
             g.BackgroundColor = Color.White;
             g.BorderStyle = BorderStyle.None;
             g.ColumnHeadersHeight = 38;
+            g.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            g.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             g.RowTemplate.Height = 33;
             g.EnableHeadersVisualStyles = false;
             g.GridColor = Color.FromArgb(229, 234, 242);
@@ -187,7 +203,7 @@ namespace ITDesktopToolkit
             c.Name = name;
             c.HeaderText = title;
             c.Width = width;
-            if (fill) c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            if (fill) { c.MinimumWidth = Math.Min(width, 280); c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
             g.Columns.Add(c);
         }
         private void SaveText(string defaultName, string text)
@@ -250,42 +266,46 @@ namespace ITDesktopToolkit
             Panel p = Page("详细硬件配置", "包含 CPU、主板、内存、显卡、显示器（EDID）、磁盘和物理网卡；支持品牌型号匹配。", out bar);
             SplitContainer split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 350,
                 BackColor = Canvas, Panel1MinSize = 140, Panel2MinSize = 105 };
-            hardwareGrid = Grid();
-            AddColumn(hardwareGrid, "type", "类别", 72, false);
-            AddColumn(hardwareGrid, "brand", "品牌/厂商", 125, false);
-            AddColumn(hardwareGrid, "model", "详细型号 / 零件号", 260, true);
-            AddColumn(hardwareGrid, "name", "设备 / 容量 / 插槽", 230, false);
-            AddColumn(hardwareGrid, "state", "来源", 100, false);
-            split.Panel1.Controls.Add(hardwareGrid);
-            hardwareDetail = ReadBox();
-            split.Panel2.Controls.Add(hardwareDetail);
-            hardwareGrid.SelectionChanged += delegate
+            DataGridView grid = Grid();
+            AddColumn(grid, "type", "类别", 72, false);
+            AddColumn(grid, "brand", "品牌/厂商", 125, false);
+            AddColumn(grid, "model", "详细型号 / 零件号", 260, true);
+            AddColumn(grid, "name", "设备 / 容量 / 插槽", 230, false);
+            AddColumn(grid, "state", "来源", 100, false);
+            split.Panel1.Controls.Add(grid);
+            RichTextBox detail = ReadBox();
+            split.Panel2.Controls.Add(detail);
+            grid.SelectionChanged += delegate
             {
-                if (hardwareGrid.SelectedRows.Count > 0 && hardwareGrid.SelectedRows[0].Tag is HardwareItem)
-                    hardwareDetail.Text = ((HardwareItem)hardwareGrid.SelectedRows[0].Tag).Details();
+                if (grid.SelectedRows.Count > 0 && grid.SelectedRows[0].Tag is HardwareItem)
+                    detail.Text = ((HardwareItem)grid.SelectedRows[0].Tag).Details();
             };
             Panel card = ContentCard(split);
             p.Controls["pageBody"].Controls.Add(card);
+            var cancel=new CancellationTokenSource();CancellationToken token=cancel.Token;p.Disposed+=delegate{cancel.Cancel();cancel.Dispose();};
             Button scan = null;
             scan = Action(bar, "扫描硬件", async delegate
             {
                 scan.Enabled = false;
-                hardwareDetail.Text = "正在读取设备清单……";
+                detail.Text = "正在读取设备清单……";
                 try
                 {
-                    inventory = await Task.Run(delegate { return HardwareService.Inventory(db); });
-                    if (hardwareGrid.IsDisposed || hardwareDetail.IsDisposed) return;
-                    hardwareGrid.Rows.Clear();
+                    DatabaseService source = await ReadyDatabase();
+                    if (scan.IsDisposed) return;
+                    var fresh = await Task.Run(delegate { return HardwareService.Inventory(source,token); });
+                    if (grid.IsDisposed || detail.IsDisposed) return;
+                    inventory=fresh;
+                    grid.Rows.Clear();
                     foreach (HardwareItem x in inventory)
                     {
-                        int i = hardwareGrid.Rows.Add(x.Type, x.DisplayBrand, x.DisplayModel, x.Name, x.MatchState);
-                        hardwareGrid.Rows[i].Tag = x;
-                        if (x.Type == "异常设备") hardwareGrid.Rows[i].DefaultCellStyle.BackColor = Color.FromArgb(255, 233, 232);
-                        if (x.Type == "已禁用设备") hardwareGrid.Rows[i].DefaultCellStyle.BackColor = Color.FromArgb(255, 248, 217);
+                        int i = grid.Rows.Add(x.Type, x.DisplayBrand, x.DisplayModel, x.Name, x.MatchState);
+                        grid.Rows[i].Tag = x;
+                        if (x.Type == "异常设备") grid.Rows[i].DefaultCellStyle.BackColor = Color.FromArgb(255, 233, 232);
+                        if (x.Type == "已禁用设备") grid.Rows[i].DefaultCellStyle.BackColor = Color.FromArgb(255, 248, 217);
                     }
                     int errors = 0, disabled = 0;
                     foreach (HardwareItem x in inventory) { if (x.Type == "异常设备") errors++; if (x.Type == "已禁用设备") disabled++; }
-                    hardwareDetail.Text = "主要硬件/显示器/网卡：" + (inventory.Count - errors - disabled) + " 条\r\n" +
+                    detail.Text = "主要硬件/显示器/网卡：" + (inventory.Count - errors - disabled) + " 条\r\n" +
                         "异常设备：" + errors + " 条（红色）\r\n" +
                         "已禁用设备：" + disabled + " 条（黄色，不一定故障）\r\n\r\n" +
                         "显示器优先读取 EDID，读取不到时使用 PnP / Windows 显示设备信息；多屏不强行对应顺序。\r\n" +
@@ -293,12 +313,13 @@ namespace ITDesktopToolkit
                         "选择上方设备查看原始型号、硬件 ID、规格和匹配依据。";
                     SetStatus("硬件扫描完成：" + inventory.Count + " 条");
                 }
-                catch (Exception ex) { hardwareDetail.Text = "硬件扫描异常：" + ex; }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { if (!detail.IsDisposed) detail.Text = "硬件扫描异常：" + ex; }
                 finally { if (!scan.IsDisposed) scan.Enabled = true; }
             }, true);
-            Action(bar, "重新加载数据库", delegate
+            Action(bar, "重新加载数据库", async delegate
             {
-                try { db.Reload(); MessageBox.Show(this, "已重新加载数据库。请重新点击扫描硬件。", "完成"); }
+                try { BeginDatabaseLoad(); await ReadyDatabase(); if (!p.IsDisposed) MessageBox.Show(this, "已重新加载数据库。请重新点击扫描硬件。", "完成"); }
                 catch (Exception ex) { MessageBox.Show(this, ex.Message); }
             }, false);
             Action(bar, "导出详细配置", delegate
@@ -417,30 +438,30 @@ namespace ITDesktopToolkit
         {
             FlowLayoutPanel bar;
             Panel p = Page("蓝屏与异常关机", "读取 System/Application 事件日志、BugCheck/WHEA/磁盘错误、Minidump 文件元数据。", out bar);
-            daysSelector = new ComboBox { Width = 120, Height = 31, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(5, 5, 6, 5) };
-            daysSelector.Items.AddRange(new object[] { "最近 7 天", "最近 30 天", "最近 90 天" });
-            daysSelector.SelectedIndex = 1;
-            bar.Controls.Add(daysSelector);
+            ComboBox daysInput = new ComboBox { Width = 120, Height = 31, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(5, 5, 6, 5) };
+            daysInput.Items.AddRange(new object[] { "最近 7 天", "最近 30 天", "最近 90 天" });
+            daysInput.SelectedIndex = 1;
+            bar.Controls.Add(daysInput);
             SplitContainer split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal,
                 SplitterDistance = 355, BackColor = Canvas, Panel1MinSize = 160, Panel2MinSize = 110 };
-            eventGrid = Grid();
-            AddColumn(eventGrid, "time", "事件时间", 160, false);
-            AddColumn(eventGrid, "kind", "类别", 115, false);
-            AddColumn(eventGrid, "id", "ID", 60, false);
-            AddColumn(eventGrid, "source", "事件来源", 200, false);
-            AddColumn(eventGrid, "summary", "内容摘要", 440, true);
-            split.Panel1.Controls.Add(eventGrid);
-            eventDetail = ReadBox();
-            split.Panel2.Controls.Add(eventDetail);
-            eventGrid.CellDoubleClick += delegate(object sender, DataGridViewCellEventArgs e)
+            DataGridView grid = Grid();
+            AddColumn(grid, "time", "事件时间", 160, false);
+            AddColumn(grid, "kind", "类别", 115, false);
+            AddColumn(grid, "id", "ID", 60, false);
+            AddColumn(grid, "source", "事件来源", 200, false);
+            AddColumn(grid, "summary", "内容摘要", 440, true);
+            split.Panel1.Controls.Add(grid);
+            RichTextBox detail = ReadBox();
+            split.Panel2.Controls.Add(detail);
+            grid.CellDoubleClick += delegate(object sender, DataGridViewCellEventArgs e)
             {
-                if (e.RowIndex >= 0 && eventGrid.Rows[e.RowIndex].Tag is FaultEntry)
-                    EventDetailsDialog((FaultEntry)eventGrid.Rows[e.RowIndex].Tag);
+                if (e.RowIndex >= 0 && grid.Rows[e.RowIndex].Tag is FaultEntry)
+                    EventDetailsDialog((FaultEntry)grid.Rows[e.RowIndex].Tag);
             };
-            eventGrid.SelectionChanged += delegate
+            grid.SelectionChanged += delegate
             {
-                if (eventGrid.SelectedRows.Count > 0 && eventGrid.SelectedRows[0].Tag is FaultEntry)
-                    eventDetail.Text = ((FaultEntry)eventGrid.SelectedRows[0].Tag).Details();
+                if (grid.SelectedRows.Count > 0 && grid.SelectedRows[0].Tag is FaultEntry)
+                    detail.Text = ((FaultEntry)grid.SelectedRows[0].Tag).Details();
             };
             Panel card = ContentCard(split);
             p.Controls["pageBody"].Controls.Add(card);
@@ -448,19 +469,22 @@ namespace ITDesktopToolkit
             scan = Action(bar, "扫描事件日志", async delegate
             {
                 scan.Enabled = false;
-                daysSelector.Enabled = false;
-                eventDetail.Text = "正在读取事件日志，请稍候。日志量较大时可能需要较长时间。";
+                daysInput.Enabled = false;
+                detail.Text = "正在读取事件日志，请稍候。日志量较大时可能需要较长时间。";
                 SetStatus("正在读取蓝屏与异常关机记录……");
                 try
                 {
-                    int days = new int[] { 7, 30, 90 }[daysSelector.SelectedIndex < 0 ? 1 : daysSelector.SelectedIndex];
-                    lastScan = await Task.Run(delegate { return EventService.Scan(days, db); });
-                    if (eventGrid.IsDisposed || eventDetail.IsDisposed) return;
-                    eventGrid.Rows.Clear();
+                    int days = new int[] { 7, 30, 90 }[daysInput.SelectedIndex < 0 ? 1 : daysInput.SelectedIndex];
+                    DatabaseService source = await ReadyDatabase();
+                    if (scan.IsDisposed) return;
+                    var fresh = await Task.Run(delegate { return EventService.Scan(days, source); });
+                    if (grid.IsDisposed || detail.IsDisposed) return;
+                    lastScan=fresh;
+                    grid.Rows.Clear();
                     foreach (FaultEntry e in lastScan.Events)
                     {
-                        int n = eventGrid.Rows.Add(e.Time.ToString("yyyy-MM-dd HH:mm:ss"), e.DisplayKind, e.EventId, e.Source, e.Summary);
-                        DataGridViewRow row = eventGrid.Rows[n];
+                        int n = grid.Rows.Add(e.Time.ToString("yyyy-MM-dd HH:mm:ss"), e.DisplayKind, e.EventId, e.Source, e.Summary);
+                        DataGridViewRow row = grid.Rows[n];
                         row.Tag = e;
                         if (e.IsBlueScreenRelated)
                         {
@@ -480,7 +504,7 @@ namespace ITDesktopToolkit
                             row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(52, 38, 18);
                         }
                     }
-                    eventDetail.Text = "扫描范围：最近 " + days + " 天\r\n" +
+                    detail.Text = "扫描范围：最近 " + days + " 天\r\n" +
                         "蓝屏事件：" + lastScan.BlueScreens + "\r\n" +
                         "带蓝屏停止码的意外重启：" + lastScan.BlueScreenRelatedRestarts + "\r\n" +
                         "异常关机/意外重启合并估计次数：" + lastScan.UnexpectedShutdowns + "（10分钟近似去重）\r\n" +
@@ -495,8 +519,8 @@ namespace ITDesktopToolkit
                         "注意：日志记录不能直接证明故障根因；本版不会分析 DMP 调用栈。";
                     SetStatus("日志扫描完成：" + lastScan.Events.Count + " 条相关记录");
                 }
-                catch (Exception ex) { eventDetail.Text = "读取日志失败：" + ex; Paths.Log("Scan exception " + ex); }
-                finally { if (!scan.IsDisposed) scan.Enabled = true; if (!daysSelector.IsDisposed) daysSelector.Enabled = true; }
+                catch (Exception ex) { if(!detail.IsDisposed)detail.Text = "读取日志失败：" + ex; Paths.Log("Scan exception " + ex); }
+                finally { if (!scan.IsDisposed) scan.Enabled = true; if (!daysInput.IsDisposed) daysInput.Enabled = true; }
             }, true);
             Action(bar, "导出故障报告", delegate
             {
@@ -505,8 +529,8 @@ namespace ITDesktopToolkit
             }, false);
             Action(bar, "查看完整事件", delegate
             {
-                if (eventGrid.SelectedRows.Count > 0 && eventGrid.SelectedRows[0].Tag is FaultEntry)
-                    EventDetailsDialog((FaultEntry)eventGrid.SelectedRows[0].Tag);
+                if (grid.SelectedRows.Count > 0 && grid.SelectedRows[0].Tag is FaultEntry)
+                    EventDetailsDialog((FaultEntry)grid.SelectedRows[0].Tag);
                 else MessageBox.Show(this, "请先选择一条事件记录。", "事件详情");
             }, false);
             Action(bar, "查询故障代码", delegate { GenericErrorSearchDialog(); }, false);
@@ -803,9 +827,9 @@ namespace ITDesktopToolkit
             RichTextBox box = ReadBox();
             Panel card = ContentCard(box);
             p.Controls["pageBody"].Controls.Add(card);
-            Action(bar, "重载数据库", delegate
+            Action(bar, "重载数据库", async delegate
             {
-                try { db.Reload(); FaultCatalog.Reload(); GenericCodeCatalog.Reload(); box.Text = DbDescription(); SetStatus("数据库已重新载入"); }
+                try { BeginDatabaseLoad(); await ReadyDatabase(); if (!box.IsDisposed) { box.Text = DbDescription(); SetStatus("数据库已重新载入"); } }
                 catch (Exception ex) { MessageBox.Show(this, "数据库读取失败：" + ex.Message); }
             }, true);
             Action(bar, "编辑硬件库", delegate
@@ -821,13 +845,13 @@ namespace ITDesktopToolkit
                 if (File.Exists(db.BugcheckPath)) CommandService.OpenTool("notepad.exe", "\"" + db.BugcheckPath + "\"");
                 else MessageBox.Show(this, "数据库文件不存在：" + db.BugcheckPath);
             }, false);
-            Action(bar, "新增硬件规则", delegate { AddRuleForm(); box.Text = DbDescription(); }, false);
+            Action(bar, "新增硬件规则", async delegate { try{await ReadyDatabase(); if (!p.IsDisposed) { AddRuleForm(); if (!box.IsDisposed) box.Text = DbDescription(); }}catch(Exception ex){if(!p.IsDisposed)MessageBox.Show(this,ex.Message);} }, false);
             Action(bar, "打开数据库目录", delegate
             {
                 if (Directory.Exists(Paths.DbDir)) CommandService.OpenTool("explorer.exe", "\"" + Paths.DbDir + "\"");
                 else MessageBox.Show(this, "数据库目录不存在。");
             }, false);
-            box.Text = DbDescription();
+            UpdateDatabaseDescription(box);
         }
         private string DbDescription()
         {
@@ -873,16 +897,19 @@ namespace ITDesktopToolkit
                     f.Controls.Add(fields[i]);
                 }
                 Button save = new Button { Text = "保存到本地数据库", Left = 390, Top = 243, Width = 200, Height = 35 };
-                save.Click += delegate
+                save.Click += async delegate
                 {
                     try
                     {
-                        db.AddHardwareRule(fields[0].Text.Trim(), fields[1].Text.Trim(), fields[2].Text.Trim(), fields[3].Text.Trim(), fields[4].Text.Trim());
+                        string[] values=new string[5];for(int i=0;i<5;i++)values[i]=fields[i].Text.Trim();save.Enabled=false;
+                        var edited=new DatabaseService();await Task.Run(delegate{edited.AddHardwareRule(values[0],values[1],values[2],values[3],values[4]);});
+                        db=edited;databaseLoad=Task.FromResult(edited);if(f.IsDisposed)return;
                         MessageBox.Show(f, "记录已追加到数据库。回到硬件页重新扫描即可匹配。", "保存成功");
                         f.DialogResult = DialogResult.OK;
                         f.Close();
                     }
-                    catch (Exception ex) { MessageBox.Show(f, "保存失败：" + ex.Message); }
+                    catch (Exception ex) { if(!f.IsDisposed)MessageBox.Show(f, "保存失败：" + ex.Message); }
+                    finally{if(!save.IsDisposed)save.Enabled=true;}
                 };
                 f.Controls.Add(save);
                 f.ShowDialog(this);

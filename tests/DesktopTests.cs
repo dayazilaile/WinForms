@@ -1,0 +1,61 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using ITDesktopToolkit;
+class DesktopTests
+{
+    static int passed;
+    static void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
+    static string Output(IDictionary<string,string> fields){return "command\r\n返回代码：0\r\n"+String.Join("\n",InspectionService.Serialize(fields).Split('\n').Skip(1).Where(x=>x.Trim().Length>0).Select(x=>"ITCFG:"+x));}
+    static void Reports()
+    {
+        var fields=new Dictionary<string,string>{{"系统/名称","测试系统"},{"系统/架构","64 位"},{"CPU/1/型号","测试 CPU"},{"主板/1/型号","测试主板"},{"网卡/示例/型号","测试网卡"}};
+        string report=InspectionService.ConfigurationFromOutput(Output(fields));Check(InspectionService.Parse(report).Count==5&&InspectionService.ConfigurationSummary(report).Contains("CPU/1/型号：测试 CPU"),"Hardware configuration remains comparable and has a readable summary");
+        bool failed=false;try{InspectionService.ConfigurationFromOutput(Output(fields).Replace("返回代码：0","返回代码：1"));}catch(InvalidOperationException){failed=true;}Check(failed,"Failed configuration process cannot return a success report");
+        fields.Remove("CPU/1/型号");failed=false;try{InspectionService.ConfigurationFromOutput(Output(fields));}catch(InvalidOperationException){failed=true;}Check(failed,"Missing CPU data cannot masquerade as a complete configuration");
+        string dir=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(dir);
+        // No system calls: production script is run with CIM/adapter fixtures on Windows.
+        string fixture=@"function Get-CimInstance { param($ClassName,$ErrorAction)
+ switch($ClassName) {
+ 'Win32_OperatingSystem' { [pscustomobject]@{Caption='Fixture OS';Version='10.0';BuildNumber='26100';OSArchitecture='64-bit'} }
+ 'Win32_Processor' { [pscustomobject]@{DeviceID='CPU0';Name='Fixture CPU';NumberOfCores=4;NumberOfLogicalProcessors=8;MaxClockSpeed=3000} }
+ 'Win32_ComputerSystem' { [pscustomobject]@{Manufacturer='Fixture OEM';Model='Fixture model';TotalPhysicalMemory=16GB;Domain='WORKGROUP'} }
+ 'Win32_BaseBoard' { [pscustomobject]@{Tag='Board0';Manufacturer='Fixture';Product='Fixture board';Version='1'} }
+ 'Win32_PhysicalMemory' { [pscustomobject]@{DeviceLocator='DIMM0';BankLabel='BANK0';Manufacturer='Fixture';PartNumber='RAM-TEST';Capacity=16GB;ConfiguredClockSpeed=3200} }
+ 'Win32_VideoController' { [pscustomobject]@{DeviceID='GPU0';Name='Fixture GPU';DriverVersion='1.0'} }
+ 'Win32_DiskDrive' { [pscustomobject]@{Index=0;Model='Fixture SSD';Size=1TB;InterfaceType='SCSI'} }
+ 'Win32_BIOS' { throw 'optional fixture BIOS unavailable' }
+ default { throw ('Unexpected CIM query '+$ClassName) }
+ }}
+function Get-NetAdapter { [pscustomobject]@{Name='Test NIC';InterfaceDescription='Fixture NIC';MacAddress='02-00-00-00-00-01';LinkSpeed='1 Gbps'} }
+function Get-NetIPConfiguration { [pscustomobject]@{InterfaceAlias='Test NIC';IPv4Address=@([pscustomobject]@{IPAddress='192.0.2.1';PrefixLength=24});IPv6Address=@([pscustomobject]@{IPAddress='2001:db8::1';PrefixLength=64});IPv4DefaultGateway=[pscustomobject]@{NextHop='192.0.2.254'};DNSServer=[pscustomobject]@{ServerAddresses=@('192.0.2.53')}} }
+function Get-Service { throw 'Service query is forbidden in configuration report' }
+function Get-SmbShare { throw 'Share query is forbidden in configuration report' }
+$lines=@(& { "+InspectionService.ConfigurationScript()+@" })
+$fields=@{}
+foreach($line in $lines){if($line.StartsWith('ITCFG:')){$cells=$line.Substring(6).Split(""`t"");$key=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($cells[0]));$fields[$key]=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($cells[1]))}}
+if($fields['CPU/1/型号'] -ne 'Fixture CPU' -or $fields['内存/1/容量'] -ne '16 GiB' -or $fields['网卡/Test NIC/型号'] -ne 'Fixture NIC' -or -not $fields.ContainsKey('读取状态/Win32_BIOS')){throw 'Hardware field mapping or optional-error reporting failed'}
+if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){throw 'Unexpected service/share fields'}
+'PASS trial fixture configuration'
+";
+        File.WriteAllText(Path.Combine(dir,"configuration-fixture.ps1"),fixture,new UTF8Encoding(true));
+    }
+    static void Software()
+    {
+        var data=new SoftwareSnapshot();data.Entries.Add(new SoftwareEntry{Name="Example",Version="1.2",Publisher="Vendor",Scope="当前用户",Architecture="32 位登记区",Location="C:\\Example",Key="Example [CurrentUser/Registry32]"});data.Entries.Add(new SoftwareEntry{Name="Other",Version="2",Publisher="Different",Scope="所有用户",Architecture="64 位登记区",Location="",Key="Other [LocalMachine/Registry64]"});
+        Check(SoftwareInventoryService.Filter(data,"vendor").Count==1&&SoftwareInventoryService.Filter(data,"  ").Count==2,"Software filter handles case, publisher and empty search");
+        Check(SoftwareInventoryService.Filter(data,"当前用户").Count==1&&data.Entries.Count==2,"Filtered software view never alters cached snapshot");
+        Check(InspectionService.CheckRequirements(data.Versions(),"Example\t1.0\nMissing").Contains("[缺失]"),"Structured inventory still supports requirements checking");
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{SoftwareInventoryService.Read(cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"Cancelled software read never enumerates registry");}
+        Check(data.Entries[0].Cells().Length==6&&data.Entries[0].Cells()[4].ToString().Contains("登记区"),"Software columns distinguish registration view from actual binary architecture");
+    }
+    static int Main(){try{
+        Reports();Software();var row=new object[]{"NIC","已连接","02:00:00:00:00:01","192.0.2.1","255.255.255.0","","","1000"};
+        Check(RouteInventoryService.AdapterFamily(row,"IPv4")&&!RouteInventoryService.AdapterFamily(row,"IPv6"),"IPv4 adapter rows excluded from IPv6 view");row[3]="2001:db8::1";Check(RouteInventoryService.AdapterFamily(row,"IPv6")&&!RouteInventoryService.AdapterFamily(row,"IPv4"),"IPv6 adapter rows excluded from IPv4 view");
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool stopped=false;try{HardwareService.Inventory(new DatabaseService(),cancel.Token);}catch(OperationCanceledException){stopped=true;}Check(stopped,"Cancelled hardware inventory performs no WMI queries");}
+        Console.WriteLine("DESKTOP TOTAL PASS "+passed);return 0;
+    }catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+}

@@ -23,6 +23,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Trial test compilation failed' }
     & .\build\TrialTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Trial tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\DesktopTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\DesktopTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Desktop test compilation failed' }
+    & .\build\DesktopTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Desktop tests failed' }
     & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe
@@ -33,7 +37,7 @@ try {
         if ($errors.Count -gt 0) { throw ($file.Name + ': ' + ($errors | Out-String)) }
         Write-Output ('PASS PowerShell parse: ' + $file.Name)
     }
-    foreach ($fixture in @('trial-dns-fixture.ps1', 'trial-connections-fixture.ps1')) {
+    foreach ($fixture in @('trial-dns-fixture.ps1', 'trial-connections-fixture.ps1', 'configuration-fixture.ps1')) {
         $result = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File (Join-Path 'build\generated-tests' $fixture) 2>&1 | Out-String)
         if ($LASTEXITCODE -ne 0 -or -not $result.Contains('PASS trial fixture')) { throw ($fixture + ': ' + $result) }
         Write-Output $result.Trim()

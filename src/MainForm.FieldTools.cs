@@ -45,33 +45,33 @@ namespace ITDesktopToolkit
                 return File.ReadAllText(d.FileName,Encoding.UTF8);
             }
         }
+        private Func<CancellationToken,string> configurationReader=InspectionService.CollectConfiguration;
+        private Func<Form,bool> configurationExportPrompt=delegate(Form owner){return MessageBox.Show(owner,"本机配置采集完成，是否现在导出报告？","导出配置报告",MessageBoxButtons.YesNo,MessageBoxIcon.Question)==DialogResult.Yes;};
         private void ConfigurationCompareDialog()
         {
             FlowLayoutPanel bar;RichTextBox report;
             using(Form f=ToolWindow("电脑配置对比",out bar,out report))
             {
-                string current=null;Dictionary<string,string> left=null,right=null;
-                report.Text="先在两台电脑分别采集并导出配置报告，再导入左/右报告比较。包含系统版本、网卡、IP/DNS、网络类别、相关服务与共享策略。\r\n报告包含电脑名、MAC、内网地址与共享路径，请按需分享。";
+                string current=null;Dictionary<string,string> left=null,right=null;CancellationTokenSource collectCancel=null;
+                f.FormClosing+=delegate{if(collectCancel!=null)collectCancel.Cancel();};
+                report.Text="先在两台电脑分别采集并导出配置报告，再导入左/右报告比较。包含系统、架构、CPU、主板、内存、显卡、磁盘与网卡配置。\r\n报告包含电脑名、MAC 与 IP 地址。";
                 Button collect=null; collect=ToolButton(bar,"采集本机报告",async delegate{
-                    collect.Enabled=false;try{current=await Task.Run(new Func<string>(InspectionService.CollectConfiguration));if(!report.IsDisposed){report.Text="本机报告已采集，可导出。\r\n";foreach(var pair in InspectionService.Parse(current))report.AppendText(pair.Key+"："+pair.Value+"\r\n");}}catch(Exception ex){if(!report.IsDisposed)report.Text=ex.Message;}finally{if(!collect.IsDisposed)collect.Enabled=true;}
+                    collect.Enabled=false;current=null;report.Text="正在后台采集系统与硬件配置…";collectCancel=new CancellationTokenSource();CancellationToken token=collectCancel.Token;
+                    try {
+                        string captured=await Task.Run(new Func<string>(delegate{return configurationReader(token);}));
+                        if(report.IsDisposed||f.IsDisposed)return;current=captured;
+                        report.Text=InspectionService.ConfigurationSummary(current);
+                        if(configurationExportPrompt(f))
+                            ExportToolReport(f,current,"配置报告_"+Environment.MachineName+".txt");
+                    }catch(OperationCanceledException){if(!report.IsDisposed)report.Text="采集已取消。";}
+                    catch(Exception ex){if(!report.IsDisposed)report.Text="采集失败："+ex.Message;}
+                    finally{collectCancel.Dispose();collectCancel=null;if(!collect.IsDisposed)collect.Enabled=true;}
                 });
                 ToolButton(bar,"导出本机对比报告",delegate{if(current==null){MessageBox.Show(f,"请先采集本机报告。");return;}ExportToolReport(f,current,"配置报告_"+Environment.MachineName+".txt");});
                 ToolButton(bar,"导入左侧报告",delegate{try{string s=ReadToolFile(f);if(s!=null){left=InspectionService.Parse(s);report.Text="左侧已载入 "+left.Count+" 项。请载入右侧后点击比较。";}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
                 ToolButton(bar,"导入右侧报告",delegate{try{string s=ReadToolFile(f);if(s!=null){right=InspectionService.Parse(s);report.Text="右侧已载入 "+right.Count+" 项。";}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
                 ToolButton(bar,"比较两份报告",delegate{if(left==null||right==null){MessageBox.Show(f,"请分别导入左右报告。");return;}report.Text=InspectionService.Compare(left,right);});
                 ToolButton(bar,"导出对比结果",delegate{ExportToolReport(f,report.Text,"配置差异.txt");}); f.ShowDialog(this);
-            }
-        }
-        private void SoftwareInspectionDialog()
-        {
-            FlowLayoutPanel bar;RichTextBox report;
-            using(Form f=ToolWindow("软件清单与环境检查",out bar,out report))
-            {
-                string requirements="";report.Text="可直接读取软件清单与 .NET Framework 登记信息，或先导入自定义要求。\r\n清单格式（UTF-8）：每行 软件名称关键词<Tab>最低版本；最低版本可空。例如：\r\nGoogle Chrome\t120.0\r\nMicrosoft Visual C++\r\n\r\n关键词不区分大小写；不同架构请用更具体的关键词。";
-                ToolButton(bar,"导入检查清单",delegate{try{string text=ReadToolFile(f);if(text!=null){InspectionService.CheckRequirements(new Dictionary<string,string>(),text);requirements=text;report.Text="已加载要求：\r\n"+text;}}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
-                Button read=null;read=ToolButton(bar,"读取并检查",delegate{string rules=requirements;DoJob(report,read,delegate{return InspectionService.SoftwareReport(rules);});});
-                ToolButton(bar,"导出结果",delegate{ExportToolReport(f,report.Text,"软件环境检查.txt");});
-                ToolButton(bar,"导出清单模板",delegate{ExportToolReport(f,"# 软件名称关键词<Tab>最低版本（可空）\r\nGoogle Chrome\t120.0\r\nMicrosoft Visual C++\r\n","软件检查清单.txt");}); f.ShowDialog(this);
             }
         }
         private void ContinuousNetworkDialog()

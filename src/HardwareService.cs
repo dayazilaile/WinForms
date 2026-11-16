@@ -2,24 +2,21 @@
 using System.Collections.Generic;
 using System.Management;
 using System.Text;
+using System.Threading;
 
 namespace ITDesktopToolkit
 {
     public static class HardwareService
     {
-        private static List<ManagementObject> Query(string query)
+        private static IEnumerable<ManagementObject> Query(string query,CancellationToken cancel=default(CancellationToken))
         {
-            List<ManagementObject> rows = new List<ManagementObject>();
-            try
-            {
-                using (ManagementObjectSearcher s = new ManagementObjectSearcher(query))
-                using (ManagementObjectCollection results = s.Get())
-                {
-                    foreach (ManagementObject m in results) rows.Add(m);
-                }
-            }
-            catch (Exception ex) { Paths.Log("WMI query failed: " + query + " " + ex.Message); }
-            return rows;
+            cancel.ThrowIfCancellationRequested();
+            ManagementObjectSearcher searcher=null;ManagementObjectCollection results=null;
+            try{searcher=new ManagementObjectSearcher(query);results=searcher.Get();}
+            catch(Exception ex){Paths.Log("WMI query failed: "+query+" "+ex.Message);}
+            if(results==null){if(searcher!=null)searcher.Dispose();yield break;}
+            try{foreach(ManagementObject row in results)using(row){cancel.ThrowIfCancellationRequested();yield return row;}}
+            finally{results.Dispose();searcher.Dispose();}
         }
         private static string P(ManagementObject m, string key)
         {
@@ -159,19 +156,20 @@ namespace ITDesktopToolkit
                 default: return "请查看设备管理器错误详情";
             }
         }
-        public static List<HardwareItem> Inventory(DatabaseService db)
+        public static List<HardwareItem> Inventory(DatabaseService db){return Inventory(db,CancellationToken.None);}
+        public static List<HardwareItem> Inventory(DatabaseService db,CancellationToken cancel)
         {
             List<HardwareItem> list = new List<HardwareItem>();
-            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,ProcessorId,SocketDesignation,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed FROM Win32_Processor"))
+            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,ProcessorId,SocketDesignation,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed FROM Win32_Processor",cancel))
             {
                 list.Add(new HardwareItem { Type = "CPU", Name = P(m,"Name"), Manufacturer = P(m,"Manufacturer"), Model = P(m,"Name"), Identifier = P(m,"ProcessorId"), Specs = P(m,"NumberOfCores") + " 核 / " + P(m,"NumberOfLogicalProcessors") + " 线程，接口报告：" + P(m,"SocketDesignation") + "，最大频率：" + P(m,"MaxClockSpeed") + " MHz" });
             }
-            foreach (ManagementObject m in Query("SELECT Manufacturer,Product,Version,SerialNumber FROM Win32_BaseBoard"))
+            foreach (ManagementObject m in Query("SELECT Manufacturer,Product,Version,SerialNumber FROM Win32_BaseBoard",cancel))
             {
                 list.Add(new HardwareItem { Type = "主板", Name = P(m,"Product"), Manufacturer = P(m,"Manufacturer"), Model = P(m,"Product"), Identifier = "", Specs = "PCB/固件报告版本：" + P(m,"Version") + "；序列号请在系统硬件信息工具中查看" });
             }
             string computerModel = ComputerSystemModel();
-            foreach (ManagementObject m in Query("SELECT Vendor,Name,Version FROM Win32_ComputerSystemProduct"))
+            foreach (ManagementObject m in Query("SELECT Vendor,Name,Version FROM Win32_ComputerSystemProduct",cancel))
             {
                 string productName = CleanSmbios(P(m, "Name"));
                 string version = CleanSmbios(P(m, "Version"));
@@ -188,7 +186,7 @@ namespace ITDesktopToolkit
                 });
             }
             int index = 0;
-            foreach (ManagementObject m in Query("SELECT Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed,DeviceLocator,BankLabel,FormFactor,SMBIOSMemoryType FROM Win32_PhysicalMemory"))
+            foreach (ManagementObject m in Query("SELECT Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed,DeviceLocator,BankLabel,FormFactor,SMBIOSMemoryType FROM Win32_PhysicalMemory",cancel))
             {
                 index++;
                 string vendor = P(m, "Manufacturer").Trim();
@@ -212,16 +210,16 @@ namespace ITDesktopToolkit
                         "；零件号：" + (String.IsNullOrWhiteSpace(part) ? "未提供" : part)
                 });
             }
-            foreach (ManagementObject m in Query("SELECT Model,Manufacturer,Size,InterfaceType,PNPDeviceID,SerialNumber FROM Win32_DiskDrive"))
+            foreach (ManagementObject m in Query("SELECT Model,Manufacturer,Size,InterfaceType,PNPDeviceID,SerialNumber FROM Win32_DiskDrive",cancel))
             {
                 list.Add(new HardwareItem { Type = "硬盘", Name = P(m,"Model"), Manufacturer = P(m,"Manufacturer"), Model = P(m,"Model"), Identifier = P(m,"PNPDeviceID"), Specs = "容量：" + GB(P(m,"Size")) + "；接口报告：" + P(m,"InterfaceType") + "；SMART 未在本版检测" });
             }
-            foreach (ManagementObject m in Query("SELECT Name,AdapterCompatibility,DriverVersion,PNPDeviceID,AdapterRAM FROM Win32_VideoController"))
+            foreach (ManagementObject m in Query("SELECT Name,AdapterCompatibility,DriverVersion,PNPDeviceID,AdapterRAM FROM Win32_VideoController",cancel))
             {
                 list.Add(new HardwareItem { Type = "显卡", Name = P(m,"Name"), Manufacturer = P(m,"AdapterCompatibility"), Model = P(m,"Name"), Identifier = P(m,"PNPDeviceID"), Specs = "驱动版本：" + P(m,"DriverVersion") + "；显存字段：" + P(m,"AdapterRAM") + " 字节（WMI 值可能截断）" });
             }
             list.AddRange(MonitorService.ReadMonitors());
-            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,PNPDeviceID,MACAddress,Speed,NetConnectionStatus,NetConnectionID,AdapterType,ServiceName FROM Win32_NetworkAdapter WHERE PhysicalAdapter=True"))
+            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,PNPDeviceID,MACAddress,Speed,NetConnectionStatus,NetConnectionID,AdapterType,ServiceName FROM Win32_NetworkAdapter WHERE PhysicalAdapter=True",cancel))
             {
                 string kind = NicClassifier.Classify(P(m,"Name"), P(m,"NetConnectionID"), P(m,"AdapterType"), P(m,"PNPDeviceID"));
                 if (kind.Length == 0) continue; // 不在硬件列表展示回环、蓝牙 PAN、虚拟、隧道等网络接口。
@@ -230,7 +228,7 @@ namespace ITDesktopToolkit
                     Specs = "连接名称：" + P(m,"NetConnectionID") + "；MAC：" + P(m,"MACAddress") +
                     "；系统速度：" + P(m,"Speed") + " bps；连接状态代码：" + P(m,"NetConnectionStatus") });
             }
-            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,PNPDeviceID,Status,ConfigManagerErrorCode FROM Win32_PnPEntity WHERE ConfigManagerErrorCode <> 0"))
+            foreach (ManagementObject m in Query("SELECT Name,Manufacturer,PNPDeviceID,Status,ConfigManagerErrorCode FROM Win32_PnPEntity WHERE ConfigManagerErrorCode <> 0",cancel))
             {
                 string error = P(m, "ConfigManagerErrorCode");
                 bool disabled = error == "22";

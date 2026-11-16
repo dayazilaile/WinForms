@@ -4,8 +4,10 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace ITDesktopToolkit
 {
@@ -57,57 +59,57 @@ namespace ITDesktopToolkit
                 return "【原状态】\r\n" + status + "\r\n【停止】\r\n" + stopped + "\r\n【启动】\r\n" + started + "\r\n【新状态】\r\n" + CommandService.Run("sc.exe", "query " + name, 2);
             });
         }
+        private sealed class StartupSnapshot : IDisposable
+        {
+            public readonly List<StartupItem> Items=new List<StartupItem>();
+            public readonly Dictionary<string,Image> Icons=new Dictionary<string,Image>(StringComparer.OrdinalIgnoreCase);
+            public void Dispose(){foreach(var image in Icons.Values)image.Dispose();Icons.Clear();}
+            public static StartupSnapshot Read(CancellationToken token)
+            {
+                var result=new StartupSnapshot();
+                try{token.ThrowIfCancellationRequested();foreach(var item in StartupService.Read()){token.ThrowIfCancellationRequested();result.Items.Add(item);string key=item.Command??"";if(!result.Icons.ContainsKey(key))result.Icons[key]=StartupIconService.ForCommand(key);}token.ThrowIfCancellationRequested();return result;}
+                catch{result.Dispose();throw;}
+            }
+        }
         private void BuildStartup()
         {
-            FlowLayoutPanel bar;
-            Panel p=Page("启动项管理", "勾选=允许启动，取消=禁止启动；不删除程序或启动项。计划任务可通过任务计划程序单独管理。", out bar);
-            DataGridView grid=Grid();
-            DataGridViewCheckBoxColumn checkbox=new DataGridViewCheckBoxColumn { Name="enabled",HeaderText="开机启动",Width=85 };
-            grid.Columns.Add(new DataGridViewImageColumn { Name="icon", HeaderText="图标", Width=42, ImageLayout=DataGridViewImageCellLayout.Zoom });
-            grid.Columns.Add(checkbox);
-            AddColumn(grid,"name","启动项",210,false);
-            AddColumn(grid,"source","来源",160,false);
-            AddColumn(grid,"command","命令 / 文件路径",400,true);
-            AddColumn(grid,"state","状态",95,false);
-            grid.ReadOnly=false;
-            foreach(DataGridViewColumn c in grid.Columns) c.ReadOnly=true;
-            checkbox.ReadOnly=false;
-            grid.RowTemplate.Height=36;
-            p.Controls["pageBody"].Controls.Add(ContentCard(grid));
-            bool loading=false;
-            Action refresh=null;
-            refresh=delegate {
-                loading=true;
-                try {
-                    grid.Rows.Clear();
-                    foreach(StartupItem x in StartupService.Read()) {
-                        System.Drawing.Image ico=StartupIconService.ForCommand(x.Command);
-                        int i=grid.Rows.Add(ico,x.Enabled,x.Name,x.Source,x.Command,x.Status);
-                        grid.Rows[i].Tag=x;
-                        if(x.Hive==Microsoft.Win32.RegistryHive.LocalMachine && !CommandService.IsAdministrator()) {
-                            grid.Rows[i].Cells[1].ReadOnly=true;
-                            grid.Rows[i].DefaultCellStyle.BackColor=Color.FromArgb(246,246,246);
-                        }
-                    }
-                } catch(Exception ex) { MessageBox.Show(this,"读取启动项失败："+ex.Message); }
-                finally { loading=false; }
+            FlowLayoutPanel bar;Label state;
+            Panel p=Workspace("启动项管理", "勾选允许启动、取消禁止启动；后台读取清单与图标，不删除启动项。", out bar,out state);
+            DataGridView grid=Grid();grid.Name="startupGrid";
+            DataGridViewCheckBoxColumn checkbox=new DataGridViewCheckBoxColumn { Name="enabled",HeaderText="开机启动",Width=100,MinimumWidth=100 };
+            grid.Columns.Add(new DataGridViewImageColumn { Name="icon", HeaderText="图标", Width=68, MinimumWidth=68, ImageLayout=DataGridViewImageCellLayout.Zoom });
+            grid.Columns.Add(checkbox);AddColumn(grid,"name","启动项",220,false);AddColumn(grid,"source","来源",170,false);AddColumn(grid,"command","命令 / 文件路径",400,true);AddColumn(grid,"state","状态",90,false);
+            grid.ReadOnly=false;foreach(DataGridViewColumn c in grid.Columns)c.ReadOnly=true;checkbox.ReadOnly=false;grid.RowTemplate.Height=36;
+            p.Controls["pageBody"].Controls.Add(grid);grid.BringToFront();
+            Button refresh=WorkspaceButton(bar,"刷新启动项",true),stop=WorkspaceButton(bar,"停止",false);
+            WorkspaceButton(bar,"Windows 启动设置",false).Click+=delegate{CommandService.OpenTool("ms-settings:startupapps","");};
+            WorkspaceButton(bar,"任务计划程序",false).Click+=delegate{CommandService.OpenTool("taskschd.msc","");};
+            WorkspaceButton(bar,"打开用户启动目录",false).Click+=delegate{CommandService.OpenTool("explorer.exe","shell:startup");};
+            var session=new PageSession(p,bar,stop,state);StartupSnapshot snapshot=null;bool loading=false;
+            p.Disposed+=delegate{if(snapshot!=null){snapshot.Dispose();snapshot=null;}};
+            refresh.Click+=async delegate {
+                grid.Enabled=false;
+                try{await session.Run(async delegate(CancellationToken token){
+                    StartupSnapshot fresh=await Task.Run(new Func<StartupSnapshot>(delegate{return StartupSnapshot.Read(token);}));
+                    if(!session.Alive){fresh.Dispose();return;}
+                    loading=true;
+                    try {
+                        grid.Rows.Clear();if(snapshot!=null)snapshot.Dispose();snapshot=fresh;
+                        var rows=new List<DataGridViewRow>();bool admin=CommandService.IsAdministrator();
+                        foreach(var item in fresh.Items){var row=new DataGridViewRow();row.CreateCells(grid,fresh.Icons[item.Command??""],item.Enabled,item.Name,item.Source,item.Command,item.Status);row.Tag=item;if(item.Hive==RegistryHive.LocalMachine&&!admin){row.Cells[1].ReadOnly=true;row.DefaultCellStyle.BackColor=Color.FromArgb(246,246,246);}rows.Add(row);}
+                        if(rows.Count>0)grid.Rows.AddRange(rows.ToArray());state.Text="已读取 "+rows.Count+" 项 · 图标与表头保持横排；可横向滚动查看完整命令";
+                    }finally{loading=false;}
+                });}finally{if(session.Alive)grid.Enabled=true;}
             };
-            grid.CurrentCellDirtyStateChanged+=delegate { if(grid.IsCurrentCellDirty) grid.CommitEdit(DataGridViewDataErrorContexts.Commit); };
-            grid.CellValueChanged+=delegate(object sender,DataGridViewCellEventArgs e) {
-                if(loading || e.RowIndex<0 || e.ColumnIndex!=1) return;
-                StartupItem item=grid.Rows[e.RowIndex].Tag as StartupItem;
-                if(item==null) return;
+            grid.CurrentCellDirtyStateChanged+=delegate{if(grid.IsCurrentCellDirty)grid.CommitEdit(DataGridViewDataErrorContexts.Commit);};
+            grid.CellValueChanged+=delegate(object sender,DataGridViewCellEventArgs e){
+                if(loading||session.Running||e.RowIndex<0||e.ColumnIndex!=1)return;var item=grid.Rows[e.RowIndex].Tag as StartupItem;if(item==null)return;
                 bool enabled=Convert.ToBoolean(grid.Rows[e.RowIndex].Cells[1].Value);
-                if(!ConfirmAction("切换启动项",item.Name+"\r\n来源："+item.Source+"\r\n操作："+(enabled?"允许开机启动":"禁止开机启动"))) { refresh();return; }
-                try { string result=StartupService.SetEnabled(item,enabled); MessageBox.Show(this,result,"启动项操作结果"); }
-                catch(Exception ex) { MessageBox.Show(this,"操作失败："+ex.Message); }
-                refresh();
+                if(ConfirmAction("切换启动项",item.Name+"\r\n来源："+item.Source+"\r\n操作："+(enabled?"允许开机启动":"禁止开机启动")))
+                {try{MessageBox.Show(this,StartupService.SetEnabled(item,enabled),"启动项操作结果");}catch(Exception ex){MessageBox.Show(this,"操作失败："+ex.Message);}}
+                refresh.PerformClick();
             };
-            Action(bar,"刷新启动项",delegate { refresh(); },true);
-            Action(bar,"Windows 启动设置",delegate { CommandService.OpenTool("ms-settings:startupapps",""); },false);
-            Action(bar,"任务计划程序",delegate { CommandService.OpenTool("taskschd.msc",""); },false);
-            Action(bar,"打开用户启动目录",delegate { CommandService.OpenTool("explorer.exe","shell:startup"); },false);
-            refresh();
+            p.BeginInvoke(new Action(delegate{if(session.Alive)refresh.PerformClick();}));
         }
         private void BuildOptimize()
         {

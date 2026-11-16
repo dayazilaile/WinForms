@@ -122,14 +122,35 @@ namespace ITDesktopToolkit
                 }
             };
         }
+        private static void FillTable(DataGridView grid,IEnumerable<object[]> source)
+        {
+            var rows=new List<DataGridViewRow>();foreach(var cells in source){var row=new DataGridViewRow();row.CreateCells(grid,cells);rows.Add(row);}
+            grid.SuspendLayout();try{grid.Rows.Clear();if(rows.Count>0)grid.Rows.AddRange(rows.ToArray());}finally{grid.ResumeLayout();}
+        }
         private void BuildRouteWorkspace()
         {
-            FlowLayoutPanel bar;Label state;Panel root=Workspace("路由与 MAC","网卡、IP、硬件地址、路由和邻居缓存 · 进入页面自动读取",out bar,out state);
+            FlowLayoutPanel bar;Label state;Panel root=Workspace("路由与 MAC","默认 IPv4，可切换 IPv6；地址、网关、DNS 按地址族分开 · 进入自动读取",out bar,out state);
+            var family=new ComboBox{Width=110,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(0,23,12,0),AccessibleName="地址族"};family.Items.AddRange(new object[]{"IPv4","IPv6"});family.SelectedIndex=0;bar.Controls.Add(family);
             Button refresh=WorkspaceButton(bar,"刷新信息",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前表",false);
-            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC 地址","IP 地址","IPv4 掩码","网关","DNS","接口速率（Mbps）"});
-            DataGridView routes=AddResultTab(tabs,"路由表",new[]{"网卡","地址族","目标网段","下一跳","跃点数","协议"}),neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});root.Controls["pageBody"].Controls.Add(tabs.Tabs);tabs.Tabs.BringToFront();
-            var session=new PageSession(root,bar,stop,state);export.Click+=delegate{ExportToolReport(this,TableCsv(tabs.Grids[tabs.Tabs.SelectedIndex]),"路由与MAC.csv");};
-            refresh.Click+=async delegate{adapters.Rows.Clear();routes.Rows.Clear();neighbors.Rows.Clear();await session.Run(async delegate(CancellationToken token){RouteInventory data=await Task.Run(new Func<RouteInventory>(delegate{return RouteInventoryService.Read(token);}));if(!session.Alive)return;adapters.Rows.Clear();routes.Rows.Clear();neighbors.Rows.Clear();foreach(var row in data.Adapters)adapters.Rows.Add(row);foreach(var row in data.Routes)routes.Rows.Add(row);foreach(var row in data.Neighbors)neighbors.Rows.Add(row);state.Text=data.Warning.Length==0?"已读取 · 邻居缓存不是完整设备清单":data.Warning;});};
+            var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC 地址","IPv4 地址","IPv4 掩码","网关","DNS","速率 Mb/s"});
+            DataGridView routes=AddResultTab(tabs,"路由表",new[]{"网卡","地址族","目标网段","下一跳","跃点数","协议"}),neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});
+            SetColumnWidths(adapters,new[]{180,84,180,180,160,200,260,110});SetColumnWidths(routes,new[]{180,80,230,230,85,120});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
+            adapters.Columns[1].MinimumWidth=84;neighbors.Columns[3].MinimumWidth=90;
+            adapters.Columns[7].ToolTipText="接口链路速率，单位 Mb/s（Mbps）；不是实际下载速度";
+            root.Controls["pageBody"].Controls.Add(tabs);tabs.BringToFront();
+            var session=new PageSession(root,bar,stop,state);RouteInventory data=null;
+            Action render=delegate {
+                string selected=family.Text;bool ipv6=selected=="IPv6";
+                adapters.Columns[3].HeaderText=selected+" 地址";adapters.Columns[3].Width=ipv6?350:180;adapters.Columns[4].Visible=!ipv6;
+                adapters.Columns[5].Width=ipv6?350:200;adapters.Columns[6].Width=ipv6?350:260;neighbors.Columns[1].Width=ipv6?350:200;routes.Columns[2].Width=ipv6?350:230;routes.Columns[3].Width=ipv6?350:230;
+                var ar=new List<object[]>();var rr=new List<object[]>();var nr=new List<object[]>();
+                if(data!=null){foreach(var row in data.Adapters)if(RouteInventoryService.AdapterFamily(row,selected))ar.Add(row);foreach(var row in data.Routes)if(Convert.ToString(row[1])==selected)rr.Add(row);foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
+                FillTable(adapters,ar);FillTable(routes,rr);FillTable(neighbors,nr);
+                if(data!=null)state.Text=data.Warning.Length==0?"已读取 · 当前 "+selected+" · 邻居缓存不是完整设备清单":data.Warning;
+            };
+            family.SelectedIndexChanged+=delegate{render();};
+            export.Click+=delegate{ExportToolReport(this,TableCsv(tabs.Grids[tabs.SelectedIndex]),"路由与MAC_"+family.Text+".csv");};
+            refresh.Click+=async delegate{await session.Run(async delegate(CancellationToken token){var fresh=await Task.Run(new Func<RouteInventory>(delegate{return RouteInventoryService.Read(token);}));if(!session.Alive)return;data=fresh;render();});};
             root.BeginInvoke(new Action(delegate{if(session.Alive)refresh.PerformClick();}));
         }
         private void BuildWifiWorkspace()

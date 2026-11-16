@@ -1,7 +1,5 @@
 using System;
 using System.Drawing;
-using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace ITDesktopToolkit
@@ -11,24 +9,18 @@ namespace ITDesktopToolkit
         private TreeView navigationTree;
         private TextBox navigationSearch;
         private bool rebuildingNavigation;
-        private string expandedNavigationGroup="系统与硬件",lastNavigationPage="系统概览";
+        private string expandedNavigationGroup="系统与硬件";
         private void BuildNavigation(Panel sidebar)
         {
-            try
-            {
-                string file=Path.Combine(Paths.UserDir,"navigation-v050.txt");
-                if(File.Exists(file))
-                {
-                    string[] lines=File.ReadAllLines(file,Encoding.UTF8);
-                    if(lines.Length>=2&&NavigationCatalog.Find(lines[1])!=null){expandedNavigationGroup=lines[0];lastNavigationPage=lines[1];}
-                }
-            }catch(Exception ex){Paths.Log("Read navigation state: "+ex.Message);}
-            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.2 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
-            var searchPanel=new Panel{Dock=DockStyle.Top,Height=66,Padding=new Padding(10,24,10,8)};
-            var caption=new Label{Text="搜索功能（如 DNS / 打印机）",Left=10,Top=3,AutoSize=true,ForeColor=Color.LightSteelBlue};searchPanel.Controls.Add(caption);
-            navigationSearch=new TextBox{Dock=DockStyle.Fill,AccessibleName="搜索功能"};
-            var clear=new Button{Text="×",Dock=DockStyle.Right,Width=27,AccessibleName="清空搜索",TabStop=false,BackColor=Color.White,ForeColor=Navy,FlatStyle=FlatStyle.Flat};
-            searchPanel.Controls.Add(navigationSearch);searchPanel.Controls.Add(clear);
+            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.3 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
+            var searchPanel=new Panel{Dock=DockStyle.Top,Height=76,Padding=new Padding(10,28,10,10)};
+            var caption=new Label{Text="搜索功能（如 DNS / 打印机）",Left=12,Top=5,AutoSize=true,ForeColor=Color.LightSteelBlue};searchPanel.Controls.Add(caption);
+            var searchFrame=new Panel{Dock=DockStyle.Fill,BackColor=Color.White,Padding=new Padding(8,6,4,6),Name="navigationSearchFrame"};
+            navigationSearch=new TextBox{Dock=DockStyle.Fill,AccessibleName="搜索功能",BorderStyle=BorderStyle.None,BackColor=Color.White,ForeColor=Navy};
+            var clear=new Button{Text="",Name="navigationClear",Dock=DockStyle.Right,Width=24,AccessibleName="清空搜索",TabStop=false,Visible=false,BackColor=Color.White,ForeColor=Color.FromArgb(100,116,139),FlatStyle=FlatStyle.Flat,Cursor=Cursors.Hand};
+            clear.FlatAppearance.BorderSize=0;clear.FlatAppearance.MouseOverBackColor=Color.FromArgb(241,245,249);clear.FlatAppearance.MouseDownBackColor=Color.FromArgb(226,232,240);
+            clear.Paint+=delegate(object sender,PaintEventArgs e){e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;float x=clear.ClientSize.Width/2F,y=clear.ClientSize.Height/2F;using(var pen=new Pen(clear.ForeColor,1.5F)){e.Graphics.DrawLine(pen,x-3.5F,y-3.5F,x+3.5F,y+3.5F);e.Graphics.DrawLine(pen,x+3.5F,y-3.5F,x-3.5F,y+3.5F);}};
+            searchFrame.Controls.Add(navigationSearch);searchFrame.Controls.Add(clear);searchPanel.Controls.Add(searchFrame);searchFrame.BringToFront();
             navigationTree=new TreeView{Dock=DockStyle.Fill,BackColor=Navy,ForeColor=Color.White,BorderStyle=BorderStyle.None,ShowLines=false,ShowRootLines=false,ShowPlusMinus=false,FullRowSelect=true,HideSelection=false,Indent=18,ItemHeight=38,AccessibleName="功能分类与二级菜单"};
             navigationTree.DrawMode=TreeViewDrawMode.OwnerDrawAll;
             navigationTree.DrawNode+=delegate(object sender,DrawTreeNodeEventArgs e){
@@ -43,17 +35,21 @@ namespace ITDesktopToolkit
             };
             sidebar.Controls.Add(navigationTree);sidebar.Controls.Add(searchPanel);sidebar.Controls.Add(logo);
             clear.Click+=delegate{navigationSearch.Clear();navigationSearch.Focus();};
-            navigationSearch.TextChanged+=delegate{PopulateNavigation();};
+            navigationSearch.TextChanged+=delegate{clear.Visible=navigationSearch.Text.Length>0;PopulateNavigation();};
             navigationSearch.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.KeyCode==Keys.Enter){foreach(TreeNode group in navigationTree.Nodes)if(group.Nodes.Count>0){navigationTree.SelectedNode=group.Nodes[0];break;}e.Handled=true;e.SuppressKeyPress=true;}};
             navigationTree.AfterSelect+=delegate(object sender,TreeViewEventArgs e){if(rebuildingNavigation)return;if(e.Node.Tag is string){ShowPage((string)e.Node.Tag);}};
             navigationTree.NodeMouseClick+=delegate(object sender,TreeNodeMouseClickEventArgs e){if(e.Button==MouseButtons.Left&&e.Node.Tag==null&&e.Node.Nodes.Count>0){if(e.Node.IsExpanded)e.Node.Collapse();else e.Node.Expand();}};
             navigationTree.KeyDown+=delegate(object sender,KeyEventArgs e){TreeNode n=navigationTree.SelectedNode;if(n!=null&&n.Tag==null&&(e.KeyCode==Keys.Enter||e.KeyCode==Keys.Space)){if(n.IsExpanded)n.Collapse();else n.Expand();e.Handled=true;e.SuppressKeyPress=true;}};
             navigationTree.BeforeExpand+=delegate(object sender,TreeViewCancelEventArgs e){if(rebuildingNavigation||navigationSearch.Text.Trim().Length>0)return;foreach(TreeNode n in navigationTree.Nodes)if(n!=e.Node)n.Collapse();};
-            navigationTree.AfterExpand+=delegate(object sender,TreeViewEventArgs e){if(!rebuildingNavigation&&navigationSearch.Text.Trim().Length==0){expandedNavigationGroup=e.Node.Text;SaveNavigationState();}};
-            navigationTree.AfterCollapse+=delegate(object sender,TreeViewEventArgs e){if(!rebuildingNavigation&&navigationSearch.Text.Trim().Length==0&&expandedNavigationGroup==e.Node.Text){expandedNavigationGroup="";SaveNavigationState();}};
+            navigationTree.AfterExpand+=delegate(object sender,TreeViewEventArgs e){if(!rebuildingNavigation&&navigationSearch.Text.Trim().Length==0){expandedNavigationGroup=e.Node.Text;}};
+            navigationTree.AfterCollapse+=delegate(object sender,TreeViewEventArgs e){if(!rebuildingNavigation&&navigationSearch.Text.Trim().Length==0&&expandedNavigationGroup==e.Node.Text){expandedNavigationGroup="";}};
             if(expandedNavigationGroup=="安全与维护")expandedNavigationGroup="系统与硬件";
             PopulateNavigation();
-            Shown+=delegate{SelectNavigationPage(lastNavigationPage);};
+            Shown+=async delegate {
+                expandedNavigationGroup="系统与硬件";PopulateNavigation();SelectNavigationPage("系统概览");
+                try{await ReadyDatabase();if(!IsDisposed)SetStatus("当前页面："+currentPage+"   |   数据库：硬件 "+db.HardwareRuleCount+" 条 / 蓝屏 "+db.BugcheckRuleCount+" 条");}
+                catch(Exception ex){Paths.Log("Load DB: "+ex);if(!IsDisposed)SetStatus("数据库读取失败："+ex.Message);}
+            };
         }
         private static System.Drawing.Drawing2D.GraphicsPath Rounded(Rectangle r,int radius)
         {
@@ -80,11 +76,6 @@ namespace ITDesktopToolkit
         {
             foreach(TreeNode group in navigationTree.Nodes)foreach(TreeNode child in group.Nodes)if((string)child.Tag==key){rebuildingNavigation=true;if(group.IsExpanded)navigationTree.SelectedNode=child;rebuildingNavigation=false;ShowPage(key);if(group.IsExpanded)child.EnsureVisible();return;}
             ShowPage("系统概览");
-        }
-        private void SaveNavigationState()
-        {
-            try{File.WriteAllLines(Path.Combine(Paths.UserDir,"navigation-v050.txt"),new string[]{expandedNavigationGroup,currentPage.Length==0?lastNavigationPage:currentPage},Encoding.UTF8);}
-            catch(Exception ex){Paths.Log("Save navigation state: "+ex.Message);}
         }
     }
 }

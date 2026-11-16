@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
@@ -18,11 +19,10 @@ namespace ITDesktopToolkit
             var result=new RouteInventory();
             foreach(var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
-                cancel.ThrowIfCancellationRequested();var ip=nic.GetIPProperties();var gateways=new List<string>();foreach(var g in ip.GatewayAddresses)gateways.Add(g.Address.ToString());
-                var dns=new List<string>();foreach(var d in ip.DnsAddresses)dns.Add(d.ToString());byte[] mac=nic.GetPhysicalAddress().GetAddressBytes();string hardware=mac.Length==0?"未知":BitConverter.ToString(mac).Replace('-',':');
+                cancel.ThrowIfCancellationRequested();var ip=nic.GetIPProperties();byte[] mac=nic.GetPhysicalAddress().GetAddressBytes();string hardware=mac.Length==0?"未知":BitConverter.ToString(mac).Replace('-',':');
                 string speed="未知";try{if(nic.Speed>0)speed=(nic.Speed/1000000.0).ToString("0.###",CultureInfo.InvariantCulture);}catch(NetworkInformationException){}
-                if(ip.UnicastAddresses.Count==0)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,"无地址","未知",String.Join(", ",gateways.ToArray()),String.Join(", ",dns.ToArray()),speed});
-                foreach(var a in ip.UnicastAddresses)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,a.Address.ToString(),a.Address.AddressFamily==AddressFamily.InterNetwork?a.IPv4Mask.ToString():"未知",String.Join(", ",gateways.ToArray()),String.Join(", ",dns.ToArray()),speed});
+                if(ip.UnicastAddresses.Count==0)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,"无地址","未知",GatewayText(ip,AddressFamily.InterNetwork),DnsText(ip,AddressFamily.InterNetwork),speed});
+                foreach(var a in ip.UnicastAddresses)result.Adapters.Add(new object[]{nic.Name,AdapterState(nic.OperationalStatus),hardware,a.Address.ToString(),a.Address.AddressFamily==AddressFamily.InterNetwork?a.IPv4Mask.ToString():"未知",GatewayText(ip,a.Address.AddressFamily),DnsText(ip,a.Address.AddressFamily),speed});
             }
             string raw=PowerShellService.RunScript(@"$ErrorActionPreference='Stop';function Emit([string]$kind,[object[]]$cells){$values=@($cells|ForEach-Object{[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_))});'ITNET|'+$kind+'|'+($values -join '|')};try{
 foreach($r in Get-NetRoute){Emit 'route' @($r.InterfaceAlias,$r.AddressFamily,$r.DestinationPrefix,$r.NextHop,$r.RouteMetric,$r.Protocol)}
@@ -31,6 +31,12 @@ foreach($n in Get-NetNeighbor){Emit 'neighbor' @($n.InterfaceAlias,$n.IPAddress,
             if(!raw.Replace("\r","").Contains("\n返回代码：0\n")){result.Warning="路由/邻居读取未完成。"+raw;return result;}
             ParseRows(raw,result);cancel.ThrowIfCancellationRequested();return result;
         }
+        private static string GatewayText(IPInterfaceProperties properties,AddressFamily family)
+        {var values=new List<string>();foreach(var g in properties.GatewayAddresses)if(g.Address.AddressFamily==family)values.Add(g.Address.ToString());return String.Join(", ",values.ToArray());}
+        private static string DnsText(IPInterfaceProperties properties,AddressFamily family)
+        {var values=new List<string>();foreach(var d in properties.DnsAddresses)if(d.AddressFamily==family)values.Add(d.ToString());return String.Join(", ",values.ToArray());}
+        internal static bool AdapterFamily(object[] row,string family)
+        {IPAddress ip;return IPAddress.TryParse(Convert.ToString(row[3]),out ip)?(ip.AddressFamily==AddressFamily.InterNetwork?"IPv4":"IPv6")==family:family=="IPv4";}
         private static string AdapterState(OperationalStatus state){switch(state){case OperationalStatus.Up:return "已连接";case OperationalStatus.Down:return "未连接";case OperationalStatus.Dormant:return "休眠";case OperationalStatus.NotPresent:return "设备未就绪";default:return state.ToString();}}
         private static string Family(string value){return value=="2"?"IPv4":value=="23"?"IPv6":value;}
         private static string NeighborState(string value){switch(value){case "0":case "Unreachable":return "不可达";case "1":case "Incomplete":return "解析中";case "2":case "Probe":return "探测中";case "3":case "Delay":return "延迟";case "4":case "Stale":return "缓存过期";case "5":case "Reachable":return "可达";case "6":case "Permanent":return "静态";default:return value;}}

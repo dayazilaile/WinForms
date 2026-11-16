@@ -80,7 +80,7 @@ namespace ITDesktopToolkit
                     AutoStep x=autoSteps[i];steps.Rows.Add("☰",i+1,x.Type,x.A,x.B,x.C);
                 }
                 StringBuilder b=new StringBuilder("【当前动作流程】\r\n");
-                b.AppendLine("排序提示：按住动作行最左侧的 ☰ 拖动；仍可使用上移 / 下移按钮。");
+                b.AppendLine("排序：按住 ☰ 拖动。复用：选中一行后点“复制动作”或按 Ctrl+D，副本插在下一行，再双击修改参数。");
                 if(autoSteps.Count==0)b.AppendLine("尚无动作，请点击『添加动作』。");
                 for(int i=0;i<autoSteps.Count;i++)b.AppendLine((i+1)+". "+autoSteps[i]);
                 b.AppendLine("\r\n【脚本生成选项】");
@@ -220,8 +220,13 @@ namespace ITDesktopToolkit
             Action(bar,"添加动作",delegate {AutoStep a=EditStep(null);if(a!=null){autoSteps.Add(a);show();}},true);
             Action(bar,"编辑动作",delegate {int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0)return;AutoStep a=EditStep(autoSteps[i]);if(a!=null){autoSteps[i]=a;show();}},false);
             Action(bar,"删除动作",delegate {int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i>=0&&ConfirmAction("删除动作","删除第 "+(i+1)+" 个动作？")){autoSteps.RemoveAt(i);show();}},false);
-            Action(bar,"上移",delegate {MoveAutoStep(steps,show,-1);},false);
-            Action(bar,"下移",delegate {MoveAutoStep(steps,show,1);},false);
+            Action duplicate=delegate {
+                int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0||i>=autoSteps.Count)return;
+                AutoStep original=autoSteps[i];autoSteps.Insert(i+1,new AutoStep{Type=original.Type,A=original.A,B=original.B,C=original.C});
+                show();SelectAutoStepRow(steps,i+1);
+            };
+            Action(bar,"复制动作",delegate{duplicate();},false);
+            steps.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.Control&&e.KeyCode==Keys.D){duplicate();e.Handled=true;e.SuppressKeyPress=true;}};
             Action(bar,"保存流程",delegate {using(SaveFileDialog d=new SaveFileDialog()){
                 d.Filter="自动化工作流 (*.workflow.txt)|*.workflow.txt";d.FileName="我的自动化流程.workflow.txt";
                 if(d.ShowDialog(this)==DialogResult.OK){try{AutomationService.Save(d.FileName,autoSteps,readOptions());MessageBox.Show(this,"流程和生成选项均已保存。","保存成功");}catch(Exception ex){MessageBox.Show(this,ex.Message);}}
@@ -257,13 +262,6 @@ namespace ITDesktopToolkit
             Action(bar,"清空全部",delegate {if(ConfirmAction("清空流程","清空全部动作？（生成选项保持不变）")){autoSteps.Clear();show();}},false);
             steps.CellDoubleClick+=delegate(object sender,DataGridViewCellEventArgs e){if(e.RowIndex>=0 && e.ColumnIndex!=0){AutoStep a=EditStep(autoSteps[e.RowIndex]);if(a!=null){autoSteps[e.RowIndex]=a;show();}}};
             show();
-        }
-        private void MoveAutoStep(DataGridView grid,Action show,int delta)
-        {
-            int i=grid.CurrentRow==null?-1:grid.CurrentRow.Index,j=i+delta;
-            if(i<0||j<0||j>=autoSteps.Count)return;
-            AutoStep temp=autoSteps[i];autoSteps[i]=autoSteps[j];autoSteps[j]=temp;
-            show();SelectAutoStepRow(grid,j);
         }
         private void SelectAutoStepRow(DataGridView grid,int index)
         {

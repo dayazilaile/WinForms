@@ -18,6 +18,14 @@ namespace ITDesktopToolkit
             string[] headers=key=="DNS记录查询"?new[]{"名称","类型","返回内容","TTL（秒）","区段"}:key=="ICMP路由跟踪"?new[]{"跳数","响应地址","状态","单跳耗时（ms）"}:key=="本机连接与监听"?new[]{"协议","本地地址","本地端口","远端地址","远端端口","状态","PID","进程"}:key=="系统代理诊断"?new[]{"来源","设置项","已隐藏敏感内容的值"}:new[]{"网卡","核对项","结果","依据 / 说明"};
             DataGridView grid=Table(headers);root.Controls["pageBody"].Controls.Add(grid);grid.BringToFront();
             if(key=="系统代理诊断"){grid.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill;grid.Columns[0].FillWeight=20;grid.Columns[1].FillWeight=25;grid.Columns[2].FillWeight=55;grid.DefaultCellStyle.WrapMode=DataGridViewTriState.True;grid.AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.AllCells;}
+            if(key=="网络配置核对")
+            {
+                grid.AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill;
+                int[] minimum={140,120,90,260};float[] weight={22,18,14,46};
+                for(int i=0;i<4;i++){grid.Columns[i].MinimumWidth=minimum[i];grid.Columns[i].FillWeight=weight[i];}
+                grid.Columns[3].DefaultCellStyle.WrapMode=DataGridViewTriState.True;
+                grid.AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.DisplayedCells;
+            }
             TextBox target=null,server=null,hops=null;ComboBox type=null;CheckBox listen=null;
             if(key=="DNS记录查询")
             {
