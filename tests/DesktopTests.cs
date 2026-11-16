@@ -62,8 +62,22 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{SoftwareInventoryService.Read(cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"Cancelled software read never enumerates registry");}
         Check(data.Entries[0].Cells().Length==6&&data.Entries[0].Cells()[4].ToString().Contains("登记区"),"Software columns distinguish registration view from actual binary architecture");
     }
+    static void Uninstall()
+    {
+        string directory=@"C:\Windows\System32",vendor=@"C:\Program Files\Example\uninstall.exe";var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase){vendor,directory+@"\msiexec.exe",directory+@"\rundll32.exe",@"C:\Program.exe"};Func<string,bool> exists=files.Contains;
+        var plan=SoftwareUninstallService.Build("Example","\""+vendor+"\" --uninstall --name \"test name\"",false,"",false,directory,exists);
+        Check(plan.CanStart&&plan.FileName==vendor&&plan.Arguments=="--uninstall --name \"test name\"","Quoted uninstall path and original arguments remain separate");
+        plan=SoftwareUninstallService.Build("Example",vendor+" /remove",false,"",false,directory,exists);Check(plan.CanStart&&plan.FileName==vendor,"Unquoted vendor path with spaces does not fall back to Program.exe");
+        string code="{12345678-1234-1234-1234-1234567890AB}";plan=SoftwareUninstallService.Build("MSI","ignored",true,code,false,directory,exists);Check(plan.CanStart&&plan.FileName==directory+@"\msiexec.exe"&&plan.Arguments=="/x "+code,"MSI product registration launches system installer in remove mode without silent flags");
+        plan=SoftwareUninstallService.Build("MSI","MsiExec.exe /I"+code+" /qn",false,"",false,directory,exists);Check(plan.CanStart&&plan.Arguments=="/x "+code&&!plan.Arguments.Contains("/qn"),"MSI maintenance command becomes an interactive product removal");
+        Check(!SoftwareUninstallService.Build("Locked",vendor,false,"",true,directory,exists).CanStart,"NoRemove registration does not become forced removal");
+        Check(!SoftwareUninstallService.Build("Missing",@"C:\Missing\uninstall.exe /remove",false,"",false,directory,exists).CanStart,"Missing registered executable never launches a different program");
+        Check(!SoftwareUninstallService.Build("Bad","\""+vendor+"\"bad",false,"",false,directory,exists).CanStart&&!SoftwareUninstallService.Build("Bad",vendor+"\n/remove",false,"",false,directory,exists).CanStart,"Malformed quote and control characters are rejected before process creation");
+        Check(!SoftwareUninstallService.Build("Bare","uninstall.exe",false,"",false,directory,exists).CanStart,"Uninstaller is not searched in the working directory or PATH");
+        Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
+    }
     static int Main(){try{
-        Reports();Software();
+        Reports();Software();Uninstall();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

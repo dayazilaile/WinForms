@@ -50,5 +50,25 @@ class StudentWakeTests
         results.Clear();await StudentWakeService.WakeCore(new[]{Machine()},net,9,CancellationToken.None,delegate{throw new SocketException((int)SocketError.NetworkUnreachable);},results.Add);Check(results.Single().Packets==0&&results[0].Summary.Contains("发送失败"),"UDP failure is shown as failure rather than successful wake");
         failed=false;try{await StudentWakeService.WakeCore(new[]{Machine()},net,0,CancellationToken.None,send,results.Add);}catch(ArgumentException){failed=true;}Check(failed,"Invalid UDP port rejected before sending");
     }
-    static int Main(){try{Packets();Storage();Sending().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static async Task Discovery()
+    {
+        var network=WakeNetwork.Create("test","192.0.2.1","255.255.255.0");var targets=StudentDiscoveryService.Targets("192.0.2.0/24",network);
+        Check(targets.Length==253&&!targets.Contains("192.0.2.1")&&!targets.Contains("192.0.2.0")&&!targets.Contains("192.0.2.255"),"Discovery excludes source, network and broadcast addresses");
+        Reject(()=>StudentDiscoveryService.Targets("198.51.100.0/24",network),"Student discovery refuses another local subnet");Reject(()=>StudentDiscoveryService.Targets("192.0.2.0/21",network),"Discovery range cap rejects oversized scans");
+        var broad=WakeNetwork.Create("test","10.2.1.1","255.255.0.0");Check(StudentDiscoveryService.Targets("10.2.0.0/22",broad).Length==1021,"Student scan supports bounded /22 ranges");
+        int active=0,maximum=0,calls=0;object gate=new object();var rows=new List<StudentScanRow>();var cache=new Dictionary<string,string>{{"192.0.2.3","02:00:00:00:00:03"}};
+        Func<string,CancellationToken,Task<StudentScanRow>> fake=async delegate(string ip,CancellationToken token){int count=Interlocked.Increment(ref active);lock(gate){maximum=Math.Max(maximum,count);calls++;}try{await Task.Delay(2,token);return new StudentScanRow{IPv4=ip,Mac=ip=="192.0.2.2"?"02:00:00:00:00:02":"",Name="发现设备",Status="ARP 未确认"};}finally{Interlocked.Decrement(ref active);}};
+        var result=await StudentDiscoveryService.ScanCore(new[]{"192.0.2.2","192.0.2.3","192.0.2.4"},network,cache,CancellationToken.None,fake,delegate(StudentScanRow row){lock(gate)rows.Add(row);});
+        Check(result.Rows.Count==3&&result.Rows.Single(x=>x.IPv4=="192.0.2.3").Status.Contains("缓存")&&!result.Rows.Single(x=>x.IPv4=="192.0.2.4").CanSave,"ARP/cache results are distinguished and unresolved devices cannot be saved");
+        calls=0;await StudentDiscoveryService.ScanCore(targets.Take(40).ToArray(),network,new Dictionary<string,string>(),CancellationToken.None,fake,delegate{});Check(maximum<=12&&calls==40,"ARP discovery concurrency never exceeds twelve workers");
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();calls=0;try{await StudentDiscoveryService.ScanCore(targets,network,cache,cancel.Token,fake,delegate{});}catch(OperationCanceledException){}Check(calls==0,"Pre-cancelled discovery makes no ARP probes");}
+        var conflicts=new[]{new StudentScanRow{IPv4="192.0.2.2",Mac="02:00:00:00:00:02"},new StudentScanRow{IPv4="192.0.2.3",Mac="02:00:00:00:00:02"}};StudentDiscoveryService.MarkConflicts(conflicts);Check(conflicts.All(x=>x.Conflict&&x.Status.Contains("ARP 代理")),"Repeated MACs are flagged for review rather than treated as distinct students");
+        var existing=Machine("02:00:00:00:00:02","192.0.2.2");existing.Name="手工名称";existing.Note="保留备注";
+        var merged=StudentDiscoveryService.MergeDiscovered(new[]{existing,Machine("02:00:00:00:00:09","192.0.2.9")},new[]{new StudentScanRow{IPv4="192.0.2.20",Mac=existing.Mac,Name="不覆盖"},new StudentScanRow{IPv4="192.0.2.3",Mac="02:00:00:00:00:03",Name="新学生机"}},"新机房");
+        Check(merged.Count==3&&merged.Single(x=>x.Mac==existing.Mac).Name=="手工名称"&&merged.Single(x=>x.Mac==existing.Mac).Room==existing.Room&&merged.Single(x=>x.Mac==existing.Mac).IPv4=="192.0.2.20","Rescan updates IP while preserving known names/rooms and nonresponding records");
+        Check(merged.Single(x=>x.Mac=="02:00:00:00:00:03").Room=="新机房","Newly discovered students are placed in the chosen room");
+        Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],conflicts,"机房"),"Duplicate selected MACs cannot silently overwrite scanned devices");Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],new[]{new StudentScanRow{IPv4="192.0.2.5",Name="未知"}},"机房"),"Unresolved scan rows cannot be persisted");
+        string encoded="command\n返回代码：0\nITSTUDENT|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("192.0.2.3"))+"|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("02-00-00-00-00-03"));Check(StudentDiscoveryService.ParseCache(encoded,network)["192.0.2.3"]=="02:00:00:00:00:03","Structured neighbor cache maps normalized MACs to on-link addresses");
+    }
+    static int Main(){try{Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

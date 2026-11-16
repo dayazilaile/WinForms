@@ -7,6 +7,7 @@ namespace ITDesktopToolkit
     public sealed class SoftwareEntry
     {
         public string Name,Version,Publisher,Scope,Architecture,Location,Key;
+        public RegistryHive RegistryHive;public RegistryView RegistryView;public string RegistryName="";public bool HasUninstaller;
         public object[] Cells(){return new object[]{Name,Version,Publisher,Scope,Architecture,Location};}
     }
     public sealed class SoftwareSnapshot
@@ -35,7 +36,7 @@ namespace ITDesktopToolkit
                             token.ThrowIfCancellationRequested();
                             try{using(var key=uninstall.OpenSubKey(name)){
                                 if(key==null)continue;string display=Convert.ToString(key.GetValue("DisplayName"));if(String.IsNullOrWhiteSpace(display))continue;
-                                result.Entries.Add(new SoftwareEntry{Name=display,Version=Convert.ToString(key.GetValue("DisplayVersion")),Publisher=Convert.ToString(key.GetValue("Publisher")),Location=Convert.ToString(key.GetValue("InstallLocation")),Scope=hive==RegistryHive.LocalMachine?"所有用户":"当前用户",Architecture=view==RegistryView.Registry64?"64 位登记区":"32 位登记区",Key=display+" ["+hive+"/"+view+"]"});
+                                result.Entries.Add(new SoftwareEntry{Name=display,Version=Convert.ToString(key.GetValue("DisplayVersion")),Publisher=Convert.ToString(key.GetValue("Publisher")),Location=Convert.ToString(key.GetValue("InstallLocation")),Scope=hive==RegistryHive.LocalMachine?"所有用户":"当前用户",Architecture=view==RegistryView.Registry64?"64 位登记区":"32 位登记区",Key=display+" ["+hive+"/"+view+"]",RegistryHive=hive,RegistryView=view,RegistryName=name,HasUninstaller=Convert.ToString(key.GetValue("NoRemove","0"))!="1"&&(!String.IsNullOrWhiteSpace(Convert.ToString(key.GetValue("UninstallString")))||Convert.ToString(key.GetValue("WindowsInstaller","0"))=="1")});
                             }}catch(System.Security.SecurityException ex){result.Warnings.Add(hive+"/"+name+"："+ex.Message);}
                         }
                     }
