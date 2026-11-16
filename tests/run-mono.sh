@@ -31,3 +31,6 @@ done
 
 "${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/DesktopTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/DesktopTests.cs"
 "${mono[@]}" "$repo/build/DesktopTests.exe"
+
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/StudentWakeTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/StudentWakeTests.cs"
+"${mono[@]}" "$repo/build/StudentWakeTests.exe"

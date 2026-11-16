@@ -18,8 +18,8 @@ class NetworkToolsTests
     static void Reject(Action action,string name){try{action();}catch(ArgumentException){Check(true,name);return;}throw new Exception("Should reject: "+name);}
     static void Catalog()
     {
-        var entries=NavigationCatalog.All;Check(entries.Length==29&&entries.Select(e=>e.Key).Distinct().Count()==29,"29 unique reachable navigation entries");
-        Check(entries.Select(e=>e.Group).Distinct().Count()==6,"Six navigation groups (including trial)");
+        var entries=NavigationCatalog.All;Check(entries.Length==30&&entries.Select(e=>e.Key).Distinct().Count()==30,"30 unique reachable navigation entries");
+        Check(entries.Select(e=>e.Group).Distinct().Count()==7,"Seven navigation groups (including trial)");
         Check(NavigationCatalog.Search("wifi").Count==2&&NavigationCatalog.Search("  WiFi  分析 ").Single().Key=="Wi-Fi分析","Case-insensitive multi-term WiFi aliases");
         Check(NavigationCatalog.Search("DNS").Any(e=>e.Key=="网络诊断")&&NavigationCatalog.Search("NOT_FOUND_QUERY").Count==0,"Search DNS alias and empty results");
         entries[0]=null;Check(NavigationCatalog.All[0]!=null,"Catalog caller cannot replace internal entries");

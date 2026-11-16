@@ -26,11 +26,13 @@ namespace ITDesktopToolkit
             new NavigationEntry("网络诊断","主机发现","局域网 网段 扫描 IP"),
             new NavigationEntry("网络诊断","路由与MAC","路由表 ARP 邻居 网卡 MAC IP"),
             new NavigationEntry("网络诊断","DHCP与网络服务","租约 DHCP DNS HTTP TCP 检测"),
+            new NavigationEntry("网络诊断","系统代理诊断","代理 WinHTTP PAC 环境变量"),
             new NavigationEntry("无线与设备","Wi-Fi分析","WiFi 无线 WLAN 信号 信道"),
             new NavigationEntry("无线与设备","已保存的Wi-Fi","WiFi 无线 密码 WLAN 配置"),
             new NavigationEntry("无线与设备","摄像头发现","摄像头 ONVIF WS-Discovery IPC"),
             new NavigationEntry("共享与打印","共享文件夹","SMB NTFS 账号 Guest 权限"),
             new NavigationEntry("共享与打印","打印机与服务","打印机 队列 Spooler 驱动"),
+            new NavigationEntry("学生机管理","学生机与网络唤醒","学生机 机房 WOL Wake-on-LAN 远程 开机 MAC 清单"),
             new NavigationEntry("自动化与工具","BAT 自动化","BAT 脚本 工作流 鼠标 键盘"),
             new NavigationEntry("自动化与工具","电脑配置对比","差异 对比 报告"),
             new NavigationEntry("自动化与工具","Windows 管理入口","控制面板 工具"),
@@ -38,7 +40,6 @@ namespace ITDesktopToolkit
             new NavigationEntry("新增 · 待试用","DNS记录查询","新增 试用 DNS A AAAA MX TXT SRV PTR"),
             new NavigationEntry("新增 · 待试用","ICMP路由跟踪","新增 试用 tracert traceroute 跳数 路径 Ping"),
             new NavigationEntry("新增 · 待试用","本机连接与监听","新增 试用 TCP UDP 本机连接 监听 进程 PID"),
-            new NavigationEntry("新增 · 待试用","系统代理诊断","新增 试用 代理 WinHTTP PAC 环境变量"),
             new NavigationEntry("新增 · 待试用","网络配置核对","新增 试用 IPv4 网关 DNS APIPA 子网 本机"),
         };
         public static NavigationEntry[] All {get{return (NavigationEntry[])entries.Clone();}}

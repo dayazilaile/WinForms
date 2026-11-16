@@ -27,6 +27,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Desktop test compilation failed' }
     & .\build\DesktopTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Desktop tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\StudentWakeTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\StudentWakeTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Student wake test compilation failed' }
+    & .\build\StudentWakeTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Student wake tests failed' }
     & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe

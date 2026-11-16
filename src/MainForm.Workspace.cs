@@ -146,6 +146,16 @@ namespace ITDesktopToolkit
             var rows=new List<DataGridViewRow>();foreach(var cells in source){var row=new DataGridViewRow();row.CreateCells(grid,cells);rows.Add(row);}
             grid.SuspendLayout();try{grid.Rows.Clear();if(rows.Count>0)grid.Rows.AddRange(rows.ToArray());}finally{grid.ResumeLayout();}
         }
+        private DataGridView RouteTable()
+        {
+            var grid=Table(new[]{"目标","掩码","下一跳","网卡","跃点","协议","地址族"});grid.Name="routeTable";
+            SetColumnWidths(grid,new[]{180,60,180,145,70,100,80});grid.Columns[1].ToolTipText="前缀长度，IPv4 为 0–32，IPv6 为 0–128";return grid;
+        }
+        private static void BindRouteTable(DataGridView grid,RouteInventory data,string family)
+        {
+            var rows=new List<object[]>();foreach(var row in data.Routes)if(Convert.ToString(row[1])==family)rows.Add(RouteInventoryService.RouteCells(row));
+            grid.Columns[0].Width=family=="IPv6"?320:180;grid.Columns[2].Width=family=="IPv6"?320:180;FillTable(grid,rows);
+        }
         private Func<CancellationToken,RouteInventory> routeReader=RouteInventoryService.Read;
         private void BuildRouteWorkspace()
         {
@@ -153,8 +163,8 @@ namespace ITDesktopToolkit
             var family=new ComboBox{Width=110,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(0,23,12,0),AccessibleName="地址族"};family.Items.AddRange(new object[]{"IPv4","IPv6"});family.SelectedIndex=0;bar.Controls.Add(family);
             Button refresh=WorkspaceButton(bar,"刷新信息",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前表",false);
             var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC","IPv4","掩码","IPv6","IPv4 网关","IPv4 DNS","速率 Mb"});
-            DataGridView routes=AddResultTab(tabs,"路由表",new[]{"网卡","地址族","目标网段","下一跳","跃点数","协议"}),neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});
-            SetColumnWidths(adapters,new[]{125,78,150,155,58,270,175,220,95});SetColumnWidths(routes,new[]{180,80,230,230,85,120});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
+            DataGridView routes=RouteTable();tabs.Add("路由表",routes);DataGridView neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});
+            SetColumnWidths(adapters,new[]{125,78,150,155,58,270,175,220,95});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
             adapters.Columns[1].MinimumWidth=78;neighbors.Columns[3].MinimumWidth=90;
             adapters.Columns[4].ToolTipText="IPv4 子网掩码的前缀长度，例如 255.255.255.0 显示为 24";
             adapters.Columns[8].ToolTipText="接口链路速率，单位 Mb/s（Mbps）；不是实际下载速度";
@@ -163,10 +173,10 @@ namespace ITDesktopToolkit
             Action render=delegate {
                 string selected=family.Text;bool ipv6=selected=="IPv6";
                 adapters.Columns[6].HeaderText=selected+" 网关";adapters.Columns[7].HeaderText=selected+" DNS";
-                adapters.Columns[6].Width=ipv6?290:175;adapters.Columns[7].Width=ipv6?320:220;neighbors.Columns[1].Width=ipv6?330:175;routes.Columns[2].Width=ipv6?330:200;routes.Columns[3].Width=ipv6?330:200;
-                var ar=new List<object[]>();var rr=new List<object[]>();var nr=new List<object[]>();
-                if(data!=null){foreach(var row in data.Adapters)ar.Add(row.Cells(selected));foreach(var row in data.Routes)if(Convert.ToString(row[1])==selected)rr.Add(row);foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
-                FillTable(adapters,ar);FillTable(routes,rr);FillTable(neighbors,nr);
+                adapters.Columns[6].Width=ipv6?290:175;adapters.Columns[7].Width=ipv6?320:220;neighbors.Columns[1].Width=ipv6?330:175;
+                var ar=new List<object[]>();var nr=new List<object[]>();
+                if(data!=null){foreach(var row in data.Adapters)ar.Add(row.Cells(selected));foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
+                FillTable(adapters,ar);if(data!=null)BindRouteTable(routes,data,selected);FillTable(neighbors,nr);
                 if(data!=null)state.Text=data.Warning.Length==0?"已读取 · 当前 "+selected+" · 邻居缓存不是完整设备清单":data.Warning;
             };
             family.SelectedIndexChanged+=delegate{render();};

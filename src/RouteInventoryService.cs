@@ -49,6 +49,13 @@ foreach($n in Get-NetNeighbor){Emit 'neighbor' @($n.InterfaceAlias,$n.IPAddress,
         }
         internal static string PrefixText(string mask)
         {int? prefix=MaskPrefix(mask);return prefix.HasValue?prefix.Value.ToString(CultureInfo.InvariantCulture):"未知";}
+        internal static object[] RouteCells(object[] row)
+        {
+            string cidr=Convert.ToString(row[2],CultureInfo.InvariantCulture);string[] parts=cidr.Split('/');IPAddress address;int prefix;
+            if(parts.Length!=2||!IPAddress.TryParse(parts[0],out address)||!Int32.TryParse(parts[1],NumberStyles.None,CultureInfo.InvariantCulture,out prefix)||prefix<0||prefix>(address.AddressFamily==AddressFamily.InterNetwork?32:128))throw new FormatException("路由目标或掩码位数无效："+cidr);
+            string family=address.AddressFamily==AddressFamily.InterNetwork?"IPv4":"IPv6";if(Convert.ToString(row[1])!=family)throw new FormatException("路由地址族与目标地址不一致。");
+            return new object[]{address.ToString(),prefix,row[3],row[0],row[4],row[5],family};
+        }
         private static string AdapterState(OperationalStatus state){switch(state){case OperationalStatus.Up:return "已连接";case OperationalStatus.Down:return "未连接";case OperationalStatus.Dormant:return "休眠";case OperationalStatus.NotPresent:return "设备未就绪";default:return state.ToString();}}
         private static string Family(string value){return value=="2"?"IPv4":value=="23"?"IPv6":value;}
         private static string NeighborState(string value){switch(value){case "0":case "Unreachable":return "不可达";case "1":case "Incomplete":return "解析中";case "2":case "Probe":return "探测中";case "3":case "Delay":return "延迟";case "4":case "Stale":return "缓存过期";case "5":case "Reachable":return "可达";case "6":case "Permanent":return "静态";default:return value;}}

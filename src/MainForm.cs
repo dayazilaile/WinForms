@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.4 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.5 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -111,7 +111,8 @@ namespace ITDesktopToolkit
                 case "Wi-Fi分析": BuildWifiWorkspace(); break;
                 case "已保存的Wi-Fi": BuildFieldTool(name,"查看本机已保存的无线配置，密码需单独确认显示。",delegate{NetworkInformationDialog(3);}); break;
                 case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
-                case "DNS记录查询":case "ICMP路由跟踪":case "本机连接与监听":case "系统代理诊断":case "网络配置核对":BuildTrialWorkspace(name);break;
+                case "DNS记录查询":case "ICMP路由跟踪":case "本机连接与监听":case "系统代理诊断":case "网络配置核对":BuildDiagnosticWorkspace(name);break;
+                case "学生机与网络唤醒": BuildStudentWorkspace(); break;
                 case "离线数据库": BuildDatabase(); break;
             }
             SetStatus("当前页面：" + name + "   |   数据库：硬件 " + db.HardwareRuleCount + " 条 / 蓝屏 " + db.BugcheckRuleCount + " 条");
@@ -333,22 +334,25 @@ namespace ITDesktopToolkit
 
         private void BuildNetwork()
         {
-            FlowLayoutPanel bar;
-            Panel p = Page("网络诊断", "仅展示识别到的有线/无线网卡及 IP/DNS/DHCP/网关；支持 Ping、DNS、TCP 与路由检查。", out bar);
-            bar.Height=96;bar.WrapContents=true;
-            RichTextBox box = ReadBox();
-            Panel card = ContentCard(box);
-            p.Controls["pageBody"].Controls.Add(card);
-            Button refresh = null;
-            refresh = Action(bar, "刷新网卡", delegate { DoJob(box, refresh, NetworkService.GetReport); }, true);
-            Action(bar, "Ping / DNS / 端口", delegate { NetworkDialog(box); }, false);
-            Action(bar, "设置 IP / DNS / MAC", delegate { NetworkConfigDialog(); }, false);
-            Button route = null;
-            route = Action(bar, "查看路由表", delegate { DoJob(box, route, delegate { return CommandService.Run("route.exe", "print", 2); }); }, false);
-            Button all = null;
-            all = Action(bar, "ipconfig /all", delegate { DoJob(box, all, delegate { return CommandService.Run("ipconfig.exe", "/all", 2); }); }, false);
-            Action(bar, "导出当前结果", delegate { SaveText("网络诊断_" + Environment.MachineName + ".txt", box.Text); }, false);
-            DoJob(box, refresh, NetworkService.GetReport);
+            FlowLayoutPanel bar;Label state;Panel root=Workspace("网络诊断","网卡信息与路由表分开显示；路由表按目标、掩码、下一跳排列",out bar,out state);
+            var host=new Panel{Dock=DockStyle.Fill,BackColor=Color.White};RichTextBox box=ReadBox();DataGridView routes=RouteTable();routes.Visible=false;host.Controls.Add(box);host.Controls.Add(routes);root.Controls["pageBody"].Controls.Add(host);host.BringToFront();
+            Button refresh=WorkspaceButton(bar,"刷新网卡",true),test=WorkspaceButton(bar,"Ping / DNS / 端口",false),settings=WorkspaceButton(bar,"设置 IP / DNS / MAC",false),route=WorkspaceButton(bar,"查看路由表",false),all=WorkspaceButton(bar,"ipconfig /all",false),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前结果",false);
+            var family=new ComboBox{Width=100,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(0,23,8,0),AccessibleName="路由地址族",Visible=false};family.Items.AddRange(new object[]{"IPv4","IPv6"});family.SelectedIndex=0;bar.Controls.Add(family);
+            var session=new PageSession(root,bar,stop,state);RouteInventory routeData=null;
+            Func<Func<CancellationToken,string>,Task> readText=async delegate(Func<CancellationToken,string> read){
+                box.Visible=true;routes.Visible=false;family.Visible=false;box.BringToFront();
+                await session.Run(async delegate(CancellationToken token){string value=await Task.Run(new Func<string>(delegate{token.ThrowIfCancellationRequested();var text=read(token);token.ThrowIfCancellationRequested();return text;}));if(session.Alive){box.Text=value;state.Text="本机信息已读取，请核对实际返回内容";}});
+            };
+            refresh.Click+=async delegate{await readText(delegate{return NetworkService.GetReport();});};
+            all.Click+=async delegate{await readText(delegate(CancellationToken token){return CommandService.Run("ipconfig.exe","/all",2,token);});};
+            test.Click+=delegate{box.Visible=true;routes.Visible=false;family.Visible=false;box.BringToFront();NetworkDialog(box);};settings.Click+=delegate{NetworkConfigDialog();};
+            family.SelectedIndexChanged+=delegate{if(routeData!=null)BindRouteTable(routes,routeData,family.Text);};
+            route.Click+=async delegate{
+                box.Visible=false;routes.Visible=true;family.Visible=true;routes.BringToFront();
+                await session.Run(async delegate(CancellationToken token){var data=await Task.Run(new Func<RouteInventory>(delegate{return routeReader(token);}));if(!session.Alive)return;BindRouteTable(routes,data,family.Text);routeData=data;state.Text=data.Warning.Length==0?"路由表已读取 · 目标、掩码、下一跳":"路由读取未完成："+data.Warning;});
+            };
+            export.Click+=delegate{if(routes.Visible)ExportToolReport(this,TableCsv(routes),"路由表.csv");else SaveText("网络诊断_"+Environment.MachineName+".txt",box.Text);};
+            root.BeginInvoke(new Action(delegate{if(session.Alive)refresh.PerformClick();}));
         }
         private void NetworkDialog(RichTextBox output)
         {

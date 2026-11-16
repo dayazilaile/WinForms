@@ -54,7 +54,11 @@ class WorkspaceTests
         int[] ports=NetworkDiscoveryService.ParsePorts(CommonPorts.DefaultText);Check(ports.Length==CommonPorts.Count&&ports.Length>=100&&ports.Distinct().Count()==ports.Length,"Comprehensive common TCP preset, unique and within scan cap");
         Check(new[]{21,22,23,25,53,80,135,139,443,445,993,1433,1521,3306,3389,5432,6379,8080,8443,9100,27017}.All(p=>ports.Contains(p)),"Common infrastructure, database, web, mail and printer ports covered");
         Check(CommonPorts.Service(22).Contains("SSH")&&CommonPorts.Service(65000)=="自定义","Service names are hints, unknown ports explicit");
-        Check(NavigationCatalog.All.Select(e=>e.Group).Distinct().Count()==6&&NavigationCatalog.Find("U 盘检查与防护").Group=="系统与硬件","Safety functions merged into system/hardware");
+        Check(NavigationCatalog.All.Select(e=>e.Group).Distinct().Count()==7&&NavigationCatalog.Find("U 盘检查与防护").Group=="系统与硬件","Safety functions merged into system/hardware");
+        var mapped=RouteInventoryService.RouteCells(new object[]{"以太网","IPv4","192.0.2.0/24","192.0.2.1","10","NetMgmt"});Check((string)mapped[0]=="192.0.2.0"&&(int)mapped[1]==24&&(string)mapped[2]=="192.0.2.1","Route rows put destination, numeric mask and next hop first");
+        mapped=RouteInventoryService.RouteCells(new object[]{"以太网","IPv6","::/0","fe80::1","10","NetMgmt"});Check((string)mapped[0]=="::"&&(int)mapped[1]==0,"IPv6 default route retains zero-length prefix");
+        FormatReject(()=>RouteInventoryService.RouteCells(new object[]{"x","IPv4","192.0.2.0/33","x","0","x"}),"Malformed route prefix rejected");
+        FormatReject(()=>RouteInventoryService.RouteCells(new object[]{"x","IPv6","192.0.2.0/24","x","0","x"}),"Route family mismatch rejected");
         var result=new RouteInventory();string encoded=String.Join("|",new[]{"以太网","2","0.0.0.0/0","192.168.1.1","25","NetMgmt"}.Select(x=>Convert.ToBase64String(Encoding.UTF8.GetBytes(x)))).ToString();
         RouteInventoryService.ParseRows("command header\nITNET|route|"+encoded,result);Check(result.Routes.Count==1&&(string)result.Routes[0][0]=="以太网"&&(string)result.Routes[0][1]=="IPv4","Structured route rows independent of localized text layout");
         string neighbor=String.Join("|",new[]{"以太网","::1","00:00:00:00:00:00","5","23"}.Select(x=>Convert.ToBase64String(Encoding.UTF8.GetBytes(x))));RouteInventoryService.ParseRows("ITNET|neighbor|"+neighbor,result);Check((string)result.Neighbors[0][3]=="可达"&&(string)result.Neighbors[0][4]=="IPv6","Numeric native neighbor/family enums normalized for readable tables");
