@@ -135,7 +135,51 @@ class NavigationUiTests
                     int scannerCalls=0,wakeBeforeScan=sends.Count;
                     Func<string,WakeNetwork,System.Threading.CancellationToken,Action<StudentScanRow>,System.Threading.Tasks.Task<StudentScanResult>> fakeScanner=async delegate(string range,WakeNetwork source,System.Threading.CancellationToken token,Action<StudentScanRow> receive){scannerCalls++;var result=new StudentScanResult();foreach(var item in new[]{new StudentScanRow{IPv4="192.0.2.21",Mac="02:00:00:00:00:11",Name="旧设备新IP",Status="ARP 模拟结果"},new StudentScanRow{IPv4="192.0.2.15",Mac="02:00:00:00:00:15",Name="学生机05",Status="ARP 模拟结果"}}){await System.Threading.Tasks.Task.Delay(5,token);result.Rows.Add(item);receive(item);}return result;};
                     main.GetType().GetField("studentScanner",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,fakeScanner);
-                    bool scanStarted=false,scanSaved=false;using(var timer=new Timer{Interval=40}){timer.Tick+=delegate{foreach(Form f in Application.OpenForms.Cast<Form>().ToArray())if(f.Text=="扫描网段并保存学生机"){var begin=Find<Button>(f).Single(b=>b.Text=="扫描网段");if(!scanStarted){scanStarted=true;Check(scannerCalls==0,"Opening student scan dialog makes no ARP query before Start");Find<TextBox>(f).Single(t=>t.AccessibleName=="保存到机房").Text="测试机房D";begin.PerformClick();}else if(begin.Enabled&&!scanSaved&&Find<DataGridView>(f).Single().Rows.Count==2){scanSaved=true;Screenshot(f,"student-scan-v057.png");Find<Button>(f).Single(b=>b.Text=="勾选可用设备").PerformClick();Find<Button>(f).Single(b=>b.Text=="保存勾选").PerformClick();}break;}};timer.Start();Find<Button>(studentBody).Single(b=>b.Text=="扫描网段并保存").PerformClick();timer.Stop();}
+                    bool scanStarted=false,scanSaved=false;int saveStage=0;string beforeSave=File.ReadAllText(rosterPath);
+                    using(var timer=new Timer{Interval=40})
+                    {
+                        timer.Tick+=delegate{
+                            var popup=Application.OpenForms.Cast<Form>().FirstOrDefault(f=>f.Text=="保存到教室");
+                            if(popup!=null)
+                            {
+                                var name=Find<TextBox>(popup).Single(t=>t.AccessibleName=="教室名称");
+                                if(saveStage==1)
+                                {
+                                    Check(name.Text=="测试机房C"&&popup.AcceptButton!=null&&popup.CancelButton!=null,"Save popup defaults to selected classroom and supports confirm/cancel keys");
+                                    Check(File.ReadAllText(rosterPath)==beforeSave,"Opening classroom save popup does not persist unconfirmed results");
+                                    saveStage=2;Find<Button>(popup).Single(b=>b.Text=="取消").PerformClick();
+                                }
+                                else if(saveStage==3)
+                                {
+                                    name.Text="   ";Find<Button>(popup).Single(b=>b.Text=="确认保存").PerformClick();
+                                    Check(popup.Visible&&File.ReadAllText(rosterPath)==beforeSave&&Find<Label>(popup).Any(l=>l.Text.Contains("保存未完成")),"Blank classroom stays in save popup without changing stored roster");
+                                    name.Text=" 测试机房D ";Screenshot(popup,"student-save-v058.png");saveStage=4;Find<Button>(popup).Single(b=>b.Text=="确认保存").PerformClick();
+                                }
+                                return;
+                            }
+                            foreach(Form f in Application.OpenForms.Cast<Form>().ToArray())if(f.Text=="扫描网段并保存学生机")
+                            {
+                                var begin=Find<Button>(f).Single(b=>b.Text=="扫描网段");var results=Find<DataGridView>(f).Single();
+                                if(!scanStarted)
+                                {
+                                    scanStarted=true;Check(scannerCalls==0&&!Find<TextBox>(f).Any(t=>t.AccessibleName=="保存到机房"),"Opening student scan needs no classroom name and makes no ARP query before Start");begin.PerformClick();
+                                }
+                                else if(begin.Enabled&&!scanSaved&&results.Rows.Count==2)
+                                {
+                                    scanSaved=true;Find<Button>(f).Single(b=>b.Text=="保存勾选").PerformClick();
+                                    Check(!Application.OpenForms.Cast<Form>().Any(d=>d.Text=="保存到教室")&&File.ReadAllText(rosterPath)==beforeSave,"Save with no selected devices asks for selection before opening classroom popup");
+                                    Find<Button>(f).Single(b=>b.Text=="勾选可用设备").PerformClick();Screenshot(f,"student-scan-v058.png");saveStage=1;f.BeginInvoke(new Action(delegate{Find<Button>(f).Single(b=>b.Text=="保存勾选").PerformClick();}));
+                                }
+                                else if(saveStage==2)
+                                {
+                                    Check(results.Rows.Count==2&&results.Rows.Cast<DataGridViewRow>().All(r=>Convert.ToBoolean(r.Cells[0].Value))&&File.ReadAllText(rosterPath)==beforeSave,"Cancel keeps scan results and checked devices without changing the roster");
+                                    saveStage=3;f.BeginInvoke(new Action(delegate{Find<Button>(f).Single(b=>b.Text=="保存勾选").PerformClick();}));
+                                }
+                                break;
+                            }
+                        };
+                        timer.Start();Find<Button>(studentBody).Single(b=>b.Text=="扫描网段并保存").PerformClick();timer.Stop();
+                    }
                     var learned=StudentRoster.Load(rosterPath);Check(scanSaved&&scannerCalls==1&&learned.Count==5&&learned.Single(x=>x.Mac=="02:00:00:00:00:11").Name=="学生机01"&&learned.Single(x=>x.Mac=="02:00:00:00:00:11").IPv4=="192.0.2.21","Reviewed scan results persist new students and update known IPs without replacing names");
                     Check(room.SelectedItem.ToString()=="测试机房D"&&studentGrid.Rows.Count==1&&sends.Count==wakeBeforeScan,"Saving selects the chosen room and never automatically wakes discovered devices");Screenshot(main,"students-v057.png");
                     Navigate(main,tree,"端口扫描");main.GetType().GetField("studentMachines",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,null);Navigate(main,tree,"学生机与网络唤醒");Application.DoEvents();var persistedBody=Field<Panel>(main,"content");Pump(()=>Find<Button>(persistedBody).Single(b=>b.Text=="刷新本机网卡").Enabled,30000);var persistedRoom=Find<ComboBox>(persistedBody).Single(c=>c.AccessibleName=="机房");
