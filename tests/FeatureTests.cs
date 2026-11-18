@@ -48,6 +48,25 @@ class FeatureTests
         File.WriteAllText(Path.Combine(folder,"failure.ps1"),AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("检查文件存在",marker+".missing"),S("重试结束")},BatInputEngine.SendInput,0,false),new System.Text.UTF8Encoding(true));
         File.WriteAllText(Path.Combine(folder,"legacy-flow.ps1"),AutomationService.MakeScript(steps,BatInputEngine.Legacy,0,false),new System.Text.UTF8Encoding(true));
     }
+    static void ConditionBlocks()
+    {
+        var yes=new List<AutoStep>{S("等待毫秒","1000"),S("输入文字","中文; 'quoted'")};var no=new List<AutoStep>{S("等待毫秒","2000")};
+        foreach(var condition in new[]{S("如果网络可达","192.0.2.1"),S("如果文件存在",@"D:\test.txt"),S("如果系统版本","22000","26100")}){var block=AutomationBlockService.Compose(condition,yes,no,true);Check(block.Count==6&&block[3].Type=="否则"&&block[5].Type=="结束条件","Two branch actions compose a closed workflow: "+condition.Type);}
+        var inner=AutomationBlockService.Compose(S("如果文件存在",@"D:\a.txt"),yes,new List<AutoStep>(),false);var outer=AutomationBlockService.Compose(S("如果网络可达","192.0.2.1"),inner,no,true);
+        var range=AutomationBlockService.Range(outer,0);Check(range.Count==outer.Count&&range.ElseIndex==inner.Count+1,"Nested branch split uses only the matching outer else");
+        var child=AutomationBlockService.Range(outer,1);Check(child.Count==inner.Count&&child.ElseIndex==-1,"Legacy nested condition without else is preserved as a whole block");
+        Check(AutomationBlockService.Range(outer,range.ElseIndex).Start==0&&AutomationBlockService.Range(outer,outer.Count-1).Start==0,"Else and end select their own matching condition header");
+        var copy=AutomationBlockService.CopyRange(outer,0,outer.Count);copy[2].A="changed";Check(outer[2].A=="1000"&&!Object.ReferenceEquals(copy[0],outer[0]),"Editing or copying a branch draft cannot mutate the original workflow");
+        Reject(()=>AutomationBlockService.Compose(S("如果网络可达","192.0.2.1"),new List<AutoStep>{S("否则")},no,true),"A branch cannot inject an unmatched else into its parent");
+        Reject(()=>AutomationBlockService.Compose(S("如果网络可达","192.0.2.1"),new List<AutoStep>{S("如果文件存在","x")},no,true),"An unclosed nested condition cannot escape a branch");
+        Reject(()=>AutomationBlockService.Compose(S("如果系统版本","26100","22000"),yes,no,true),"Condition editor rejects reversed system build bounds before save");
+        Reject(()=>AutomationBlockService.Compose(S("如果网络可达","192.0.2.1,192.0.2.2"),yes,no,true),"Network condition accepts one host rather than a list");
+        var moved=new List<AutoStep>{S("等待毫秒","9")};moved.AddRange(outer);int destination=AutomationBlockService.Move(moved,1,0);AutomationService.ValidateFlow(moved);Check(destination==0&&moved.Last().A=="9"&&moved.Count==outer.Count+1,"Drag moves a complete nested condition without separating delimiters");
+        string before=String.Join("|",moved.Select(x=>x.ToString()));AutomationBlockService.Move(moved,0,2);Check(before==String.Join("|",moved.Select(x=>x.ToString())),"Dropping a condition inside its own range leaves it unchanged");
+        var retry=new List<AutoStep>{S("重试开始","2","1"),S("等待毫秒","10"),S("重试结束")};Check(AutomationBlockService.Range(retry,2).Start==0&&AutomationBlockService.Range(retry,2).Count==3,"Retry end also resolves to its complete original retry block");
+        Reject(()=>AutomationBlockService.Range(new List<AutoStep>{S("如果网络可达","192.0.2.1")},0),"Incomplete legacy condition cannot silently consume following workflow rows");
+        string path=Path.Combine(Path.GetTempPath(),"branch-test-"+Guid.NewGuid()+".txt");try{AutomationService.Save(path,outer);var loaded=AutomationService.Load(path);Check(loaded.Select(x=>x.ToString()).SequenceEqual(outer.Select(x=>x.ToString())),"Generated branch blocks round-trip using the existing workflow format");}finally{if(File.Exists(path))File.Delete(path);}
+    }
     static void MouseBridge()
     {
         string bridge=(string)typeof(AutomationService).GetField("CursorWinApiBridge",BindingFlags.NonPublic|BindingFlags.Static).GetValue(null);
@@ -109,5 +128,5 @@ class FeatureTests
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{MouseBridge();Reports();Flow();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

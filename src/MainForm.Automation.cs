@@ -80,7 +80,7 @@ namespace ITDesktopToolkit
                     AutoStep x=autoSteps[i];steps.Rows.Add("☰",i+1,x.Type,x.A,x.B,x.C);
                 }
                 StringBuilder b=new StringBuilder("【当前动作流程】\r\n");
-                b.AppendLine("排序：按住 ☰ 拖动。复用：选中一行后点“复制动作”或按 Ctrl+D，副本插在下一行，再双击修改参数。");
+                b.AppendLine("排序：按住 ☰ 拖动。复用：选中一行后点“复制动作”或按 Ctrl+D，普通动作副本插在下一行，条件/重试块整块复制、拖动与删除；双击条件可编辑两个分支。");
                 if(autoSteps.Count==0)b.AppendLine("尚无动作，请点击『添加动作』。");
                 for(int i=0;i<autoSteps.Count;i++)b.AppendLine((i+1)+". "+autoSteps[i]);
                 b.AppendLine("\r\n【脚本生成选项】");
@@ -199,13 +199,7 @@ namespace ITDesktopToolkit
                 steps.Invalidate();
                 if(token==null || !Object.ReferenceEquals(token.Source,steps) ||
                    token.Index<0 || token.Index>=autoSteps.Count || target<0 || target>autoSteps.Count) return;
-                int newIndex=target>token.Index?target-1:target;
-                if(newIndex==token.Index) return;
-                AutoStep item=autoSteps[token.Index];
-                autoSteps.RemoveAt(token.Index);
-                autoSteps.Insert(newIndex,item);
-                show();
-                SelectAutoStepRow(steps,newIndex);
+                try{int newIndex=AutomationBlockService.Move(autoSteps,token.Index,target);show();SelectAutoStepRow(steps,newIndex);}catch(Exception ex){MessageBox.Show(this,ex.Message,"移动动作");}
             };
             steps.Paint+=delegate(object sender,PaintEventArgs e) {
                 if(insertionIndex<0 || steps.Rows.Count==0) return;
@@ -217,13 +211,13 @@ namespace ITDesktopToolkit
                 using(Pen pen=new Pen(Color.FromArgb(36,124,220),3F))
                     e.Graphics.DrawLine(pen,0,y,steps.ClientSize.Width-2,y);
             };
-            Action(bar,"添加动作",delegate {AutoStep a=EditStep(null);if(a!=null){autoSteps.Add(a);show();}},true);
-            Action(bar,"编辑动作",delegate {int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0)return;AutoStep a=EditStep(autoSteps[i]);if(a!=null){autoSteps[i]=a;show();}},false);
-            Action(bar,"删除动作",delegate {int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i>=0&&ConfirmAction("删除动作","删除第 "+(i+1)+" 个动作？")){autoSteps.RemoveAt(i);show();}},false);
+            Action(bar,"添加动作",delegate {var added=EditStep(null);if(added!=null){autoSteps.AddRange(added);show();}},true);
+            Action editSelected=delegate{int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0)return;try{var range=AutomationBlockService.Range(autoSteps,i);List<AutoStep> edited;if(AutomationBlockService.IsCondition(autoSteps[range.Start].Type))edited=EditConditionBlock(autoSteps,range);else{range=new AutoStepRange{Start=i,Count=1};edited=EditStep(autoSteps[i]);}if(edited!=null){autoSteps.RemoveRange(range.Start,range.Count);autoSteps.InsertRange(range.Start,edited);show();SelectAutoStepRow(steps,range.Start);}}catch(Exception ex){MessageBox.Show(this,ex.Message,"编辑动作");}};
+            Action(bar,"编辑动作",delegate{editSelected();},false);
+            Action(bar,"删除动作",delegate {int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0)return;try{var range=AutomationBlockService.Range(autoSteps,i);if(ConfirmAction("删除动作","删除第 "+(range.Start+1)+" 行"+(range.Count>1?"及其完整条件/重试块（共 "+range.Count+" 行）":"")+"？")){autoSteps.RemoveRange(range.Start,range.Count);show();}}catch(Exception ex){MessageBox.Show(this,ex.Message);}},false);
             Action duplicate=delegate {
                 int i=steps.CurrentRow==null?-1:steps.CurrentRow.Index;if(i<0||i>=autoSteps.Count)return;
-                AutoStep original=autoSteps[i];autoSteps.Insert(i+1,new AutoStep{Type=original.Type,A=original.A,B=original.B,C=original.C});
-                show();SelectAutoStepRow(steps,i+1);
+                try{var range=AutomationBlockService.Range(autoSteps,i);var copy=AutomationBlockService.CopyRange(autoSteps,range.Start,range.Count);int next=range.Start+range.Count;autoSteps.InsertRange(next,copy);show();SelectAutoStepRow(steps,next);}catch(Exception ex){MessageBox.Show(this,ex.Message,"复制动作");}
             };
             Action(bar,"复制动作",delegate{duplicate();},false);
             steps.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.Control&&e.KeyCode==Keys.D){duplicate();e.Handled=true;e.SuppressKeyPress=true;}};
@@ -260,7 +254,7 @@ namespace ITDesktopToolkit
                 }catch(Exception ex){MessageBox.Show(this,"生成失败："+ex.Message);}}
             }},true);
             Action(bar,"清空全部",delegate {if(ConfirmAction("清空流程","清空全部动作？（生成选项保持不变）")){autoSteps.Clear();show();}},false);
-            steps.CellDoubleClick+=delegate(object sender,DataGridViewCellEventArgs e){if(e.RowIndex>=0 && e.ColumnIndex!=0){AutoStep a=EditStep(autoSteps[e.RowIndex]);if(a!=null){autoSteps[e.RowIndex]=a;show();}}};
+            steps.CellDoubleClick+=delegate(object sender,DataGridViewCellEventArgs e){if(e.RowIndex>=0 && e.ColumnIndex!=0){editSelected();}};
             show();
         }
         private void SelectAutoStepRow(DataGridView grid,int index)
@@ -273,12 +267,13 @@ namespace ITDesktopToolkit
         }
         private Func<Point> mousePositionReader=MouseCoordinateService.CurrentPhysicalPosition;
         private Action<Point> mousePositionMover=MouseCoordinateService.MovePhysicalPosition;
-        private AutoStep EditStep(AutoStep current)
+        private List<AutoStep> EditStep(AutoStep current){return EditStepBlock(current,new List<AutoStep>(),new List<AutoStep>(),true,false);}
+        private List<AutoStep> EditStepBlock(AutoStep current,List<AutoStep> yes,List<AutoStep> no,bool includeElse,bool branchOnly)
         {
             using(Form f=NewDialog(current==null?"添加自动化动作":"编辑自动化动作",730,458))
             {
                 ComboBox type=new ComboBox{Left=170,Top=25,Width=530,DropDownStyle=ComboBoxStyle.DropDownList};
-                type.Items.AddRange(AutomationService.Types);
+                foreach(string actionType in AutomationService.Types)if(!branchOnly||(actionType!="否则"&&actionType!="结束条件"&&actionType!="重试开始"&&actionType!="重试结束"))type.Items.Add(actionType);
                 if(current!=null && current.Type=="删除桌面指定文件")type.Items.Add("删除桌面指定文件"); // 旧工作流只读兼容
                 type.SelectedItem=current==null?"移动鼠标":current.Type;
                 TextBox a=FormText(current==null?"":current.A,170,78,530);
@@ -297,7 +292,7 @@ namespace ITDesktopToolkit
                     using(OpenFileDialog d=new OpenFileDialog()){
                         d.Filter=(type.Text=="删除指定路径文件"||type.Text=="如果文件存在"||type.Text=="检查文件存在")?"所有文件 (*.*)|*.*":"程序和批处理 (*.exe;*.bat;*.cmd)|*.exe;*.bat;*.cmd|全部文件 (*.*)|*.*";
                         d.CheckFileExists=true;d.CheckPathExists=true;d.RestoreDirectory=true;
-                        d.Title=type.Text=="删除指定路径文件"?"选择自动化要删除的文件（不可恢复）":"选择要运行的完整程序文件（不是只选文件夹）";
+                        d.Title=type.Text=="删除指定路径文件"?"选择自动化要删除的文件（不可恢复）":type.Text=="如果文件存在"?"选择用于存在判断的文件":type.Text=="检查文件存在"?"选择要检查的文件":"选择要运行的完整程序文件（不是只选文件夹）";
                         if(d.ShowDialog(f)==DialogResult.OK){a.Text=Path.GetFullPath(d.FileName);if(type.Text=="运行程序")c.Text=Path.GetDirectoryName(d.FileName);}
 
                     }
@@ -338,6 +333,11 @@ namespace ITDesktopToolkit
                     quick.Click+=delegate {a.Text=(value*1000).ToString();};
                     delayShortcuts.Controls.Add(quick);
                 }
+                List<AutoStep> result=null;
+                var conditionError=new Label{Left=25,Top=616,Width=950,Height=34,ForeColor=Color.Firebrick,AutoEllipsis=true,Name="conditionError"};
+                a.TextChanged+=delegate{conditionError.Text="";};b.TextChanged+=delegate{conditionError.Text="";};c.TextChanged+=delegate{conditionError.Text="";};
+                var branchArea=new TableLayoutPanel{Left=25,Top=322,Width=950,Height=285,ColumnCount=2,RowCount=1,Anchor=AnchorStyles.Top|AnchorStyles.Left};branchArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));branchArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
+                branchArea.Controls.Add(ConditionBranchPanel("条件成立时执行",yes),0,0);branchArea.Controls.Add(ConditionBranchPanel("条件不成立时执行",no),1,0);
                 Button save=FormButton("确定添加 / 保存",505,389,195,delegate {
                     if(captureTimer.Enabled){captureState.Text="请等待坐标操作完成后再保存。";return;}
                     if(type.SelectedItem==null){MessageBox.Show(f,"请选择动作类型。");return;}
@@ -372,14 +372,16 @@ namespace ITDesktopToolkit
                         if(MessageBox.Show(f,"此动作执行时会永久清空 BAT 运行账户在所有驱动器的回收站。确定添加吗？",
                             "确认清空回收站动作",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;
                     }
+                    var edited=new AutoStep{Type=type.Text,A=type.Text=="清空当前用户回收站"?"":a.Text,B=type.Text=="清空当前用户回收站"?"":type.Text=="删除桌面指定文件"?desktopScope.Text:b.Text,C=type.Text=="清空当前用户回收站"||type.Text=="删除桌面指定文件"?"":c.Text};
+                    try{if(AutomationBlockService.IsCondition(edited.Type)){edited.C="";if(edited.Type!="如果系统版本")edited.B="";edited.A=(edited.A??"").Trim();edited.B=(edited.B??"").Trim();if(yes.Count+no.Count==0)throw new ArgumentException("请至少在一个分支添加动作；无需执行的分支可留空。");result=AutomationBlockService.Compose(edited,yes,no,includeElse);}else{if(yes.Count+no.Count>0&&MessageBox.Show(f,"改为普通动作会移除当前条件的两个分支，是否继续？","更改动作类型",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;result=new List<AutoStep>{edited};}}catch(Exception ex){conditionError.Text=ex.Message;return;}
                     f.DialogResult=DialogResult.OK;f.Close();
                 });
                 f.Controls.AddRange(new Control[]{FormLabel("动作类型",25,23,130),type,parameterALabel,a,
-                    parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,testMove,captureState,recordKey,selectWindow,delayShortcuts,save});
+                    parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,testMove,captureState,recordKey,selectWindow,delayShortcuts,branchArea,conditionError,save});
                 // 只有『运行程序』需要文件浏览；坐标捕获主要用于『移动鼠标』。
                 Action refreshActionOptions=delegate {
                     browse.Visible=type.Text=="运行程序" || type.Text=="运行程序并等待" || type.Text=="如果文件存在" || type.Text=="检查文件存在" || type.Text=="删除指定路径文件";
-                    browse.Text=type.Text=="删除指定路径文件"?"浏览选择要删除的文件":"选择 EXE/BAT 文件（自动补全路径）";
+                    browse.Text=type.Text=="删除指定路径文件"?"浏览选择要删除的文件":type.Text=="如果文件存在"?"浏览选择要判断的文件":type.Text=="检查文件存在"?"浏览选择要检查的文件":"选择 EXE/BAT 文件（自动补全路径）";
                     bool mouseAction=type.Text=="移动鼠标";capture.Visible=mouseAction;testMove.Visible=mouseAction;captureState.Visible=mouseAction;
                     if(!mouseAction){stopCapture();captureState.Text="坐标使用屏幕物理像素，支持副屏负坐标；捕获后可测试移动核对。";}
                     recordKey.Visible=type.Text=="按键/组合键";
@@ -395,11 +397,16 @@ namespace ITDesktopToolkit
                     parameterALabel.Text=desktopAction?"准确文件名":type.Text=="删除指定路径文件"?"文件完整路径":"参数 1";
                     parameterBLabel.Text=desktopAction?"桌面范围":"参数 2";
                     if(type.Text=="删除指定路径文件"){b.Visible=false;c.Visible=false;parameterBLabel.Visible=false;parameterCLabel.Visible=false;}else{parameterBLabel.Visible=!noParameters;}
+                    bool condition=AutomationBlockService.IsCondition(type.Text);branchArea.Visible=condition;conditionError.Visible=condition;conditionError.Text="";
+                    f.MinimumSize=Size.Empty;f.MaximumSize=Size.Empty;f.ClientSize=condition?new Size(1000,620):new Size(730,458);f.MinimumSize=f.Size;f.MaximumSize=f.Size;save.Left=condition?780:505;save.Top=condition?566:389;guide.Top=condition?(type.Text=="如果系统版本"?170:122):216;browse.Top=condition?180:274;branchArea.Top=228;conditionError.Top=522;
+                    if(condition){parameterALabel.Text=type.Text=="如果文件存在"?"文件完整路径":type.Text=="如果网络可达"?"目标 IP / 主机名":"Build 下限";parameterBLabel.Text="Build 上限（可空）";b.Visible=parameterBLabel.Visible=type.Text=="如果系统版本";c.Visible=parameterCLabel.Visible=false;a.AccessibleName=parameterALabel.Text;b.AccessibleName=parameterBLabel.Text;guide.Text=type.Text=="如果网络可达"?"填写一个 IP 或主机名，例如 192.168.1.1。Ping 有回应执行左栏，无回应执行右栏；禁止 Ping 时也可能无回应。":type.Text=="如果文件存在"?"选择完整文件路径。文件存在执行左栏，不存在执行右栏；不需要执行的分支可以留空。":"填写 Windows Build 范围，例如下限 22000、上限 26100。范围内执行左栏，范围外执行右栏。";}
+                    else{a.AccessibleName="参数 1";b.AccessibleName="参数 2";}
+
                 };
                 type.SelectedIndexChanged+=delegate {refreshActionOptions();};
                 guide.Text=AutomationService.Guide(type.Text);
                 refreshActionOptions();
-                return f.ShowDialog(this)==DialogResult.OK ? new AutoStep{Type=type.Text,A=type.Text=="清空当前用户回收站"?"":a.Text,B=type.Text=="清空当前用户回收站"?"":type.Text=="删除桌面指定文件"?desktopScope.Text:b.Text,C=type.Text=="清空当前用户回收站"||type.Text=="删除桌面指定文件"?"":c.Text}:null;
+                return f.ShowDialog(this)==DialogResult.OK?result:null;
             }
         }
     }
