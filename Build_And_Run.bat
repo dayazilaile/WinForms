@@ -6,5 +6,5 @@ if errorlevel 1 (
  pause
  exit /b 1
 )
-start "" "%~dp0build\ITDesktopToolkit.exe"
+start "" "%~dp0build\BatAutomation.exe"
 exit /b 0

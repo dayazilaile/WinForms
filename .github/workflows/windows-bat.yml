@@ -1,0 +1,25 @@
+name: Standalone BAT Windows validation
+on:
+  push:
+    tags: ['v*-BAT']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile, test in an empty folder, and package Windows executable
+        shell: powershell
+        run: ./tests/Run-Windows.ps1
+      - name: Upload Windows package and UI previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatAutomation-v0.5.10-BAT-Windows
+          path: |
+            build/BatAutomation-v0.5.10-BAT-Windows.zip
+            build/*.png
+          if-no-files-found: ignore

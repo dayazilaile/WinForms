@@ -2,35 +2,21 @@
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 setup=/workspace/cloud-setup
-export MONO_PATH="$setup/mono/usr/lib/mono/4.5"
-export MONO_CFG_DIR="$setup/mono/etc"
-export MONO_GAC_PREFIX="$setup/mono/usr"
+export MONO_PATH="$setup/mono/usr/lib/mono/4.5" MONO_CFG_DIR="$setup/mono/etc" MONO_GAC_PREFIX="$setup/mono/usr"
+export LD_LIBRARY_PATH="$setup/mono/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 mono=("$setup/mono/usr/bin/mono-sgen" --config "$setup/mono/etc/mono/config")
-bash "$setup/build.sh"
-for name in pci.v052.ids usb.v052.ids board_models_v052.tsv component_models_v052.tsv SOURCES-v052.md; do
-  if [ ! -e "$repo/build/Database/$name" ]; then cp "$repo/Database/$name" "$repo/build/Database/$name"; fi
+mkdir -p "$repo/build"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -langversion:5 -nologo -target:winexe -platform:anycpu -optimize+ -out:"$repo/build/BatAutomation.exe" -r:System.dll -r:System.Core.dll -r:System.Windows.Forms.dll -r:System.Drawing.dll "$repo"/src/*.cs
+for name in StandaloneTests StandaloneUiTests; do
+ "${mono[@]}" "$MONO_PATH/mcs.exe" -langversion:5 -out:"$repo/build/$name.exe" -r:"$repo/build/BatAutomation.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/$name.cs"
 done
-for folder in Licenses Sources; do
-  mkdir -p "$repo/build/Database/$folder"
-  for file in "$repo/Database/$folder/"*; do
-    if [ ! -e "$repo/build/Database/$folder/$(basename "$file")" ]; then cp "$file" "$repo/build/Database/$folder/"; fi
-  done
-done
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/FeatureTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/FeatureTests.cs"
-"${mono[@]}" "$repo/build/FeatureTests.exe"
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NetworkToolsTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll -r:System.Xml.dll "$repo/tests/NetworkToolsTests.cs"
-"${mono[@]}" "$repo/build/NetworkToolsTests.exe"
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/WorkspaceTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/WorkspaceTests.cs"
-"${mono[@]}" "$repo/build/WorkspaceTests.exe"
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/TrialTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/TrialTests.cs"
-"${mono[@]}" "$repo/build/TrialTests.exe"
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/DesktopTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/DesktopTests.cs"
-"${mono[@]}" "$repo/build/DesktopTests.exe"
-
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/StudentWakeTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/StudentWakeTests.cs"
-"${mono[@]}" "$repo/build/StudentWakeTests.exe"
+"${mono[@]}" "$repo/build/StandaloneTests.exe"
+if [ -n "${DISPLAY:-}" ]; then
+ clean=$(mktemp -d /tmp/bat-standalone-ui-XXXXXX)
+ trap 'rm -rf "$clean"' EXIT
+ cp "$repo/build/BatAutomation.exe" "$repo/build/StandaloneUiTests.exe" "$clean/"
+ (cd "$clean"
+  "${mono[@]}" ./StandaloneUiTests.exe
+ )
+ cp "$clean/"*.png "$repo/build/"
+fi

@@ -1,13 +1,4 @@
-# Visual Studio / .NET build outputs
-.vs/
-bin/
-obj/
 build/
-*.user
-*.suo
-*.cache
+.vs/
 *.pdb
-*.ilk
 *.log
-Thumbs.db
-Desktop.ini

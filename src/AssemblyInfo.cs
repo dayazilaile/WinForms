@@ -1,12 +1,7 @@
 using System.Reflection;
-[assembly: AssemblyTitle("IT 桌面运维工具箱")]
-[assembly: AssemblyDescription("Windows 10/11 离线运维工具箱 V0.5.10")]
-[assembly: AssemblyVersion("0.5.10.0")]
-[assembly: AssemblyFileVersion("0.5.10.0")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WorkspaceTests")]
-
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("TrialTests")]
-
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DesktopTests")]
-
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("StudentWakeTests")]
+[assembly:AssemblyTitle("BAT 自动化独立版")]
+[assembly:AssemblyDescription("基于 IT 桌面运维工具箱 v0.5.10 的独立 BAT 编辑器")]
+[assembly:AssemblyProduct("BAT Automation Standalone")]
+[assembly:AssemblyVersion("0.5.10.0")]
+[assembly:AssemblyFileVersion("0.5.10.0")]
+[assembly:AssemblyInformationalVersion("0.5.10-BAT")]

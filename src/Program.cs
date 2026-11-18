@@ -1,16 +1,9 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
-
 namespace ITDesktopToolkit
 {
-    static class Program
+    internal static class Program
     {
-        [STAThread]
-        static void Main()
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
-        }
+        [STAThread]private static void Main(){Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.Run(new MainForm());}
     }
 }

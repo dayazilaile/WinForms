@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/dayazilaile/WinForms",
+  "base_tag": "v0.5.10",
+  "base_commit": "596508280f16eb36367d6e4f0a4db0f0dfdcc5ff",
+  "unchanged_sources_sha256": {
+    "src/AutomationService.cs": "ec3256c17471ff6bce817fdeb7c29b17d5af0acb506f8a6e19f1e54525d36bcf",
+    "src/AutomationFlow.cs": "60a06eeb975df0089567dd50d6145b627b62bcf2732fc599546fc96a8a869336",
+    "src/AutomationBlockService.cs": "d5cb1434947ce9cf6ab95dc20969080c79cdfa0175a3d0c5ad4b68f4f0e472d6",
+    "src/MainForm.Automation.cs": "030b635508973c32aa0bc18924cb0df222be65034e7e0cc98bb565be7ac2d678",
+    "src/MainForm.AutomationBranches.cs": "1d348d59b8f4f4a5e4f2d0c44d925c0f88b670a05365ebf9cd098b4541ba8f1c",
+    "src/MouseCoordinateService.cs": "ab9c5178d54a71e1fc062ad82856ddcf8ed7cb0c260ba7a18f25c98d754727ef",
+    "src/KeyCaptureDialog.cs": "17b48853aed09d4209510ea491c6504e3dafb054027df39d575300cb25527cde",
+    "src/WindowCatalog.cs": "87802439e8a2c4b1facdc559ac62a739c091cea00c4ea8ba4c6ff3bdb645859b"
+  },
+  "adapted": [
+    "src/MainForm.cs: standalone host plus original visual helpers",
+    "src/AutomationSupport.cs: original Quote and Targets pure helper methods",
+    "src/Program.cs: standalone entry point",
+    "src/AssemblyInfo.cs: standalone product metadata"
+  ]
+}
