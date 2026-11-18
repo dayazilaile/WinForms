@@ -20,7 +20,7 @@ class StandaloneUiTests
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.ThreadException+=delegate(object sender,System.Threading.ThreadExceptionEventArgs e){uiErrors++;Console.Error.WriteLine(e.Exception);};
         try{using(var main=new MainForm()){
             main.Show();Application.DoEvents();
-            Check(main.Text.Contains("v0.5.10-BAT")&&Find<TreeView>(main).Length==0&&Find<DataGridView>(main).Length==1,"Standalone opens directly in BAT editor without toolkit navigation");
+            Check(main.Text.Contains("v0.5.11-BAT")&&Find<TreeView>(main).Length==0&&Find<DataGridView>(main).Length==1,"Standalone opens directly in BAT editor without toolkit navigation");
             Check(!Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Database")),"Standalone starts in a clean folder with no Database directory");
                 var actions=Field<System.Collections.Generic.List<AutoStep>>(main,"autoSteps");actions.Add(new AutoStep{Type="运行程序并等待",A="notepad.exe",B="example.txt",C="30"});foreach(Control old in Field<Panel>(main,"content").Controls.Cast<Control>().ToArray())old.Dispose();Call(main,"BuildAutomation");Application.DoEvents();var autoBody=Field<Panel>(main,"content");var actionGrid=Find<DataGridView>(autoBody).Single();
                 Check(!Find<Button>(autoBody).Any(b=>b.Text=="上移"||b.Text=="下移"),"BAT editor removes old move buttons while retaining drag handle");

@@ -11,6 +11,21 @@ try {
         & $compiler /nologo /langversion:5 /codepage:65001 "/out:build\$name.exe" /reference:build\BatAutomation.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll "tests\$name.cs"
         if ($LASTEXITCODE -ne 0) { throw ($name + ' compilation failed') }
     }
+    $published = Join-Path ([IO.Path]::GetTempPath()) ('bat-published-' + [Guid]::NewGuid())
+    New-Item -ItemType Directory -Path $published | Out-Null
+    try {
+        Copy-Item BatAutomation.exe, build\StandaloneTests.exe, build\StandaloneUiTests.exe -Destination $published
+        Push-Location $published
+        try {
+            & .\StandaloneTests.exe
+            if ($LASTEXITCODE -ne 0) { throw 'Published EXE fails Windows automation tests' }
+            & .\StandaloneUiTests.exe
+            if ($LASTEXITCODE -ne 0) { throw 'Published EXE fails Windows UI tests' }
+        }
+        finally { Pop-Location }
+    }
+    finally { Remove-Item -LiteralPath $published -Recurse -Force }
+    Write-Output 'PASS exact published EXE on Windows before testing locally rebuilt EXE'
     & .\build\StandaloneTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Standalone tests failed' }
     $clean = Join-Path ([IO.Path]::GetTempPath()) ('bat-standalone-ui-' + [Guid]::NewGuid())
@@ -38,11 +53,14 @@ try {
     Write-Output 'PASS PowerShell conditional success and bounded retry failure fixtures'
     $stage = Join-Path $repo 'build\portable'
     New-Item -ItemType Directory -Path $stage -Force | Out-Null
-    Copy-Item build\BatAutomation.exe, README.md, START_HERE.txt, Build_Only.bat, Build_And_Run.bat, SOURCE_PROVENANCE.json -Destination $stage
-    Copy-Item src, tests, docs, examples -Destination $stage -Recurse -Force
+    Copy-Item build\BatAutomation.exe, README.md, START_HERE.txt, Build_Only.bat, Build_And_Run.bat, SOURCE_PROVENANCE.json, BUILD_INFO.json -Destination $stage
+    Copy-Item src, tests, docs, examples, tools -Destination $stage -Recurse -Force
+    Move-Item (Join-Path $stage 'BUILD_INFO.json') (Join-Path $stage 'PUBLISHED_BUILD_INFO.json') -Force
+    $windowsBuild = @{ assembly='BatAutomation.exe'; sha256=(Get-FileHash build\BatAutomation.exe -Algorithm SHA256).Hash.ToLowerInvariant(); compiler='Windows .NET Framework csc'; type_reference_check='Windows runtime tests passed'; source_package_build='PUBLISHED_BUILD_INFO.json' }
+    [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.10-BAT-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.11-BAT-Windows.zip -Force
     Write-Output 'Standalone Windows validation and package completed.'
 }
 finally { Pop-Location }

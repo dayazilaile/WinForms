@@ -1,17 +1,25 @@
-# BAT 自动化独立版 v0.5.10-BAT
+# BAT 自动化独立版 v0.5.11-BAT
 
-从 [IT 桌面运维工具箱 v0.5.10](https://github.com/dayazilaile/WinForms/tree/v0.5.10) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.10-BAT`，原工具箱主版本仍为 v0.5.10。
+从 [IT 桌面运维工具箱 v0.5.10](https://github.com/dayazilaile/WinForms/tree/v0.5.10) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.11-BAT`，原工具箱主版本仍为 v0.5.10。
+
+## 本次修复
+
+修复旧独立包 v0.5.10-BAT 在“生成 BAT”或保存流程时可能出现的 `System.Collections.Generic.Stack<T>` 类型加载失败。旧预编译 EXE 使用了 Mono 运行库的类型归属；Windows .NET Framework 中该类型属于 System.dll，导致生成失败。
+
+本包用微软官方 .NET Framework 4.8 引用程序集重新编译，显式禁止混入 Mono 默认引用，并检查最终 EXE 的全部外部类型归属。`Stack<T>` 已指向 `System.dll`，构建记录见 [BUILD_INFO.json](BUILD_INFO.json)。原有自动化源码仍来自工具箱 **v0.5.10**，工具箱主版本及其代码保持不变；本次只修复独立包构建兼容性。
+
+请下载 v0.5.11-BAT 新包，解压后运行其中的 `BatAutomation.exe`，已有 `.workflow.txt` 格式继续兼容。
 
 ## 下载后怎么用
 
-1. 完整解压本包，双击根目录 **BatAutomation.exe**。适用 Windows 10 / Windows 11，使用系统的 .NET Framework 4.5 或更高版本与 Windows PowerShell。
+1. 完整解压本包，双击根目录 **BatAutomation.exe**。适用 Windows 10 / Windows 11，建议使用 .NET Framework 4.8 与系统 Windows PowerShell。
 2. 点击 **添加动作**，选择类型并填写参数；用 ☰ 拖动排序，或通过 **复制动作 / Ctrl+D** 复用。
 3. 点击 **保存流程** 保存可继续编辑的 `.workflow.txt`；**打开流程** 可以读取原工具箱保存的流程。打开流程不会执行其中动作。
 4. 选择生成方式、启动延时等选项，再点 **生成 BAT**。生成的 BAT 可独立运行，目标电脑无需安装本程序。
 
 根目录附预编译 EXE；若要从源码重新编译，运行 **Build_And_Run.bat**，编译后启动 `build\BatAutomation.exe`。仅编译可运行 `Build_Only.bat`。移动编译后的程序只需复制 EXE，无需 Database 文件夹。
 
-预编译 EXE 在云端通过 Mono/C# 5 编译和真实创建窗口的模拟测试；这不等于 Windows 实机、输入权限或高 DPI 已验收。GitHub Actions 还会在 tag 推送时使用 Windows 系统 csc 编译、运行测试并提供 Windows 压缩包；应以实际任务结果为准。
+预编译 EXE 使用 C# 5 和微软 .NET Framework 4.8 引用程序集，云端已检查成品类型引用并完成模拟界面测试。GitHub Actions 会直接运行包内发布 EXE 的测试，再编译并测试 Windows csc 版本；应以实际任务结果为准。当前云端仍不能代替 Windows 实机、输入权限和高 DPI 验收。
 
 ## 保留的功能
 
@@ -49,7 +57,8 @@
 
 - 完整源码位于 `src/`，共 12 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.10。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
 - Windows 编译：`Build_Only.bat --no-pause`；验收：`powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1`。
-- 当前云环境通过 **59 项检查（引擎/流程 37 + 独立界面 22）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
+- 当前云环境通过 **63 项检查（引擎/流程 37 + 独立界面 22 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
 - 测试没有执行用户程序、真实 Ping、输入、鼠标移动或修改系统设置；UI 中的鼠标接口由模拟替代。Windows 测试另外检查生成 PowerShell 的语法与仅访问测试文件的成功/失败重试场景，云端不能代替其执行结果。
+- 兼容性回归会检查发布 EXE/构建记录一致性及源码来源，并用 Mono 错误引用生成反例，确认可以阻止本次同类错误。开发者跨编译入口为 `tools/build_framework.py`，先安装 `tools/requirements-build.txt`，使用 `--references` 指定微软引用程序集目录；缺失时可用 `--download-references` 下载固定哈希的官方包，引用 DLL 不随运行 EXE 分发。`tests/test_framework_metadata.py` 检查实际发布文件。
 - Windows 系统接口与缩放验收见 [tests/Windows验收.md](tests/Windows验收.md)。当前 Linux Mono 检查入口为 `tests/run-mono.sh`，使用本云环境 `/workspace/cloud-setup` 的工具链；有虚拟显示时设置 `DISPLAY` 可同时运行 UI 检查。
 - `SHA256SUMS.txt` 对应本 tag 包内文件（不含清单自身）；Windows CI 产出的二进制会重新编译，其压缩包内有独立校验清单，不应与本 tag 预编译 EXE 的哈希混用。

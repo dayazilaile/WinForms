@@ -17,5 +17,7 @@
     "src/AutomationSupport.cs: original Quote and Targets pure helper methods",
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
-  ]
+  ],
+  "standalone_version": "0.5.11-BAT",
+  "change": "Build-only compatibility fix; Microsoft .NET Framework 4.8 reference assemblies replace Mono runtime references. Shared automation sources remain v0.5.10."
 }

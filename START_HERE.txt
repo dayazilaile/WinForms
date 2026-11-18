@@ -1,9 +1,8 @@
-﻿BAT 自动化独立版 v0.5.10-BAT
+﻿BAT 自动化独立版 v0.5.11-BAT
 
-完整解压后双击根目录 BatAutomation.exe，打开就是 BAT 编辑器。
-只运行 EXE 即可，无需原工具箱、数据库或额外 DLL。
-添加动作 → 填写参数 → 保存流程/生成 BAT；原工具箱流程可通过“打开流程”继续编辑。
-条件动作有成立/不成立两个分支栏，保存自动生成结构。
-示例位于 examples，详细中文说明见 README.md。
-要重新编译并运行，双击 Build_And_Run.bat；输出位于 build\BatAutomation.exe。
-云端通过 59 项检查；Windows 系统接口与高 DPI 仍需实机验收。
+本版修复旧独立包生成 BAT 时的 Stack<T> 类型加载错误。
+完整解压新包后双击根目录 BatAutomation.exe；本次工具箱 v0.5.10 及自动化逻辑保持不变。
+运行只需 EXE，不需要原工具箱或 Database；建议使用 Windows 10/11 和 .NET Framework 4.8。
+添加动作 → 保存流程/生成 BAT；条件有成立/不成立两栏，旧工作流格式继续兼容。
+本包按微软框架引用重新编译，并检查成品类型引用，构建记录见 BUILD_INFO.json。
+云端 63 项检查通过；Windows 原生交互和 DPI 仍需实机验收。用法见 README.md。

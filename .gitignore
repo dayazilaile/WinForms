@@ -2,3 +2,5 @@ build/
 .vs/
 *.pdb
 *.log
+__pycache__/
+*.pyc
