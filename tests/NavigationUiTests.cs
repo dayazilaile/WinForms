@@ -67,6 +67,33 @@ class NavigationUiTests
                 Find<Button>(autoBody).Single(b=>b.Text=="复制动作").PerformClick();Check(actions.Count==2&&!Object.ReferenceEquals(actions[0],actions[1])&&actions[1].A==actions[0].A&&actions[1].B==actions[0].B&&actions[1].C==actions[0].C&&actionGrid.CurrentRow.Index==1,"Copy duplicates all step parameters independently immediately after selection");
                 actions[1].A="other.exe";Check(actions[0].A=="notepad.exe","Editing a copy leaves the original step unchanged");
                 Call(actionGrid,"OnKeyDown",new KeyEventArgs(Keys.Control|Keys.D));Check(actions.Count==3&&actionGrid.CurrentRow.Index==2,"Ctrl+D creates another editable step copy");Screenshot(main,"automation-v053.png");
+                int physicalReads=0,physicalMoves=0;Point movedTo=Point.Empty;
+                main.GetType().GetField("mousePositionReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<Point>(delegate{physicalReads++;if(physicalReads>1)throw new InvalidOperationException("模拟物理坐标读取失败");return new Point(1560,-240);}));
+                main.GetType().GetField("mousePositionMover",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Action<Point>(delegate(Point target){physicalMoves++;movedTo=target;}));
+                int mouseStage=0;
+                using(var timer=new Timer{Interval=40})
+                {
+                    timer.Tick+=delegate{var f=Application.OpenForms.Cast<Form>().FirstOrDefault(w=>w.Text=="添加自动化动作");if(f==null)return;
+                        var capture=Find<Button>(f).Single(b=>b.Name=="captureMouseCoordinates");var test=Find<Button>(f).Single(b=>b.Name=="testMouseCoordinates");
+                        var x=Find<TextBox>(f).Single(t=>t.AccessibleName=="参数 1");var y=Find<TextBox>(f).Single(t=>t.AccessibleName=="参数 2");
+                        if(mouseStage==0){mouseStage=1;capture.PerformClick();Check(physicalReads==0,"Mouse capture waits for countdown instead of recording the button-click location");}
+                        else if(mouseStage==1&&capture.Enabled){Check(x.Text=="1560"&&y.Text=="-240"&&physicalReads==1,"Captured physical pixels and negative monitor coordinates are saved without DPI rescaling");mouseStage=2;test.PerformClick();}
+                        else if(mouseStage==2&&test.Enabled){Check(physicalMoves==1&&movedTo==new Point(1560,-240),"Coordinate preview moves to the exact captured physical point without scaling");Screenshot(f,"mouse-v059.png");mouseStage=3;capture.PerformClick();}
+                        else if(mouseStage==3&&capture.Enabled){Check(x.Text=="1560"&&y.Text=="-240"&&Find<Label>(f).Any(l=>l.Text.Contains("模拟物理坐标读取失败")),"Failed physical capture keeps existing coordinates and reports the failure");mouseStage=4;capture.PerformClick();Find<ComboBox>(f).Single(c=>c.Items.Contains("移动鼠标")).SelectedItem="等待毫秒";Check(capture.Enabled&&!capture.Visible,"Changing action cancels pending mouse capture before it can overwrite another action");f.Close();}
+                    };
+                    timer.Start();Call(main,"EditStep",(object)null);timer.Stop();
+                }
+                main.GetType().GetField("usbDriveReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Collections.Generic.List<UsbDriveAccess>>(delegate{return new System.Collections.Generic.List<UsbDriveAccess>{new UsbDriveAccess{Root=@"G:\",FileSystem="exFAT"},new UsbDriveAccess{Root=@"H:\",FileSystem="NTFS"}};}));
+                using(var timer=new Timer{Interval=40})
+                {
+                    timer.Tick+=delegate{var f=Application.OpenForms.Cast<Form>().FirstOrDefault(w=>w.Text=="U 盘检查与本机防护");if(f==null)return;
+                        var drive=Find<ComboBox>(f).Single(c=>c.AccessibleName=="U 盘与格式");var protect=Find<Button>(f).Single(b=>b.Text=="NTFS 普通用户只读");var restore=Find<Button>(f).Single(b=>b.Text=="恢复所选 U 盘原权限");var hint=Find<Label>(f).Single(l=>l.Name=="usbPermissionHint");
+                        Check(drive.Text.Contains("exFAT")&&!protect.Enabled&&!restore.Enabled&&hint.Text.Contains("不支持 NTFS")&&Find<Button>(f).Single(b=>b.Text=="开启本机 USB 写保护").Enabled,"exFAT selection disables ACL actions and explains the available local USB policy");Screenshot(f,"usb-exfat-v059.png");
+                        drive.SelectedIndex=1;Check(protect.Enabled&&restore.Enabled&&hint.Text.StartsWith("NTFS"),"Selecting NTFS enables permission actions without applying them");
+                        drive.SelectedIndex=0;Find<Button>(f).Single(b=>b.Text=="刷新 U 盘").PerformClick();Check(drive.Text.Contains("exFAT")&&!protect.Enabled&&!restore.Enabled,"Refreshing USB choices preserves the selected disk and unsupported permission state");f.Close();
+                    };
+                    timer.Start();Call(main,"UsbProtectionDialog");timer.Stop();
+                }
                 int prompts=0;string fake=InspectionService.Serialize(new System.Collections.Generic.Dictionary<string,string>{{"系统/名称","测试系统"},{"CPU/1/型号","测试 CPU"},{"内存/1/厂商","KINGBANK"},{"内存/1/容量","16 GiB"},{"内存/1/配置频率 MHz","3200"},{"主板/1/型号","测试主板"},{"显卡/1/型号","测试显卡"},{"网卡/样例/型号","测试网卡"}});
                 main.GetType().GetField("configurationReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Threading.CancellationToken,string>(delegate{return fake;}));
                 main.GetType().GetField("configurationExportPrompt",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<Form,bool>(delegate{prompts++;return false;}));
@@ -105,6 +132,7 @@ class NavigationUiTests
                 main.GetType().GetField("routeReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Threading.CancellationToken,RouteInventory>(delegate{return routeFixture;}));
                 Navigate(main,tree,"路由与MAC");Application.DoEvents();var routeBody=Field<Panel>(main,"content");Pump(()=>Find<Button>(routeBody).Single(b=>b.Text=="刷新信息").Enabled,30000);var af=Find<ComboBox>(routeBody).Single(c=>c.AccessibleName=="地址族");var adapter=Find<DataGridView>(routeBody).Single(g=>g.Columns.Count==9);
                 Check(adapter.Columns[3].HeaderText=="IPv4"&&adapter.Columns[4].HeaderText=="掩码"&&adapter.Columns[4].Width<=60&&(string)adapter.Rows[0].Cells[3].Value=="192.0.2.1"&&(string)adapter.Rows[0].Cells[4].Value=="24","IPv4 address and numeric mask occupy adjacent compact columns without CIDR or dotted mask");
+                Check(adapter.Columns.Cast<DataGridViewColumn>().Take(7).Sum(c=>c.Width)<=870&&adapter.Columns[2].Width>=140&&adapter.Columns[3].Width>=125&&adapter.Columns[1].MinimumWidth>=65,"Compact adapter columns bring gateway closer while preserving MAC/IP and horizontal status headers");Screenshot(main,"route-v059.png");
                 Check(adapter.Columns[5].HeaderText=="IPv6"&&(string)adapter.Rows[0].Cells[5].Value=="2001:db8::1","IPv6 appears beside IPv4 and its prefix on the same adapter row");
                 af.SelectedIndex=1;Application.DoEvents();Check((string)adapter.Rows[0].Cells[3].Value=="192.0.2.1"&&(string)adapter.Rows[0].Cells[6].Value=="fe80::1","Family switch updates gateway without hiding either local address family");af.SelectedIndex=0;Screenshot(main,"route-v054.png");
                 Find<Button>(routeBody).Single(b=>b.Text=="路由表").PerformClick();Application.DoEvents();var routeGrid=Find<DataGridView>(routeBody).Single(g=>g.Name=="routeTable");
@@ -228,7 +256,7 @@ class NavigationUiTests
                     var running=(System.Threading.Tasks.Task)sessionType.GetMethod("Run").Invoke(operation,new object[]{waiting});testPage.Dispose();Pump(()=>running.IsCompleted);Check(cancelled&&!running.IsFaulted,"Disposing an active page cancels work without updating disposed controls");
                 }
                 Modal(main,"NetworkInformationDialog",1);Modal(main,"CameraDiscoveryDialog");
-                main.Close();Application.DoEvents();Check(uiErrors==0,"No unhandled UI exceptions");
+                main.Close();Application.DoEvents();Check(physicalReads==2&&physicalMoves==1,"Cancelled and closed capture timers never run later or move the mouse again");Check(uiErrors==0,"No unhandled UI exceptions");
             }
             Console.WriteLine("NAVIGATION UI TOTAL PASS "+passed);return 0;
         }

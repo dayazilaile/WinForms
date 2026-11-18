@@ -164,8 +164,8 @@ namespace ITDesktopToolkit
             Button refresh=WorkspaceButton(bar,"刷新信息",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出当前表",false);
             var tabs=new ResultTabs();DataGridView adapters=AddResultTab(tabs,"网卡 / IP / MAC",new[]{"网卡","状态","MAC","IPv4","掩码","IPv6","IPv4 网关","IPv4 DNS","速率 Mb"});
             DataGridView routes=RouteTable();tabs.Add("路由表",routes);DataGridView neighbors=AddResultTab(tabs,"邻居 / ARP",new[]{"网卡","IP 地址","MAC 地址","状态","地址族"});
-            SetColumnWidths(adapters,new[]{125,78,150,155,58,270,175,220,95});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
-            adapters.Columns[1].MinimumWidth=78;neighbors.Columns[3].MinimumWidth=90;
+            SetColumnWidths(adapters,new[]{110,68,142,128,48,235,132,175,75});SetColumnWidths(neighbors,new[]{180,200,180,90,80});
+            adapters.Columns[1].MinimumWidth=68;neighbors.Columns[3].MinimumWidth=90;
             adapters.Columns[4].ToolTipText="IPv4 子网掩码的前缀长度，例如 255.255.255.0 显示为 24";
             adapters.Columns[8].ToolTipText="接口链路速率，单位 Mb/s（Mbps）；不是实际下载速度";
             root.Controls["pageBody"].Controls.Add(tabs);tabs.BringToFront();
@@ -173,7 +173,7 @@ namespace ITDesktopToolkit
             Action render=delegate {
                 string selected=family.Text;bool ipv6=selected=="IPv6";
                 adapters.Columns[6].HeaderText=selected+" 网关";adapters.Columns[7].HeaderText=selected+" DNS";
-                adapters.Columns[6].Width=ipv6?290:175;adapters.Columns[7].Width=ipv6?320:220;neighbors.Columns[1].Width=ipv6?330:175;
+                adapters.Columns[6].Width=ipv6?260:132;adapters.Columns[7].Width=ipv6?290:175;neighbors.Columns[1].Width=ipv6?330:175;
                 var ar=new List<object[]>();var nr=new List<object[]>();
                 if(data!=null){foreach(var row in data.Adapters)ar.Add(row.Cells(selected));foreach(var row in data.Neighbors)if(Convert.ToString(row[4])==selected)nr.Add(row);}
                 FillTable(adapters,ar);if(data!=null)BindRouteTable(routes,data,selected);FillTable(neighbors,nr);

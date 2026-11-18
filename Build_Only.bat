@@ -20,7 +20,7 @@ if not exist "src\Program.cs" (
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== IT Desktop Toolkit V0.5.8 =====
+echo ===== IT Desktop Toolkit V0.5.9 =====
 echo Compiler: "%CSC%"
 pushd "src"
 "%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs

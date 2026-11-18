@@ -48,6 +48,35 @@ class FeatureTests
         File.WriteAllText(Path.Combine(folder,"failure.ps1"),AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("检查文件存在",marker+".missing"),S("重试结束")},BatInputEngine.SendInput,0,false),new System.Text.UTF8Encoding(true));
         File.WriteAllText(Path.Combine(folder,"legacy-flow.ps1"),AutomationService.MakeScript(steps,BatInputEngine.Legacy,0,false),new System.Text.UTF8Encoding(true));
     }
+    static void MouseBridge()
+    {
+        string bridge=(string)typeof(AutomationService).GetField("CursorWinApiBridge",BindingFlags.NonPublic|BindingFlags.Static).GetValue(null);
+        var move=new List<AutoStep>{S("移动鼠标","1560","-240")};
+        Check(new[]{BatInputEngine.SendInput,BatInputEngine.Legacy}.All(e=>AutomationService.MakeScript(move,e,0,false).Contains(bridge)),"Both BAT engines embed the same physical-coordinate replay bridge");
+        string fixture=bridge.Replace("public static class ITAutomationCursor {","public static class ITAutomationCursor { public static bool Context=true,Physical=true,Readable=true,Clip=false; public static int X,Y,LogicalCalls,Restores;");
+        var native=new Dictionary<string,string>{
+            {"SetPhysicalCursorPos","private static bool SetPhysicalCursorPos(int x,int y) { if(!Physical)return false;X=Clip?x+100:x;Y=y;return true; }"},
+            {"SetCursorPos","private static bool SetCursorPos(int x,int y) { LogicalCalls++;X=x;Y=y;return true; }"},
+            {"GetPhysicalCursorPos","private static bool GetPhysicalCursorPos(out POINT p) { p=new POINT{X=X,Y=Y};return Readable; }"},
+            {"SetThreadDpiAwarenessContext","private static IntPtr SetThreadDpiAwarenessContext(IntPtr c) { if(c.ToInt64()==1){Restores++;return new IntPtr(-4);}return Context?new IntPtr(1):IntPtr.Zero; }"},
+            {"GetSystemMetrics","private static int GetSystemMetrics(int index) { return 1920; }"},
+            {"SendInput","private static uint SendInput(uint count,INPUT[] items,int size) { return 0; }"}
+        };
+        fixture=System.Text.RegularExpressions.Regex.Replace(fixture,@"\[DllImport\([^\r\n]*\)\] private static extern [^\r\n]+;",delegate(System.Text.RegularExpressions.Match match){string name=System.Text.RegularExpressions.Regex.Match(match.Value,@"extern \w+ (\w+)\(").Groups[1].Value;return native[name];});
+        if(fixture.Contains("DllImport("))throw new Exception("Unreplaced native call in mouse fixture");
+        using(var provider=System.CodeDom.Compiler.CodeDomProvider.CreateProvider("CSharp"))
+        {
+            var options=new System.CodeDom.Compiler.CompilerParameters(new[]{"System.dll"}){GenerateInMemory=true};var compiled=provider.CompileAssemblyFromSource(options,fixture);
+            if(compiled.Errors.HasErrors)throw new Exception(String.Join(";",compiled.Errors.Cast<System.CodeDom.Compiler.CompilerError>().Select(e=>e.ToString())));
+            Type type=compiled.CompiledAssembly.GetType("ITAutomationCursor");Action<string,object> set=delegate(string name,object value){type.GetField(name).SetValue(null,value);};Func<string,int> get=delegate(string name){return (int)type.GetField(name).GetValue(null);};
+            Func<bool> run=delegate{try{type.GetMethod("MoveTo").Invoke(null,new object[]{1560,-240});return true;}catch(TargetInvocationException ex){if(!(ex.InnerException is InvalidOperationException))throw;return false;}};
+            Check(run()&&get("X")==1560&&get("Y")==-240&&get("Restores")==1,"Physical replay preserves negative pixels and restores the previous DPI context");
+            set("Clip",true);Check(!run()&&get("Restores")==2,"A successful native call with a clipped position is reported as failure and restores DPI context");
+            set("Clip",false);set("Physical",false);set("Context",false);Check(!run()&&get("LogicalCalls")==0,"Replay cannot silently use logical coordinates when physical positioning and per-monitor context are unavailable");
+            set("Context",true);Check(run()&&get("LogicalCalls")==1&&get("X")==1560&&get("Y")==-240&&get("Restores")==3,"Cursor fallback runs only under per-monitor DPI context and verifies the physical point");
+            set("Physical",true);set("Readable",false);Check(!run()&&get("Restores")==4,"Unverifiable physical position cannot be reported as successful replay");
+        }
+    }
     static void Usb()
     {
         string dir=Path.Combine(Path.GetTempPath(),"toolkit-usb-"+Guid.NewGuid());Directory.CreateDirectory(dir);
@@ -80,5 +109,5 @@ class FeatureTests
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{Reports();Flow();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{MouseBridge();Reports();Flow();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

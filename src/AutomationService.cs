@@ -300,17 +300,32 @@ public static class ITAutomationCursor {
  [DllImport(""user32.dll"", SetLastError=true)] private static extern bool SetPhysicalCursorPos(int x, int y);
  [DllImport(""user32.dll"", SetLastError=true)] private static extern bool SetCursorPos(int x, int y);
  [DllImport(""user32.dll"", SetLastError=true)] private static extern bool GetPhysicalCursorPos(out POINT p);
+ [DllImport(""user32.dll"")] private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
  [DllImport(""user32.dll"")] private static extern int GetSystemMetrics(int index);
  [DllImport(""user32.dll"", SetLastError=true)] private static extern uint SendInput(uint count, INPUT[] items, int size);
  private static int Normalized(int value, int origin, int span) {
   double target = ((double)value - origin) * 65535.0 / (span - 1);
   return (int)Math.Max(0, Math.Min(65535, Math.Round(target)));
  }
+ private static void Verify(int x,int y) {
+  POINT actual;
+  if(!GetPhysicalCursorPos(out actual)) throw new InvalidOperationException(""无法核对鼠标物理坐标，Win32=""+Marshal.GetLastWin32Error());
+  if(Math.Abs((long)actual.X-x)>3 || Math.Abs((long)actual.Y-y)>3)
+   throw new InvalidOperationException(""鼠标未到达目标物理坐标，可能存在光标锁定、显示器布局变化或桌面权限限制。实际(""+actual.X+"",""+actual.Y+"")，目标(""+x+"",""+y+"")"");
+ }
  public static void MoveTo(int x, int y) {
+  IntPtr previous=IntPtr.Zero;
+  try {
+   try { previous=SetThreadDpiAwarenessContext(new IntPtr(-4)); if(previous==IntPtr.Zero)previous=SetThreadDpiAwarenessContext(new IntPtr(-3)); } catch(EntryPointNotFoundException) {}
+   MovePhysical(x,y,previous!=IntPtr.Zero);
+  } finally { if(previous!=IntPtr.Zero)SetThreadDpiAwarenessContext(previous); }
+ }
+ private static void MovePhysical(int x,int y,bool physicalContext) {
   int physicalErr = -1, cursorErr = -1, sendErr = -1;
-  try { if(SetPhysicalCursorPos(x,y)) return; physicalErr=Marshal.GetLastWin32Error(); }
+  try { if(SetPhysicalCursorPos(x,y)) { Verify(x,y); return; } physicalErr=Marshal.GetLastWin32Error(); }
   catch(EntryPointNotFoundException) { physicalErr=-2; }
-  if(SetCursorPos(x,y)) return;
+  if(!physicalContext)throw new InvalidOperationException(""物理坐标移动失败且无法启用逐显示器 DPI 上下文，未回退到可能偏移的逻辑坐标。Win32=""+physicalErr);
+  if(SetCursorPos(x,y)) { Verify(x,y); return; }
   cursorErr=Marshal.GetLastWin32Error();
   // The virtual desktop includes secondary monitors with negative coordinates.
   int left=GetSystemMetrics(76), top=GetSystemMetrics(77);
@@ -326,10 +341,7 @@ public static class ITAutomationCursor {
   INPUT[] inputs=new INPUT[]{data};
   if(SendInput(1,inputs,Marshal.SizeOf(typeof(INPUT)))==1) {
    System.Threading.Thread.Sleep(40);
-   POINT current;
-   // SendInput returning 1 means the event was inserted; verify if possible.
-   if(GetPhysicalCursorPos(out current) && (Math.Abs(current.X-x)>3 || Math.Abs(current.Y-y)>3))
-    throw new InvalidOperationException(""SendInput 已提交但鼠标没有到达指定坐标。可能存在光标锁定、DPI 不匹配或桌面权限限制。实际(""+current.X+"",""+current.Y+"")，目标(""+x+"",""+y+"")"");
+   Verify(x,y);
    return;
   }
   sendErr=Marshal.GetLastWin32Error();

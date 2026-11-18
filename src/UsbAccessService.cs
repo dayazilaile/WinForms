@@ -8,10 +8,23 @@ using System.Text;
 
 namespace ITDesktopToolkit
 {
+    public sealed class UsbDriveAccess
+    {
+        public string Root="",FileSystem="";
+        public bool SupportsPermissions{get{return String.Equals(FileSystem,"NTFS",StringComparison.OrdinalIgnoreCase);}}
+        public string PermissionHint{get{return SupportsPermissions?"NTFS：可设置普通用户只读权限；管理员仍能写入。":"当前格式 "+(String.IsNullOrWhiteSpace(FileSystem)?"未知":FileSystem)+" 不支持 NTFS 权限。可使用‘开启本机 USB 写保护’（仅当前电脑、影响 USB 存储，重新插拔后验证）；跨电脑只读需硬件写保护。不会格式化或转换 U 盘。";}}
+        public override string ToString(){return Root+" · "+FileSystem;}
+    }
     // NTFS permissions travel with the volume. This protects against ordinary
     // Windows users, not administrators or operating systems that ignore NTFS ACLs.
     public static class UsbAccessService
     {
+        public static UsbDriveAccess InspectDrive(string root)
+        {root=UsbProtectionService.ValidateDrive(root);return new UsbDriveAccess{Root=root,FileSystem=new DriveInfo(root).DriveFormat};}
+        public static List<UsbDriveAccess> AvailableDrives()
+        {
+            var result=new List<UsbDriveAccess>();foreach(var drive in DriveInfo.GetDrives())try{if(drive.DriveType==DriveType.Removable&&drive.IsReady)result.Add(InspectDrive(drive.RootDirectory.FullName));}catch(IOException){}catch(UnauthorizedAccessException){}catch(ArgumentException){}return result;
+        }
         private static readonly SecurityIdentifier Everyone=new SecurityIdentifier(WellKnownSidType.WorldSid,null);
         private static readonly SecurityIdentifier SystemAccount=new SecurityIdentifier(WellKnownSidType.LocalSystemSid,null);
         private static readonly SecurityIdentifier Administrators=new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null);
@@ -32,10 +45,7 @@ namespace ITDesktopToolkit
         }
         private static string NtfsRoot(string root)
         {
-            root=UsbProtectionService.ValidateDrive(root);
-            if(!String.Equals(new DriveInfo(root).DriveFormat,"NTFS",StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("只有 NTFS U 盘支持此权限设置；当前文件系统不是 NTFS。不会格式化 U 盘。");
-            return root;
+            var access=InspectDrive(root);if(!access.SupportsPermissions)throw new InvalidOperationException(access.PermissionHint);return access.Root;
         }
         private static List<string> Entries(string root)
         {

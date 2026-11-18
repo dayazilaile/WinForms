@@ -130,40 +130,43 @@ namespace ITDesktopToolkit
                 ToolButton(bar,"导出诊断结果",delegate{ExportToolReport(f,report.Text,"打印机诊断.txt");});f.ShowDialog(this);
             }
         }
+        private Func<List<UsbDriveAccess>> usbDriveReader=UsbAccessService.AvailableDrives;
         private void UsbProtectionDialog()
         {
             FlowLayoutPanel bar;RichTextBox report;
             using(Form f=ToolWindow("U 盘检查与本机防护",out bar,out report))
             {
-                bar.Height=270;
-                var drive=new ComboBox{Width=210,DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(5,9,5,4)};bar.Controls.Add(drive);
-                Action reload=delegate{drive.Items.Clear();foreach(var d in DriveInfo.GetDrives())try{if(d.DriveType==DriveType.Removable&&d.IsReady)drive.Items.Add(d.RootDirectory.FullName);}catch(IOException){}if(drive.Items.Count>0)drive.SelectedIndex=0;};reload();
+                bar.AutoSize=true;bar.AutoSizeMode=AutoSizeMode.GrowAndShrink;
+                var drive=new ComboBox{Width=245,AccessibleName="U 盘与格式",DropDownStyle=ComboBoxStyle.DropDownList,Margin=new Padding(5,9,5,4)};bar.Controls.Add(drive);
+                Action updateAccess=null;
+                Action reload=delegate{string previous=drive.SelectedItem is UsbDriveAccess?((UsbDriveAccess)drive.SelectedItem).Root:"";drive.Items.Clear();try{foreach(var d in usbDriveReader())drive.Items.Add(d);if(drive.Items.Count>0){int index=0;for(int i=0;i<drive.Items.Count;i++)if(((UsbDriveAccess)drive.Items[i]).Root==previous)index=i;drive.SelectedIndex=index;}}catch(Exception ex){report.Text="读取 U 盘未完成："+ex.Message;}if(updateAccess!=null)updateAccess();};
                 ToolButton(bar,"刷新 U 盘",delegate{reload();});
                 CancellationTokenSource cancel=null;bool running=false;
                 report.Text="只读检查不执行或删除盘内文件。\r\n\r\nNTFS U 盘权限：选盘后可让普通 Windows 用户只读，SYSTEM 为所有者，管理员保留写入和恢复权限。此方式不限制管理员或不遵守 NTFS 权限的系统；需要所有电脑都只读，请使用硬件写保护。\r\n\r\n本机策略只影响当前电脑。";
                 Button scan=null,stop=null;scan=ToolButton(bar,"开始只读检查",async delegate{
                     if(drive.SelectedItem==null){MessageBox.Show(f,"未发现可移动 U 盘。");return;}
-                    string root=drive.Text;cancel=new CancellationTokenSource();running=true;foreach(Control control in bar.Controls)control.Enabled=false;stop.Enabled=true;report.Text="正在只读检查，可点击停止……";
+                    string root=((UsbDriveAccess)drive.SelectedItem).Root;cancel=new CancellationTokenSource();running=true;foreach(Control control in bar.Controls)control.Enabled=false;stop.Enabled=true;report.Text="正在只读检查，可点击停止……";
                     try{var result=await Task.Run(delegate{return UsbProtectionService.Scan(root,cancel.Token);});if(!report.IsDisposed)report.Text=result.Report();}catch(Exception ex){if(!report.IsDisposed)report.Text=ex.Message;}
-                    finally{running=false;cancel.Dispose();cancel=null;if(!scan.IsDisposed){foreach(Control control in bar.Controls)control.Enabled=true;stop.Enabled=false;}}
+                    finally{running=false;cancel.Dispose();cancel=null;if(!scan.IsDisposed){foreach(Control control in bar.Controls)control.Enabled=true;stop.Enabled=false;updateAccess();}}
                 });stop=ToolButton(bar,"停止检查",delegate{if(cancel!=null)cancel.Cancel();});stop.Enabled=false;
-                Button history=null;history=ToolButton(bar,"读取 Defender 历史",delegate{if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}string root=drive.Text;DoJob(report,history,delegate{return UsbProtectionService.DefenderHistory(root);});});
+                Button history=null;history=ToolButton(bar,"读取 Defender 历史",delegate{if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}string root=((UsbDriveAccess)drive.SelectedItem).Root;DoJob(report,history,delegate{return UsbProtectionService.DefenderHistory(root);});});
                 ToolButton(bar,"导入其他杀毒报告",delegate{try{string text=ReadToolFile(f);if(text!=null)report.Text="【外部报告原文，未自动判定/验证】\r\n"+text;}catch(Exception ex){MessageBox.Show(f,ex.Message);}});
                 ToolButton(bar,"导出当前报告",delegate{ExportToolReport(f,report.Text,"U盘检查_"+DateTime.Now.ToString("yyyyMMdd_HHmmss")+".txt");});
                 ToolButton(bar,"读取本机防护状态",delegate{try{report.Text=UsbProtectionService.PolicyStatus();}catch(Exception ex){report.Text=ex.Message;}});
-                Button protect=null;protect=ToolButton(bar,"所选 U 盘设为普通用户只读",delegate{
-                    if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}
+                Func<bool> canSetAcl=delegate{if(drive.SelectedItem==null){report.Text="请选择 U 盘。";return false;}try{var current=UsbAccessService.InspectDrive(((UsbDriveAccess)drive.SelectedItem).Root);if(!current.SupportsPermissions){report.Text=current.PermissionHint;return false;}return true;}catch(Exception ex){report.Text="无法核对 U 盘格式，请刷新后重试："+ex.Message;return false;}};
+                Button protect=null;protect=ToolButton(bar,"NTFS 普通用户只读",delegate{
+                    if(!canSetAcl())return;
                     if(!RequireAdmin())return;
-                    string root=drive.Text;
+                    string root=((UsbDriveAccess)drive.SelectedItem).Root;
                     if(!ConfirmAction("设置 U 盘 NTFS 只读权限","目标："+root+"\r\n将递归修改全部文件和文件夹的 NTFS 权限，并在本机保存原权限。普通用户只能读取；管理员仍可写入。请先备份重要资料。"))return;
-                    DoJob(report,protect,delegate{return UsbAccessService.Protect(root);});
+                    DoJob(report,protect,delegate{try{return UsbAccessService.Protect(root);}catch(Exception ex){return "权限设置未完成："+ex.Message;}});
                 });
                 Button restoreAcl=null;restoreAcl=ToolButton(bar,"恢复所选 U 盘原权限",delegate{
-                    if(drive.SelectedItem==null){MessageBox.Show(f,"请选择 U 盘。");return;}
+                    if(!canSetAcl())return;
                     if(!RequireAdmin())return;
-                    string root=drive.Text;
+                    string root=((UsbDriveAccess)drive.SelectedItem).Root;
                     if(!ConfirmAction("恢复 U 盘权限","将按本机备份恢复 "+root+" 的 NTFS 权限。请核对选中的是原 U 盘。"))return;
-                    DoJob(report,restoreAcl,delegate{return UsbAccessService.Restore(root);});
+                    DoJob(report,restoreAcl,delegate{try{return UsbAccessService.Restore(root);}catch(Exception ex){return "权限恢复未完成："+ex.Message;}});
                 });
                 Button folderAccess=null;folderAccess=ToolButton(bar,"取得指定文件夹权限",delegate{
                     if(!RequireAdmin())return;
@@ -184,6 +187,10 @@ namespace ITDesktopToolkit
                         try{report.Text=UsbProtectionService.SetPolicy(wp,restore);}catch(Exception ex){report.Text="操作失败："+ex.Message;}
                     });
                 }
+                var accessHint=new Label{AutoSize=true,MaximumSize=new Size(900,0),Margin=new Padding(6,8,6,10),ForeColor=Navy,Name="usbPermissionHint"};
+                bar.SetFlowBreak(bar.Controls[bar.Controls.Count-1],true);bar.Controls.Add(accessHint);
+                updateAccess=delegate{var selected=drive.SelectedItem as UsbDriveAccess;bool supported=selected!=null&&selected.SupportsPermissions;protect.Enabled=!running&&supported;restoreAcl.Enabled=!running&&supported;accessHint.Text=selected==null?"未发现已就绪的可移动 U 盘，可插入后刷新。":selected.PermissionHint;};
+                drive.SelectedIndexChanged+=delegate{updateAccess();};reload();
                 f.FormClosing+=delegate(object sender,FormClosingEventArgs e){if(running){e.Cancel=true;cancel.Cancel();report.AppendText("\r\n正在停止，请稍后关闭。");}};
                 f.ShowDialog(this);
             }

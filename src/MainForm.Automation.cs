@@ -271,6 +271,8 @@ namespace ITDesktopToolkit
             grid.Rows[index].Selected=true;
             try { grid.FirstDisplayedScrollingRowIndex=index; } catch(InvalidOperationException) { }
         }
+        private Func<Point> mousePositionReader=MouseCoordinateService.CurrentPhysicalPosition;
+        private Action<Point> mousePositionMover=MouseCoordinateService.MovePhysicalPosition;
         private AutoStep EditStep(AutoStep current)
         {
             using(Form f=NewDialog(current==null?"添加自动化动作":"编辑自动化动作",730,458))
@@ -300,18 +302,26 @@ namespace ITDesktopToolkit
 
                     }
                 });
-                Button capture=null;capture=FormButton("3 秒后捕获鼠标坐标",374,274,210,delegate {
-                    capture.Enabled=false;
-                    int count=3;
-                    capture.Text="还有 "+count+" 秒";
-                    Timer timer=new Timer();timer.Interval=1000;
-                    timer.Tick+=delegate {
-                        count--;
-                        if(count<=0){timer.Stop();timer.Dispose();Point pos=MouseCoordinateService.CurrentPhysicalPosition();a.Text=pos.X.ToString();b.Text=pos.Y.ToString();capture.Text="已捕获 X/Y";capture.Enabled=true;f.Activate();}
-                        else capture.Text="还有 "+count+" 秒";
-                    };
-                    timer.Start();
-                });
+                a.AccessibleName="参数 1";b.AccessibleName="参数 2";c.AccessibleName="参数 3";
+                var captureState=new Label{Left=25,Top=322,Width=675,Height=55,ForeColor=Navy,Text="坐标使用屏幕物理像素，支持副屏负坐标；捕获后可测试移动核对。"};
+                var captureTimer=new Timer{Interval=100};var captureClock=new System.Diagnostics.Stopwatch();bool testingMove=false;Point moveTarget=Point.Empty;
+                Button capture=null,testMove=null;
+                Action stopCapture=delegate{captureTimer.Stop();captureClock.Reset();if(!capture.IsDisposed){capture.Enabled=true;testMove.Enabled=true;capture.Text="3 秒后捕获鼠标坐标";testMove.Text="3 秒后测试移动";}};
+                Action<bool> startCapture=delegate(bool move){
+                    if(move){int x,y;if(!Int32.TryParse(a.Text,out x)||!Int32.TryParse(b.Text,out y)||x < -50000||x > 50000||y < -50000||y > 50000){captureState.Text="请先填写有效的 X、Y 坐标（-50000 至 50000）。";return;}moveTarget=new Point(x,y);}
+                    testingMove=move;capture.Enabled=false;testMove.Enabled=false;captureClock.Restart();captureState.Text=move?"3 秒后移动到所填坐标，请查看目标位置。":"请把鼠标移到目标位置，3 秒后记录物理坐标。";captureTimer.Start();
+                };
+                capture=FormButton("3 秒后捕获鼠标坐标",170,274,250,delegate{startCapture(false);});
+                testMove=FormButton("3 秒后测试移动",440,274,260,delegate{startCapture(true);});
+                capture.Name="captureMouseCoordinates";testMove.Name="testMouseCoordinates";
+                captureTimer.Tick+=delegate{
+                    if(captureClock.ElapsedMilliseconds<3000){(testingMove?testMove:capture).Text="还有 "+Math.Ceiling((3000-captureClock.ElapsedMilliseconds)/1000.0)+" 秒";return;}
+                    captureTimer.Stop();
+                    try{if(testingMove){mousePositionMover(moveTarget);captureState.Text="已测试移动至物理坐标 X="+moveTarget.X+"，Y="+moveTarget.Y+"；请核对目标位置。";}else{Point pos=mousePositionReader();a.Text=pos.X.ToString(System.Globalization.CultureInfo.InvariantCulture);b.Text=pos.Y.ToString(System.Globalization.CultureInfo.InvariantCulture);captureState.Text="已捕获物理坐标 X="+a.Text+"，Y="+b.Text+"，未按 Windows 缩放比例换算。";}}
+                    catch(Exception ex){captureState.Text="坐标操作未完成："+ex.Message;}
+                    finally{stopCapture();}
+                };
+                f.FormClosing+=delegate{stopCapture();};f.Disposed+=delegate{captureTimer.Dispose();};
                 Button recordKey=FormButton("按一下键盘录入",170,274,190,delegate {
                     string recorded=KeyCaptureDialog.Capture(f);
                     if(!String.IsNullOrWhiteSpace(recorded)) a.Text=recorded;
@@ -329,6 +339,7 @@ namespace ITDesktopToolkit
                     delayShortcuts.Controls.Add(quick);
                 }
                 Button save=FormButton("确定添加 / 保存",505,389,195,delegate {
+                    if(captureTimer.Enabled){captureState.Text="请等待坐标操作完成后再保存。";return;}
                     if(type.SelectedItem==null){MessageBox.Show(f,"请选择动作类型。");return;}
                     if(type.Text=="删除指定路径文件")
                     {
@@ -364,12 +375,13 @@ namespace ITDesktopToolkit
                     f.DialogResult=DialogResult.OK;f.Close();
                 });
                 f.Controls.AddRange(new Control[]{FormLabel("动作类型",25,23,130),type,parameterALabel,a,
-                    parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,recordKey,selectWindow,delayShortcuts,save});
+                    parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,testMove,captureState,recordKey,selectWindow,delayShortcuts,save});
                 // 只有『运行程序』需要文件浏览；坐标捕获主要用于『移动鼠标』。
                 Action refreshActionOptions=delegate {
                     browse.Visible=type.Text=="运行程序" || type.Text=="运行程序并等待" || type.Text=="如果文件存在" || type.Text=="检查文件存在" || type.Text=="删除指定路径文件";
                     browse.Text=type.Text=="删除指定路径文件"?"浏览选择要删除的文件":"选择 EXE/BAT 文件（自动补全路径）";
-                    capture.Visible=type.Text=="移动鼠标";
+                    bool mouseAction=type.Text=="移动鼠标";capture.Visible=mouseAction;testMove.Visible=mouseAction;captureState.Visible=mouseAction;
+                    if(!mouseAction){stopCapture();captureState.Text="坐标使用屏幕物理像素，支持副屏负坐标；捕获后可测试移动核对。";}
                     recordKey.Visible=type.Text=="按键/组合键";
                     selectWindow.Visible=type.Text=="激活窗口";
                     delayShortcuts.Visible=type.Text=="等待毫秒";

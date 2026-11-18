@@ -10,6 +10,11 @@ class DesktopTests
     static int passed;
     static void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
     static string Output(IDictionary<string,string> fields){return "command\r\n返回代码：0\r\n"+String.Join("\n",InspectionService.Serialize(fields).Split('\n').Skip(1).Where(x=>x.Trim().Length>0).Select(x=>"ITCFG:"+x));}
+    static void UsbCapabilities()
+    {
+        var ntfs=new UsbDriveAccess{Root=@"G:\",FileSystem="ntfs"};Check(ntfs.SupportsPermissions&&ntfs.ToString().Contains("ntfs"),"USB NTFS permission capability is case-insensitive and displays its file system");
+        foreach(string format in new[]{"exFAT","FAT32","","RAW"}){var drive=new UsbDriveAccess{Root=@"G:\",FileSystem=format};Check(!drive.SupportsPermissions&&drive.PermissionHint.Contains("仅当前电脑")&&drive.PermissionHint.Contains("不会格式化"),"Unsupported USB format explains local-only protection without claiming ACL support: "+format);}
+    }
     static void Reports()
     {
         var fields=new Dictionary<string,string>{{"系统/名称","测试系统"},{"系统/架构","64 位"},{"CPU/1/型号","测试 CPU"},{"主板/1/型号","测试主板"},{"网卡/示例/型号","测试网卡"}};
@@ -76,7 +81,7 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         Check(!SoftwareUninstallService.Build("Bare","uninstall.exe",false,"",false,directory,exists).CanStart,"Uninstaller is not searched in the working directory or PATH");
         Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
     }
-    static int Main(){try{
+    static int Main(){try{UsbCapabilities();
         Reports();Software();Uninstall();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
