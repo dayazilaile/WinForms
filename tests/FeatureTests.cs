@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -47,6 +47,38 @@ class FeatureTests
         File.WriteAllText(Path.Combine(folder,"success.ps1"),AutomationService.MakeScript(success,BatInputEngine.SendInput,0,false),new System.Text.UTF8Encoding(true));
         File.WriteAllText(Path.Combine(folder,"failure.ps1"),AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("检查文件存在",marker+".missing"),S("重试结束")},BatInputEngine.SendInput,0,false),new System.Text.UTF8Encoding(true));
         File.WriteAllText(Path.Combine(folder,"legacy-flow.ps1"),AutomationService.MakeScript(steps,BatInputEngine.Legacy,0,false),new System.Text.UTF8Encoding(true));
+    }
+    static void LauncherReview()
+    {
+        string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(folder);string temporary=Path.Combine(Path.GetTempPath(),"launcher-review-"+Guid.NewGuid());Directory.CreateDirectory(temporary);string bootstrap="";bool visible=true,payloads=true,flags=true,length=true;
+        try{
+            int count=0;foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy})foreach(bool hide in new[]{false,true})foreach(bool admin in new[]{false,true})foreach(bool remove in new[]{false,true})foreach(bool diagnostic in new[]{false,true}){
+                var options=new AutoWorkflowSettings{Engine=engine,HideConsole=hide,RunAsAdministrator=admin,DeleteOnSuccess=remove,DiagnosticMode=diagnostic,StartupDelaySeconds=3};var actions=new List<AutoStep>{S("移动鼠标","1887","25")};string file=Path.Combine(temporary,"sample O'Reilly &100%-"+(count++)+".bat");AutomationService.ExportBat(file,actions,options);string bat=File.ReadAllText(file);
+                visible&=!bat.Contains("-EncodedCommand")&&!bat.Contains("-ExecutionPolicy");flags&=bat.Contains("-Verb RunAs")==admin&&bat.Contains("rem Optional hidden worker")==hide&&bat.Contains("Remove-Item -LiteralPath $f")== (hide&&remove);
+                string marker=":__ITTOOLKIT_PAYLOAD_V1__";string body=bat.Substring(bat.LastIndexOf(marker,StringComparison.Ordinal)+marker.Length).Trim();payloads&=System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(body))==AutomationService.MakeScript(actions,engine,3,diagnostic);
+                int launcher=0;foreach(string line in bat.Split('\n'))if(line.StartsWith("powershell.exe",StringComparison.Ordinal)||line.StartsWith("start ",StringComparison.Ordinal)){length&=line.Length<8191;int start=line.IndexOf("-Command \"",StringComparison.Ordinal)+10;string command=line.Substring(start).TrimEnd('\r');command=command.Substring(0,command.Length-1);File.WriteAllText(Path.Combine(folder,"launcher-parse-"+count+"-"+(launcher++)+".ps1"),command,new System.Text.UTF8Encoding(true));if(line.Contains("-NonInteractive -Command")&&!line.StartsWith("start ",StringComparison.Ordinal))bootstrap=command;}
+            }
+            Check(visible,"All 32 option combinations expose their startup commands without EncodedCommand or policy overrides");Check(payloads,"Single BAT Unicode payloads preserve the exact generated workflow in all modes");Check(flags,"Automatic UAC, hidden execution and optional deletion remain selectable");Check(length,"Visible startup commands stay below cmd.exe command-length limits");Check(Directory.GetFiles(temporary).Length==32,"Export still produces exactly one BAT per workflow and no companion file");
+        }finally{Directory.Delete(temporary,true);}
+        Check(bootstrap.Contains("Start-Process -FilePath $target")&&bootstrap.Contains("-Verb RunAs")&&bootstrap.Contains("IsInRole")&&!bootstrap.Contains("cmdArgs"),"UAC uses the standard shell verb and an environment-supplied file path without building nested cmd arguments");
+        string wait=AutomationService.MakeScript(new List<AutoStep>{S("等待毫秒","1"),S("随机等待","1","20")},BatInputEngine.SendInput,0,false);Check(!wait.Contains("Add-Type")&&!wait.Contains("WScript.Shell"),"Non-input waits with diagnostics off do not compile unused input bridges or create COM objects");
+        string mouse=AutomationService.MakeScript(new List<AutoStep>{S("移动鼠标","1887","25")},BatInputEngine.SendInput,0,true);Check(mouse.Contains("ITAutomationCursor")&&mouse.Contains("SetProcessDPIAware()")&&mouse.Contains("ITAutomationDiag")&&!mouse.Contains("WScript.Shell"),"Mouse, physical-DPI behavior and diagnostics remain present without unused window-activation COM");
+        string window=AutomationService.MakeScript(new List<AutoStep>{S("激活窗口","测试窗口")},BatInputEngine.SendInput,0,false);Check(window.Contains("New-Object -ComObject WScript.Shell")&&window.Contains("AppActivate"),"Window activation retains its required COM interface");
+        string legacy=AutomationService.MakeScript(new List<AutoStep>{S("输入文字","中文样例")},BatInputEngine.Legacy,0,false);Check(legacy.Contains("ITAutomationLegacy")&&legacy.Contains("Send-LegacyText")&&legacy.Contains("Clipboard"),"Legacy Chinese input and clipboard restoration stay available");
+        string role="$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)";
+        string preamble=@"$ErrorActionPreference='Stop'
+$directory=Join-Path ([IO.Path]::GetTempPath()) ('uac-fixture-'+[Guid]::NewGuid())
+[void][IO.Directory]::CreateDirectory($directory)
+$env:IT_TOOLKIT_BAT=Join-Path $directory '合法 O''Reilly &100%.bat'
+[IO.File]::WriteAllText($env:IT_TOOLKIT_BAT,'@rem inert fixture; never executed')
+";
+        string request=@"function Start-Process { param($FilePath,$WorkingDirectory,$Verb,$ErrorAction) if($FilePath -cne $env:IT_TOOLKIT_BAT -or $Verb -ne 'RunAs' -or $WorkingDirectory -cne $directory){throw 'path/verb mismatch'};Write-Host 'PASS mock standard UAC request' }
+";
+        string cancel=@"function Start-Process { param($FilePath,$WorkingDirectory,$Verb,$ErrorAction) throw 'mock cancellation' }
+";
+        string already=@"function Start-Process { throw 'unexpected re-elevation' }
+";
+        foreach(var item in new[]{new[]{"request",request,"$false"},new[]{"cancel",cancel,"$false"},new[]{"already",already,"$true"}}){string fixture=preamble+item[1]+"try {\r\n"+bootstrap.Replace(role,item[2])+"\r\n} finally { Remove-Item -LiteralPath $directory -Recurse -Force }\r\n";File.WriteAllText(Path.Combine(folder,"uac-"+item[0]+"-fixture.ps1"),fixture,new System.Text.UTF8Encoding(true));}
     }
     static void RandomWait()
     {
@@ -154,5 +186,5 @@ Write-Output 'PASS random wait fixture'
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();LauncherReview();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

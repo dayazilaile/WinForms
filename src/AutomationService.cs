@@ -473,8 +473,11 @@ public static class ITAutomationDiag {
             if(steps.Exists(delegate(AutoStep x){return x.Type=="如果系统版本";})) b.AppendLine("$itWindowsBuild=[int](Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -Name CurrentBuildNumber -ErrorAction Stop).CurrentBuildNumber");
             b.AppendLine("trap { Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red; break }");
             string apiClass = engine == BatInputEngine.Legacy ? "ITAutomationLegacy" : "ITAutomationInput";
-            b.AppendLine("Add-Type -TypeDefinition @'\r\n" + (engine == BatInputEngine.Legacy ? LegacyWinApiBridge : WinApiBridge) + "\r\n'@");
-            b.AppendLine("try { [void][" + apiClass + "]::SetProcessDPIAware() } catch {}");
+            bool needsInput=steps.Exists(delegate(AutoStep x){return x!=null&&(x.Type=="移动鼠标"||x.Type=="鼠标左击"||x.Type=="鼠标双击"||x.Type=="鼠标右击"||x.Type=="按键/组合键"||x.Type=="输入文字"||x.Type=="滚轮");});
+            if(needsInput||diagnostic){
+                b.AppendLine("Add-Type -TypeDefinition @'\r\n" + (engine == BatInputEngine.Legacy ? LegacyWinApiBridge : WinApiBridge) + "\r\n'@");
+                b.AppendLine("try { [void][" + apiClass + "]::SetProcessDPIAware() } catch {}");
+            }
             bool hasMouseMove = steps.Exists(delegate(AutoStep x) { return x != null && x.Type == "移动鼠标"; });
             if (hasMouseMove)
                 b.AppendLine("Add-Type -TypeDefinition @'\r\n" + CursorWinApiBridge + "\r\n'@");
@@ -483,13 +486,13 @@ public static class ITAutomationDiag {
                 b.AppendLine("[ITAutomationDiag]::ScreenInfo()");
                 b.AppendLine("[ITAutomationDiag]::FocusInfo()");
             }
-            b.AppendLine("$shell=New-Object -ComObject WScript.Shell");
             // V0.3.1: Load the optional window bridge ONLY when a window-activation
             // step exists. A simple Enter/Tab hotkey workflow must have the same
             // PowerShell startup path as V0.2.8, which the user has tested.
             bool hasWindowActivation = steps.Exists(delegate(AutoStep x) { return x != null && x.Type == "激活窗口"; });
             if (hasWindowActivation)
             {
+                b.AppendLine("$shell=New-Object -ComObject WScript.Shell");
                 b.AppendLine("Add-Type -TypeDefinition @'\r\nusing System; using System.Runtime.InteropServices; public static class ITAutomationWindow { [DllImport(\"user32.dll\")] public static extern bool IsIconic(IntPtr h); [DllImport(\"user32.dll\")] public static extern bool ShowWindowAsync(IntPtr h, int cmd); [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr h); }\r\n'@");
             }
 
@@ -686,6 +689,13 @@ public static class ITAutomationDiag {
             b.AppendLine("Write-Host 'All steps complete.'");
             return b.ToString();
         }
+        private static string VisiblePowerShellCommand(string script,string switches)
+        {
+            // Launcher text is controlled ASCII, without cmd.exe expansions or quote interpolation.
+            // User paths and workflow data are supplied through environment variables / the payload.
+            foreach(char c in script)if(c>127||c=='"'||c=='%'||c=='\r'||c=='\n')throw new InvalidOperationException("启动命令包含未允许的字符。");
+            return "powershell.exe -NoLogo -NoProfile "+switches+" -Command \""+script+"\"";
+        }
         public static void ExportBat(string target, List<AutoStep> steps)
         {
             ExportBat(target, steps, new AutoWorkflowSettings());
@@ -712,59 +722,23 @@ public static class ITAutomationDiag {
             text.AppendLine("set \"IT_TOOLKIT_BAT=%~f0\"");
             if (options.RunAsAdministrator)
             {
-                // Check UAC token before launching the existing foreground/hidden runner.
-                // Relaunch the standalone BAT via elevated cmd.exe only if needed. The
-                // original instance exits; the elevated BAT then runs the same steps.
-                // UAC consent is always required: this is not a UAC bypass.
-                StringBuilder elevate = new StringBuilder();
-                elevate.AppendLine("$ErrorActionPreference='Stop'");
-                elevate.AppendLine("try {");
-                elevate.AppendLine("  $identity=[Security.Principal.WindowsIdentity]::GetCurrent()");
-                elevate.AppendLine("  $principal=New-Object -TypeName System.Security.Principal.WindowsPrincipal -ArgumentList @($identity)");
-                elevate.AppendLine("  if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){ exit 0 }");
-                elevate.AppendLine("  $target=$env:IT_TOOLKIT_BAT");
-                elevate.AppendLine("  if(-not [IO.File]::Exists($target)){ throw 'Cannot locate BAT file for UAC restart' }");
-                // cmd.exe /d /c ""C:\\path with spaces\\task.bat""; quotation also protects '&' in paths.
-                elevate.AppendLine("  $cmdArgs='/d /c \"\"'+$target+'\"\"'");
-                elevate.AppendLine("  Start-Process -FilePath $env:ComSpec -Verb RunAs -ArgumentList $cmdArgs -ErrorAction Stop | Out-Null");
-                elevate.AppendLine("  exit 42");
-                elevate.AppendLine("} catch {");
-                elevate.AppendLine("  Write-Host ('UAC elevation cancelled or failed: '+$_.Exception.Message) -ForegroundColor Red");
-                elevate.AppendLine("  exit 1");
-                elevate.AppendLine("}");
-                text.AppendLine("rem Request administrator rights through normal Windows UAC only when enabled");
-                text.AppendLine("powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand " +
-                    Convert.ToBase64String(Encoding.Unicode.GetBytes(elevate.ToString())));
+                // Standard ShellExecute RunAs, with visible source rather than an encoded command.
+                // The BAT path is passed as environment data; it is never inserted into PowerShell code.
+                string elevate="$ErrorActionPreference='Stop'; try { $identity=[Security.Principal.WindowsIdentity]::GetCurrent(); $principal=New-Object -TypeName System.Security.Principal.WindowsPrincipal -ArgumentList @($identity); if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){ exit 0 }; $target=$env:IT_TOOLKIT_BAT; if(-not [IO.File]::Exists($target)){ throw 'Cannot locate BAT file for UAC restart' }; Start-Process -FilePath $target -WorkingDirectory ([IO.Path]::GetDirectoryName($target)) -Verb RunAs -ErrorAction Stop | Out-Null; exit 42 } catch { Write-Host ('UAC elevation cancelled or failed: '+$_.Exception.Message) -ForegroundColor Red; exit 1 }";
+                text.AppendLine("rem Standard Windows UAC; existing administrator sessions are reused");
+                text.AppendLine(VisiblePowerShellCommand(elevate,"-NonInteractive"));
                 text.AppendLine("set \"IT_TOOLKIT_UAC_RC=%ERRORLEVEL%\"");
                 text.AppendLine("if \"%IT_TOOLKIT_UAC_RC%\"==\"42\" exit /b 0");
                 text.AppendLine("if not \"%IT_TOOLKIT_UAC_RC%\"==\"0\" goto :__ITTOOLKIT_UAC_FAILED__");
             }
             if (options.HideConsole)
             {
-                // Detached worker executes the original embedded script. Diagnostic still runs,
-                // but stdout is suppressed in hidden mode; cleanup happens in finally.
-                StringBuilder runner = new StringBuilder();
-                runner.AppendLine("$ErrorActionPreference='Stop'");
-                runner.AppendLine("$f=$env:IT_TOOLKIT_BAT");
-                runner.AppendLine("$rc=0");
-                runner.AppendLine("try {");
-                runner.AppendLine("  $t=[IO.File]::ReadAllText($f)");
-                runner.AppendLine("  $mark=':__ITTOOLKIT_PAYLOAD_V1__'");
-                runner.AppendLine("  $ix=$t.LastIndexOf($mark)");
-                runner.AppendLine("  if($ix -lt 0){throw '未找到 BAT 内部代码'}");
-                runner.AppendLine("  $x=$t.Substring($ix+$mark.Length).Trim()");
-                runner.AppendLine("  $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x))");
-                runner.AppendLine("  & ([ScriptBlock]::Create($s)) *> $null");
-                runner.AppendLine("  if(-not $?){$rc=1}");
-                runner.AppendLine("} catch {$rc=1}");
-                if(options.DeleteOnSuccess)
-                {
-                    runner.AppendLine("finally { Start-Sleep -Seconds 2; try {Remove-Item -LiteralPath $f -Force -ErrorAction Stop} catch {$rc=1} }");
-                }
-                runner.AppendLine("exit $rc");
-                string runner64=Convert.ToBase64String(Encoding.Unicode.GetBytes(runner.ToString()));
-                text.AppendLine("rem Hidden PowerShell worker; BAT command prompt itself may flash briefly");
-                text.AppendLine("start \"\" powershell.exe -NoLogo -NoProfile -STA -WindowStyle Hidden -EncodedCommand " + runner64);
+                // Keep optional hidden execution, but make the complete bootstrap directly readable.
+                string runner="$ErrorActionPreference='Stop'; $f=$env:IT_TOOLKIT_BAT; $rc=0; try { $t=[IO.File]::ReadAllText($f); $mark=':__ITTOOLKIT_PAYLOAD_V1__'; $ix=$t.LastIndexOf($mark); if($ix -lt 0){throw 'BAT payload marker missing'}; $x=$t.Substring($ix+$mark.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s)) *> $null; if(-not $?){$rc=1} } catch {$rc=1}";
+                if(options.DeleteOnSuccess)runner+=" finally { Start-Sleep -Seconds 2; try {Remove-Item -LiteralPath $f -Force -ErrorAction Stop} catch {$rc=1} }";
+                runner+="; exit $rc";
+                text.AppendLine("rem Optional hidden worker; the main workflow remains the original Unicode payload");
+                text.AppendLine("start \"\" "+VisiblePowerShellCommand(runner,"-STA -WindowStyle Hidden"));
                 text.AppendLine("exit /b %ERRORLEVEL%");
             }
             else
