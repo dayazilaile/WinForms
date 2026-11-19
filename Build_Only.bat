@@ -19,7 +19,7 @@ if not exist "src\Program.cs" (
 )
 if not exist "build" mkdir "build"
 echo.
-echo ===== BAT Automation Standalone v0.5.13-BAT =====
+echo ===== BAT Automation Standalone v0.5.14-BAT =====
 echo Compiler: "%CSC%"
 pushd "src"
 "%CSC%" /nologo /langversion:5 /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\BatAutomation.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
