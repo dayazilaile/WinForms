@@ -35,6 +35,29 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }
+    # Exercise the exact visible cleanup block with harmless files and no automation payload.
+    $cleanupFolder = Join-Path ([IO.Path]::GetTempPath()) ('visible-cleanup-' + [Guid]::NewGuid())
+    New-Item -ItemType Directory -Path $cleanupFolder | Out-Null
+    try {
+        foreach ($expected in @(0, 7)) {
+            foreach ($locked in @($false, $true)) {
+                $fixture = Join-Path $cleanupFolder ("清理 O'Reilly &100%! (" + $expected + '-' + $locked + ').bat')
+                Copy-Item -LiteralPath (Join-Path 'build\generated-tests' ('visible-cleanup-' + $expected + '.bat')) -Destination $fixture
+                $env:IT_TOOLKIT_CLEANUP_FIXTURE = $fixture
+                $held = $null
+                try {
+                    # Allow cmd to read the script but deny deletion for the failure case.
+                    if ($locked) { $held = [IO.File]::Open($fixture, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read) }
+                    $result = (& cmd.exe /d /s /c '""%IT_TOOLKIT_CLEANUP_FIXTURE%""' 2>&1 | Out-String)
+                    $code = $LASTEXITCODE
+                    if ($code -ne $expected -or (Test-Path -LiteralPath $fixture) -ne $locked -or $result.Contains('[WARNING]') -ne $locked) { throw ('Visible cleanup failed, exit=' + $code + ', locked=' + $locked + ': ' + $result) }
+                    Write-Output ('PASS visible cleanup with original exit code ' + $expected + ', locked=' + $locked)
+                }
+                finally { if ($null -ne $held) { $held.Dispose() } }
+            }
+        }
+    }
+    finally { Remove-Item Env:IT_TOOLKIT_CLEANUP_FIXTURE -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $cleanupFolder -Recurse -Force }
     # Mock the shell call and token result: no UAC consent, real elevation or input actions.
     foreach ($case in @(@('request', 42), @('cancel', 1), @('already', 0))) {
         $ErrorActionPreference = 'Continue'

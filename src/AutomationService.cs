@@ -748,8 +748,14 @@ public static class ITAutomationDiag {
                 text.AppendLine("echo Automation exit code: %RC%");
                 if(options.DeleteOnSuccess)
                 {
-                    text.AppendLine("rem Run the cleanup independently after normal/failed script completion");
-                    text.AppendLine("start \"\" /min powershell.exe -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command \"$target=$env:IT_TOOLKIT_BAT; Start-Sleep -Seconds 2; if(Test-Path -LiteralPath $target){Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue}\"");
+                    // cmd reads this entire block before deleting the running BAT, so exit
+                    // remains available after deletion. No background or hidden cleanup process.
+                    text.AppendLine("rem Clean up only this BAT in the current visible cmd session");
+                    text.AppendLine("(");
+                    text.AppendLine("del /f /q \"%IT_TOOLKIT_BAT%\" >nul 2>&1");
+                    text.AppendLine("if exist \"%IT_TOOLKIT_BAT%\" echo [WARNING] BAT cleanup failed; remove this file manually.");
+                    text.AppendLine("exit /b %RC%");
+                    text.AppendLine(")");
                 }
                 else
                 {
