@@ -14,6 +14,7 @@ namespace ITDesktopToolkit
             for(int i=0;i<steps.Count;i++)
             {
                 AutoStep s=steps[i];if(s==null)throw new ArgumentException("步骤不能为空。");
+                if(s.Type=="随机等待")RandomWaitBounds(s.A,s.B);
                 if(!EmitFlow(s,ignored,stack,i))
                     foreach(var f in stack)if(f.Type=="retry"&&(s.Type=="格式化指定卷"||s.Type=="清空当前用户回收站"||s.Type.StartsWith("删除",StringComparison.Ordinal)))
                         throw new ArgumentException("不允许在自动重试块中格式化或清理文件。请移至重试块之外。");

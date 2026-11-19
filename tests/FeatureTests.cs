@@ -48,6 +48,32 @@ class FeatureTests
         File.WriteAllText(Path.Combine(folder,"failure.ps1"),AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("检查文件存在",marker+".missing"),S("重试结束")},BatInputEngine.SendInput,0,false),new System.Text.UTF8Encoding(true));
         File.WriteAllText(Path.Combine(folder,"legacy-flow.ps1"),AutomationService.MakeScript(steps,BatInputEngine.Legacy,0,false),new System.Text.UTF8Encoding(true));
     }
+    static void RandomWait()
+    {
+        Check(AutomationService.RandomWaitBounds(" 1 ","20").SequenceEqual(new[]{1,20})&&AutomationService.RandomWaitBounds("0","0").SequenceEqual(new[]{0,0})&&AutomationService.RandomWaitBounds("3600","3600")[1]==3600,"Random wait accepts inclusive integer-second bounds including equal and zero bounds");
+        foreach(var pair in new[]{new[]{"","20"},new[]{"1",""},new[]{"20","1"},new[]{"-1","20"},new[]{"1","3601"},new[]{"1.5","20"},new[]{"1","20; exit"},new[]{"1","2147483647"}})Reject(()=>AutomationService.RandomWaitBounds(pair[0],pair[1]),"Invalid random-wait bounds rejected: "+pair[0]+" / "+pair[1]);
+        var steps=new List<AutoStep>{S("随机等待","1","20"),S("等待毫秒","500")};string script="";
+        foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy}){script=AutomationService.MakeScript(steps,engine,0,false);Check(script.Contains("$itRandomWaitSeconds0 = Get-Random -Minimum 1 -Maximum 21")&&script.Contains("Start-Sleep -Seconds $itRandomWaitSeconds0")&&script.Contains("Start-Sleep -Milliseconds 500")&&!script.Contains("-SetSeed"),"Random wait samples at runtime with inclusive seconds and preserves fixed milliseconds: "+engine);}
+        string retry=AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("随机等待","1","20"),S("重试结束")},BatInputEngine.SendInput,0,false);Check(retry.IndexOf("Get-Random",StringComparison.Ordinal)>retry.IndexOf("for($itRetry",StringComparison.Ordinal)&&retry.IndexOf("Get-Random",StringComparison.Ordinal)<retry.IndexOf("} catch { if($itRetry",StringComparison.Ordinal),"Random wait is sampled inside retry execution rather than outside the loop");
+        string two=AutomationService.MakeScript(new List<AutoStep>{S("随机等待","0","0"),S("随机等待","3600","3600")},BatInputEngine.SendInput,0,false);Check(two.Contains("$itRandomWaitSeconds0 = Get-Random -Minimum 0 -Maximum 1")&&two.Contains("$itRandomWaitSeconds1 = Get-Random -Minimum 3600 -Maximum 3601"),"Each random wait has its own runtime draw and equal bounds stay valid");
+        string path=Path.GetTempFileName();try{AutomationService.Save(path,steps);var loaded=AutomationService.Load(path);Check(loaded[0].Type=="随机等待"&&loaded[0].A=="1"&&loaded[0].B=="20"&&loaded[1].Type=="等待毫秒","Workflow preserves random range and legacy fixed waits without a format change");string before=File.ReadAllText(path);Reject(()=>AutomationService.Save(path,new List<AutoStep>{S("随机等待","20","1")}),"Invalid random range cannot be saved");Check(File.ReadAllText(path)==before,"Rejected random-wait save leaves the existing workflow intact");}finally{File.Delete(path);}
+        string snippet=String.Join("\n",script.Replace("\r","").Split('\n').Where(line=>line.StartsWith("$itRandomWaitSeconds",StringComparison.Ordinal)||line.StartsWith("Start-Sleep -Seconds $itRandomWaitSeconds",StringComparison.Ordinal)));
+        string fixture=@"$ErrorActionPreference='Stop'
+$script:draws=0
+$script:waits=New-Object 'Collections.Generic.List[int]'
+function Get-Random { param([int]$Minimum,[int]$Maximum) if($Minimum -ne 1 -or $Maximum -ne 21){throw 'wrong inclusive bounds'};$script:draws++;if($script:draws % 2 -eq 1){return $Minimum};return ($Maximum-1) }
+function Start-Sleep { param([int]$Seconds) $script:waits.Add($Seconds) }
+$step={
+"+snippet+@"
+}
+1..4 | ForEach-Object { & $step }
+if($script:draws -ne 4 -or ($script:waits -join ',') -ne '1,20,1,20'){throw 'runtime resampling or bound propagation failed'}
+$real=@(1..200 | ForEach-Object { Microsoft.PowerShell.Utility\Get-Random -Minimum 1 -Maximum 21 })
+if(@($real | Where-Object {$_ -lt 1 -or $_ -gt 20}).Count -ne 0){throw 'real draws escaped bounds'}
+Write-Output 'PASS random wait fixture'
+";
+        string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"random-wait-fixture.ps1"),fixture,new System.Text.UTF8Encoding(true));
+    }
     static void ConditionBlocks()
     {
         var yes=new List<AutoStep>{S("等待毫秒","1000"),S("输入文字","中文; 'quoted'")};var no=new List<AutoStep>{S("等待毫秒","2000")};
@@ -128,5 +154,5 @@ class FeatureTests
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

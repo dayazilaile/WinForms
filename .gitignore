@@ -11,3 +11,7 @@ build/
 *.log
 Thumbs.db
 Desktop.ini
+
+# Python build helpers
+__pycache__/
+*.pyc

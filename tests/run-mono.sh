@@ -6,7 +6,12 @@ export MONO_PATH="$setup/mono/usr/lib/mono/4.5"
 export MONO_CFG_DIR="$setup/mono/etc"
 export MONO_GAC_PREFIX="$setup/mono/usr"
 mono=("$setup/mono/usr/bin/mono-sgen" --config "$setup/mono/etc/mono/config")
-bash "$setup/build.sh"
+export PYTHONPATH="$setup/metadata${PYTHONPATH:+:$PYTHONPATH}"
+python3 "$repo/tools/build_framework.py" --references "${NETFRAMEWORK_REFS:-$setup/netfx48}"
+mkdir -p "$repo/build/Database"
+for name in hardware_models.tsv hardware_models_v039.tsv bugcheck_codes.tsv pci.ids generic_codes.tsv fault_codes.tsv usb.ids offline_database_README.txt; do
+  if [ ! -e "$repo/build/Database/$name" ]; then cp "$repo/Database/$name" "$repo/build/Database/$name"; fi
+done
 for name in pci.v052.ids usb.v052.ids board_models_v052.tsv component_models_v052.tsv SOURCES-v052.md; do
   if [ ! -e "$repo/build/Database/$name" ]; then cp "$repo/Database/$name" "$repo/build/Database/$name"; fi
 done
