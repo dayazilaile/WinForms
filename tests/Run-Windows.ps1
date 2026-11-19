@@ -38,6 +38,16 @@ try {
         Copy-Item (Join-Path $clean '*.png') -Destination build
     }
     finally { Remove-Item -LiteralPath $clean -Recurse -Force }
+    # Mock the shell call and token result: no UAC consent, real elevation or input actions.
+    foreach ($case in @(@('request', 42), @('cancel', 1), @('already', 0))) {
+        $ErrorActionPreference = 'Continue'
+        try { $result = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File (Join-Path 'build\generated-tests' ('uac-' + $case[0] + '-fixture.ps1')) 2>&1 | Out-String); $code = $LASTEXITCODE }
+        finally { $ErrorActionPreference = 'Stop' }
+        if ($code -ne $case[1]) { throw ('Mock UAC ' + $case[0] + ' returned ' + $code + ': ' + $result) }
+        if ($case[0] -eq 'request' -and -not $result.Contains('PASS mock standard UAC request')) { throw ('Mock UAC request did not validate its path: ' + $result) }
+        if ($case[0] -eq 'cancel' -and -not $result.Contains('UAC elevation cancelled or failed: mock cancellation')) { throw ('Mock UAC cancellation was not reported: ' + $result) }
+        Write-Output ('PASS mock UAC branch: ' + $case[0])
+    }
     foreach ($file in Get-ChildItem -LiteralPath build\generated-tests -Filter *.ps1) {
         $tokens = $null; $errors = $null
         [void][System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
@@ -63,7 +73,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.12-BAT-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.13-BAT-Windows.zip -Force
     Write-Output 'Standalone Windows validation and package completed.'
 }
 finally { Pop-Location }

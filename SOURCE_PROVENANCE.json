@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.5.12",
-  "base_commit": "54ff713da75166df30dba5cfb362891eb54b898a",
+  "base_tag": "v0.5.13",
+  "base_commit": "32eff306cba2d2ce99f9259eb7acd6f4fa7e2465",
   "unchanged_sources_sha256": {
-    "src/AutomationService.cs": "2f95bec59ee54b22e83dd743e1c1a0832580237e43b12b14028e7425e9c3eaea",
+    "src/AutomationService.cs": "f5dea559a940e3169461a4618ec77d847447140495f3929a01502749f12d8133",
     "src/AutomationFlow.cs": "f74552fe04372b0f81d16110e824f087533043e9dedbeb1b6f70779d6d37cf3c",
     "src/AutomationBlockService.cs": "d5cb1434947ce9cf6ab95dc20969080c79cdfa0175a3d0c5ad4b68f4f0e472d6",
     "src/MainForm.Automation.cs": "142d4f3390b309b4ad245080f0d0fcd95e37640a0ecae8dd3145edac671aeab1",
@@ -18,6 +18,6 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.5.12-BAT",
-  "change": "Random wait added in toolkit v0.5.12, then standalone re-extracted. Microsoft framework references and published EXE compatibility checks retained."
+  "standalone_version": "0.5.13-BAT",
+  "change": "Toolkit v0.5.13 first: readable standard UAC and hidden launchers, required components only; all existing automation settings and defaults preserved. Then freshly extracted standalone; Microsoft Framework compatibility checks retained. Huorong compatibility is unverified."
 }
