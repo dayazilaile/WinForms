@@ -1,14 +1,27 @@
-# BAT 自动化独立版 v0.5.11-BAT
+# BAT 自动化独立版 v0.5.12-BAT
 
-从 [IT 桌面运维工具箱 v0.5.10](https://github.com/dayazilaile/WinForms/tree/v0.5.10) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.11-BAT`，原工具箱主版本仍为 v0.5.10。
+从 [IT 桌面运维工具箱 v0.5.12](https://github.com/dayazilaile/WinForms/tree/v0.5.12) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.12-BAT`，与工具箱 v0.5.12 同步。
 
-## 本次修复
+## 新增随机等待
 
-修复旧独立包 v0.5.10-BAT 在“生成 BAT”或保存流程时可能出现的 `System.Collections.Generic.Stack<T>` 类型加载失败。旧预编译 EXE 使用了 Mono 运行库的类型归属；Windows .NET Framework 中该类型属于 System.dll，导致生成失败。
+在“添加动作”中选择 **随机等待**，填写：
 
-本包用微软官方 .NET Framework 4.8 引用程序集重新编译，显式禁止混入 Mono 默认引用，并检查最终 EXE 的全部外部类型归属。`Stack<T>` 已指向 `System.dll`，构建记录见 [BUILD_INFO.json](BUILD_INFO.json)。原有自动化源码仍来自工具箱 **v0.5.10**，工具箱主版本及其代码保持不变；本次只修复独立包构建兼容性。
+| 字段 | 示例 |
+| --- | --- |
+| 最短等待（秒） | 1 |
+| 最长等待（秒） | 20 |
 
-请下载 v0.5.11-BAT 新包，解压后运行其中的 `BatAutomation.exe`，已有 `.workflow.txt` 格式继续兼容。
+每次执行到此动作时，从 1～20 秒（含上下限）中重新抽取一个整数秒数，允许重复；不是在生成 BAT 时固定。重试中的每次执行也重新抽取。可见控制台会显示本次抽到的秒数。
+
+默认 1～20 秒，支持 0～3600 整数秒，上下限相同即固定等待；范围错误会提示。原“等待毫秒”保持不变。启动前延时及其他等待动作另计。新旧流程格式兼容，但包含新动作的流程应使用新版软件。
+
+![填写随机等待秒数范围](docs/random-wait-v0512.png)
+
+可打开 [随机等待示例](examples/随机等待示例.workflow.txt) 查看 1～20 秒的设置。该示例只等待，不申请管理员或自删除。
+
+## 沿用独立版框架兼容性修复
+
+继续使用微软 .NET Framework 4.8 引用程序集和最终 EXE 类型归属检查，保留 v0.5.11-BAT 对旧包 Stack<T> 类型加载失败的修复。构建记录见 [BUILD_INFO.json](BUILD_INFO.json)。Windows 验收会直接测试包内 EXE，然后再测试重新编译的 EXE。
 
 ## 下载后怎么用
 
@@ -55,9 +68,10 @@
 
 ## 编译、测试与来源
 
-- 完整源码位于 `src/`，共 12 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.10。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
+- 完整源码位于 `src/`，共 12 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.12。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
 - Windows 编译：`Build_Only.bat --no-pause`；验收：`powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1`。
-- 当前云环境通过 **63 项检查（引擎/流程 37 + 独立界面 22 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
+- 当前云环境通过 **84 项检查（引擎/流程 53 + 独立界面 27 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
+- 新增范围校验、含上下限、相等边界、运行时脚本、重试内抽取、保存与界面编辑测试；Windows 随机用例拦截等待并验证反复抽取，不实际休眠。
 - 测试没有执行用户程序、真实 Ping、输入、鼠标移动或修改系统设置；UI 中的鼠标接口由模拟替代。Windows 测试另外检查生成 PowerShell 的语法与仅访问测试文件的成功/失败重试场景，云端不能代替其执行结果。
 - 兼容性回归会检查发布 EXE/构建记录一致性及源码来源，并用 Mono 错误引用生成反例，确认可以阻止本次同类错误。开发者跨编译入口为 `tools/build_framework.py`，先安装 `tools/requirements-build.txt`，使用 `--references` 指定微软引用程序集目录；缺失时可用 `--download-references` 下载固定哈希的官方包，引用 DLL 不随运行 EXE 分发。`tests/test_framework_metadata.py` 检查实际发布文件。
 - Windows 系统接口与缩放验收见 [tests/Windows验收.md](tests/Windows验收.md)。当前 Linux Mono 检查入口为 `tests/run-mono.sh`，使用本云环境 `/workspace/cloud-setup` 的工具链；有虚拟显示时设置 `DISPLAY` 可同时运行 UI 检查。

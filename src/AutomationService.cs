@@ -29,7 +29,7 @@ namespace ITDesktopToolkit
 
     public static partial class AutomationService
     {
-        public static readonly string[] Types = { "运行程序", "等待毫秒", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
+        public static readonly string[] Types = { "运行程序", "等待毫秒", "随机等待", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
         public static string Guide(string type)
         {
             switch(type)
@@ -44,6 +44,7 @@ namespace ITDesktopToolkit
                 case "运行程序并等待": return "参数1=程序完整路径；参数2=参数（可空）；参数3=超时秒（1-86400，默认60）；非零退出码或超时视为失败。";
                 case "检查文件存在": return "参数1=完整文件路径；文件不存在即失败，可结合重试块使用。";
                 case "运行程序": return "参数1=程序完整路径；参数2=启动参数（可空）；参数3=工作目录（可空）";
+                case "随机等待": return "填写最短和最长等待秒数（0–3600 的整数，含上下限），每次执行时重新随机抽取，允许重复；例如 1 到 20 秒。";
                 case "等待毫秒": return "参数1=毫秒，可点击下方 1/2/3/4/5/10 秒快捷按钮，也支持手动填写例如 1500。";
                 case "等待窗口": return "参数1=窗口标题关键词；参数2=超时秒数（默认15）。仅等待，不会激活窗口；按回车前请再加『激活窗口』动作。";
                 case "激活窗口": return "参数1=窗口标题（可用『选择窗口』自动填写）；参数2=目标进程名（可空，推荐填写，可减少同名误选）。执行时尝试恢复最小化并激活窗口。";
@@ -203,6 +204,13 @@ namespace ITDesktopToolkit
             return s;
         }
         private static string P(string x) { return PowerShellService.Quote(x); }
+        public static int[] RandomWaitBounds(string minimum,string maximum)
+        {
+            int low,high;
+            if(!Int32.TryParse((minimum??"").Trim(),System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out low)||!Int32.TryParse((maximum??"").Trim(),System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out high)||low<0||high>3600||low>high)
+                throw new ArgumentException("随机等待请填写 0–3600 的整数秒，最短时间不能大于最长时间。");
+            return new[]{low,high};
+        }
         private static int PositiveInt(string value, int fallback, int max)
         {
             int n;
@@ -567,6 +575,11 @@ public static class ITAutomationDiag {
                         b.AppendLine("$p=Start-Process -FilePath " + P(s.A) + (String.IsNullOrWhiteSpace(s.B) ? "" : " -ArgumentList " + P(s.B)) +
                             (String.IsNullOrWhiteSpace(directory) ? "" : " -WorkingDirectory " + P(directory)) + " -PassThru -ErrorAction Stop");
                         break;
+                    case "随机等待":
+                        int[] seconds=RandomWaitBounds(s.A,s.B);string randomWait="$itRandomWaitSeconds"+i;
+                        b.AppendLine(randomWait+" = Get-Random -Minimum "+seconds[0]+" -Maximum "+(seconds[1]+1));
+                        b.AppendLine("Write-Host ('本次随机等待 ' + "+randomWait+" + ' 秒')");
+                        b.AppendLine("Start-Sleep -Seconds "+randomWait);break;
                     case "等待毫秒": b.AppendLine("Start-Sleep -Milliseconds " + PositiveInt(s.A,1000,3600000)); break;
                     case "等待窗口":
                         b.AppendLine("$deadline=(Get-Date).AddSeconds(" + PositiveInt(s.B,15,3600) + "); $found=$false; while((Get-Date) -lt $deadline){if(Get-Process | Where-Object {$_.MainWindowTitle -like ('*'+" + P(s.A) + "+'*')} | Select-Object -First 1){$found=$true; break}; Start-Sleep -Milliseconds 250}; if(-not $found){throw '窗口超时未出现'}");
