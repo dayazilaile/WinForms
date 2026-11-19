@@ -35,6 +35,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }
+    & .\tests\Run-TimeoutFixtures.ps1
     # Exercise the exact visible cleanup block with harmless files and no automation payload.
     $cleanupFolder = Join-Path ([IO.Path]::GetTempPath()) ('visible-cleanup-' + [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $cleanupFolder | Out-Null

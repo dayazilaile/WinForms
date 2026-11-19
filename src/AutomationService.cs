@@ -46,7 +46,7 @@ namespace ITDesktopToolkit
                 case "运行程序": return "参数1=程序完整路径；参数2=启动参数（可空）；参数3=工作目录（可空）";
                 case "随机等待": return "填写最短和最长等待秒数（0–3600 的整数，含上下限），每次执行时重新随机抽取，允许重复；例如 1 到 20 秒。";
                 case "等待毫秒": return "参数1=毫秒，可点击下方 1/2/3/4/5/10 秒快捷按钮，也支持手动填写例如 1500。";
-                case "等待窗口": return "参数1=窗口标题关键词；参数2=超时秒数（默认15）。仅等待，不会激活窗口；按回车前请再加『激活窗口』动作。";
+                case "等待窗口": return "参数1=窗口标题关键词；参数2=超时秒数（1–120，默认120）。超时终止后续动作并按末尾删除选项清理 BAT。仅等待，不会激活窗口；按回车前请再加『激活窗口』动作。";
                 case "激活窗口": return "参数1=窗口标题（可用『选择窗口』自动填写）；参数2=目标进程名（可空，推荐填写，可减少同名误选）。执行时尝试恢复最小化并激活窗口。";
                 case "移动鼠标": return "参数1=X 坐标；参数2=Y 坐标，支持多屏负坐标";
                 case "按键/组合键": return "参数1=TAB、SPACE、ENTER（回车）、ESC、F1-F12、CTRL+C、ALT+TAB、WIN+R 等";
@@ -450,6 +450,33 @@ public static class ITAutomationDiag {
  }
 } ";
 
+        // Read-only checks run in an in-process PowerShell instance, with a bounded wait.
+        // A timed-out native read may resist cancellation; never synchronously Dispose it.
+        // The failed workflow exits its own PowerShell host, releasing remaining resources.
+        private const string BoundedCheckHelper = @"
+function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds=120) {
+ $worker=$null; $pending=$null; $finished=$false
+ try {
+  $worker=[PowerShell]::Create()
+  [void]$worker.AddScript('$ErrorActionPreference=''Stop''; '+$test.ToString())
+  $pending=$worker.BeginInvoke()
+  if(-not $pending.AsyncWaitHandle.WaitOne($seconds*1000)) { throw ($label+'超时（'+$seconds+'秒），已停止后续动作。') }
+  $finished=$true
+  $values=@($worker.EndInvoke($pending))
+  if($worker.HadErrors) { throw ($label+'判断失败：'+($worker.Streams.Error | Out-String)) }
+  if($values.Count -ne 1 -or $values[0] -isnot [bool]) { throw ($label+'未返回明确的是/否结果。') }
+  return [bool]$values[0]
+ } catch {
+  $script:itAbortWorkflow=$true
+  throw
+ } finally {
+  if($null -ne $worker) {
+   if($finished -or $null -eq $pending) { $worker.Dispose() }
+   else { try { [void]$worker.BeginStop($null,$null) } catch {} }
+  }
+ }
+}
+";
         public static string MakeScript(List<AutoStep> steps)
         {
             return MakeScript(steps, BatInputEngine.SendInput);
@@ -469,9 +496,9 @@ public static class ITAutomationDiag {
             if (steps.Count == 0) throw new ArgumentException("至少添加一个步骤。 ");
             StringBuilder b = new StringBuilder();
             b.AppendLine("$ErrorActionPreference='Stop'");
-            b.AppendLine("function Test-ITReachable([string]$hostName) { $ping=New-Object Net.NetworkInformation.Ping; try { return ($ping.Send($hostName,1500).Status -eq [Net.NetworkInformation.IPStatus]::Success) } catch {return $false} finally {$ping.Dispose()} }");
-            if(steps.Exists(delegate(AutoStep x){return x.Type=="如果系统版本";})) b.AppendLine("$itWindowsBuild=[int](Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -Name CurrentBuildNumber -ErrorAction Stop).CurrentBuildNumber");
-            b.AppendLine("trap { Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red; break }");
+            b.AppendLine("$script:itAbortWorkflow=$false");
+            if(steps.Exists(delegate(AutoStep x){return AutomationBlockService.IsCondition(x.Type)||x.Type=="等待窗口";})) b.AppendLine(BoundedCheckHelper);
+            b.AppendLine("try {");
             string apiClass = engine == BatInputEngine.Legacy ? "ITAutomationLegacy" : "ITAutomationInput";
             bool needsInput=steps.Exists(delegate(AutoStep x){return x!=null&&(x.Type=="移动鼠标"||x.Type=="鼠标左击"||x.Type=="鼠标双击"||x.Type=="鼠标右击"||x.Type=="按键/组合键"||x.Type=="输入文字"||x.Type=="滚轮");});
             if(needsInput||diagnostic){
@@ -585,7 +612,8 @@ public static class ITAutomationDiag {
                         b.AppendLine("Start-Sleep -Seconds "+randomWait);break;
                     case "等待毫秒": b.AppendLine("Start-Sleep -Milliseconds " + PositiveInt(s.A,1000,3600000)); break;
                     case "等待窗口":
-                        b.AppendLine("$deadline=(Get-Date).AddSeconds(" + PositiveInt(s.B,15,3600) + "); $found=$false; while((Get-Date) -lt $deadline){if(Get-Process | Where-Object {$_.MainWindowTitle -like ('*'+" + P(s.A) + "+'*')} | Select-Object -First 1){$found=$true; break}; Start-Sleep -Milliseconds 250}; if(-not $found){throw '窗口超时未出现'}");
+                        int windowTimeout=FlowInt(s.B,120,120);
+                        b.AppendLine("$found=Invoke-ITBoundedCheck '等待窗口' { $deadline=(Get-Date).AddSeconds("+windowTimeout+"); while((Get-Date) -lt $deadline){if(Get-Process | Where-Object {$_.MainWindowTitle -like ('*'+"+P(FlowValue(s.A))+"+'*')} | Select-Object -First 1){return $true}; Start-Sleep -Milliseconds 250}; return $false } "+windowTimeout+"; if(-not $found){$script:itAbortWorkflow=$true; throw '窗口超时未出现，已停止后续动作。'}");
                         break;
                     case "激活窗口":
                     {
@@ -687,6 +715,7 @@ public static class ITAutomationDiag {
                 }
             }
             b.AppendLine("Write-Host 'All steps complete.'");
+            b.AppendLine("} catch { Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red; throw }");
             return b.ToString();
         }
         private static string VisiblePowerShellCommand(string script,string switches)
