@@ -30,15 +30,15 @@ namespace ITDesktopToolkit
             string condition=null;
             switch(s.Type)
             {
-                case "如果文件存在": condition="(Test-Path -LiteralPath "+P(FlowValue(s.A))+" -PathType Leaf)";break;
+                case "如果文件存在": condition="(Invoke-ITBoundedCheck '文件条件' { Test-Path -LiteralPath "+P(FlowValue(s.A))+" -PathType Leaf -ErrorAction Stop })";break;
                 case "如果网络可达":
                     NetworkMonitorService.Targets(FlowValue(s.A));
                     if(s.A.IndexOfAny(new char[]{',',';',' ','\r','\n'})>=0)throw new ArgumentException("网络条件只支持单个主机名/IP。");
-                    condition="(Test-ITReachable "+P(s.A)+")";break;
+                    condition="(Invoke-ITBoundedCheck '网络条件' { $ping=New-Object Net.NetworkInformation.Ping; try { $ping.Send("+P(s.A)+",1500).Status -eq [Net.NetworkInformation.IPStatus]::Success } finally { $ping.Dispose() } })";break;
                 case "如果系统版本":
                     int minimum=FlowInt(s.A,10240,999999);int maximum=FlowInt(s.B,999999,999999);
                     if(minimum>maximum)throw new ArgumentException("系统版本下限不能大于上限。");
-                    condition="($itWindowsBuild -ge "+minimum+" -and $itWindowsBuild -le "+maximum+")";break;
+                    condition="(Invoke-ITBoundedCheck '系统版本条件' { $itWindowsBuild=[int](Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -Name CurrentBuildNumber -ErrorAction Stop).CurrentBuildNumber; $itWindowsBuild -ge "+minimum+" -and $itWindowsBuild -le "+maximum+" })";break;
                 case "否则":
                     if(stack.Count==0||stack.Peek().Type!="if"||stack.Peek().HasElse)throw new ArgumentException("『否则』必须位于尚未使用否则的条件块中。");
                     stack.Peek().HasElse=true;b.AppendLine("} else {");return true;
@@ -51,7 +51,7 @@ namespace ITDesktopToolkit
                     b.AppendLine("for($itRetry"+index+"=1;$itRetry"+index+" -le "+retry.Attempts+";$itRetry"+index+"++){ try {");return true;
                 case "重试结束":
                     if(stack.Count==0||stack.Peek().Type!="retry")throw new ArgumentException("重试结束与开始不匹配。");
-                    var r=stack.Pop();b.AppendLine("break\r\n} catch { if($itRetry"+r.Id+" -ge "+r.Attempts+"){throw}; Write-Host ('重试块失败，将重新执行：'+$_.Exception.Message); Start-Sleep -Seconds "+r.Delay+" } }");return true;
+                    var r=stack.Pop();b.AppendLine("break\r\n} catch { if($script:itAbortWorkflow){throw}; if($itRetry"+r.Id+" -ge "+r.Attempts+"){throw}; Write-Host ('重试块失败，将重新执行：'+$_.Exception.Message); Start-Sleep -Seconds "+r.Delay+" } }");return true;
                 default:return false;
             }
             if(stack.Count>=8)throw new ArgumentException("条件/重试最多嵌套 8 层。");

@@ -38,6 +38,7 @@ try {
         Copy-Item (Join-Path $clean '*.png') -Destination build
     }
     finally { Remove-Item -LiteralPath $clean -Recurse -Force }
+    & .\tests\Run-TimeoutFixtures.ps1
     # Exercise the exact visible cleanup block with harmless files and no automation payload.
     $cleanupFolder = Join-Path ([IO.Path]::GetTempPath()) ('visible-cleanup-' + [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $cleanupFolder | Out-Null
@@ -96,7 +97,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.14-BAT-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.15-BAT-Windows.zip -Force
     Write-Output 'Standalone Windows validation and package completed.'
 }
 finally { Pop-Location }

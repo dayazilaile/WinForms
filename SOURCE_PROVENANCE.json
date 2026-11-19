@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.5.14",
-  "base_commit": "27e040b8fe07a226893b0d62a69bf96968888ad2",
+  "base_tag": "v0.5.15",
+  "base_commit": "12d5a8f669379d5f088bb13bf8803fc689f0aa78",
   "unchanged_sources_sha256": {
-    "src/AutomationService.cs": "d0dde28c0d9a20c1111ef5acb37c5a371fb80d69bf25b7dc3fd68cf235af72a0",
-    "src/AutomationFlow.cs": "f74552fe04372b0f81d16110e824f087533043e9dedbeb1b6f70779d6d37cf3c",
+    "src/AutomationService.cs": "77951f92f9fe3743084f330ae5cde0f7c0d93fc9be6dc3e31cfa57f643c9a7d6",
+    "src/AutomationFlow.cs": "684d76c04327ba5082c73625bdc41f6ec13bd5dcb680c22b0968ccc9b53a1471",
     "src/AutomationBlockService.cs": "d5cb1434947ce9cf6ab95dc20969080c79cdfa0175a3d0c5ad4b68f4f0e472d6",
-    "src/MainForm.Automation.cs": "142d4f3390b309b4ad245080f0d0fcd95e37640a0ecae8dd3145edac671aeab1",
+    "src/MainForm.Automation.cs": "b4b85399dbb3f8176491c2099d64345689a8c0f256ca5b8dd3653bd6bde8a5ac",
     "src/MainForm.AutomationBranches.cs": "1d348d59b8f4f4a5e4f2d0c44d925c0f88b670a05365ebf9cd098b4541ba8f1c",
     "src/MouseCoordinateService.cs": "ab9c5178d54a71e1fc062ad82856ddcf8ed7cb0c260ba7a18f25c98d754727ef",
     "src/KeyCaptureDialog.cs": "17b48853aed09d4209510ea491c6504e3dafb054027df39d575300cb25527cde",
@@ -18,6 +18,6 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.5.14-BAT",
-  "change": "Toolkit v0.5.14 first: visible self-cleanup uses the current cmd session and retains workflow exit status; no hidden PowerShell cleanup process in visible mode. All existing automation features retained, standalone freshly extracted. Native Windows and Huorong validation remain pending."
+  "standalone_version": "0.5.15-BAT",
+  "change": "Toolkit v0.5.15 first: two-minute bounded window/condition checks, terminal timeout/error propagation and cleanup; definite false keeps else. No hidden process added for checks or visible cleanup. Then freshly extracted standalone; Windows/Huorong native validation pending."
 }

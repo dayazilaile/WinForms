@@ -70,13 +70,47 @@ $env:IT_TOOLKIT_BAT=Join-Path $directory '合法 O''Reilly &100%.bat'
 ";
         foreach(var item in new[]{new[]{"request",request,"$false"},new[]{"cancel",cancel,"$false"},new[]{"already",already,"$true"}}){string fixture=preamble+item[1]+"try {\r\n"+bootstrap.Replace(role,item[2])+"\r\n} finally { Remove-Item -LiteralPath $directory -Recurse -Force }\r\n";File.WriteAllText(Path.Combine(folder,"uac-"+item[0]+"-fixture.ps1"),fixture,new System.Text.UTF8Encoding(true));}
     }
+    static void TimeoutChecks()
+    {
+        string wait=AutomationService.MakeScript(new List<AutoStep>{S("等待窗口","missing-window")},BatInputEngine.SendInput,0,false);
+        Check(wait.Contains("[int]$seconds=120")&&wait.Contains("WaitOne($seconds*1000)")&&wait.Contains("AddSeconds(120)")&&wait.Contains("} 120; if(-not $found)"),"Window waits and condition checks default to a two-minute deadline");
+        Check(wait.Contains("BeginStop($null,$null)")&&wait.Contains("if($finished -or $null -eq $pending)")&&!wait.Contains(".Stop()")&&!wait.Contains("Start-Job"),"Timed-out checks cancel asynchronously without a blocking stop or extra PowerShell process");
+        Check(wait.Contains("$script:itAbortWorkflow=$true; throw '窗口超时")&&wait.Contains("} catch { Write-Host ('FAILED:")&&wait.EndsWith("throw }"+Environment.NewLine),"Timeout terminates later actions and propagates a failing exit to BAT cleanup");
+        foreach(var condition in new[]{S("如果文件存在",@"D:\file.txt"),S("如果网络可达","127.0.0.1"),S("如果系统版本","22000","26100")}){
+            var flow=AutomationBlockService.Compose(condition,new List<AutoStep>{S("等待毫秒","1")},new List<AutoStep>{S("等待毫秒","2")},true);string generated=AutomationService.MakeScript(flow,BatInputEngine.SendInput,0,false);Check(generated.Contains("if((Invoke-ITBoundedCheck")&&generated.Contains("} else {"),"Checks are bounded while definite false still selects else: "+condition.Type);
+        }
+        Check(AutomationService.MakeScript(new List<AutoStep>{S("等待窗口","title","90")},BatInputEngine.Legacy,0,false).Contains("} 90; if(-not $found)"),"An explicitly shorter window deadline is retained");
+        foreach(string seconds in new[]{"0","121","bad"})Reject(()=>AutomationService.MakeScript(new List<AutoStep>{S("等待窗口","title",seconds)},BatInputEngine.SendInput,0,false),"Window deadlines must be within 1 to 120: "+seconds);
+        Reject(()=>AutomationService.MakeScript(new List<AutoStep>{S("等待窗口","")},BatInputEngine.SendInput,0,false),"Empty window target cannot accidentally match every window");
+        string helper=(string)typeof(AutomationService).GetField("BoundedCheckHelper",BindingFlags.NonPublic|BindingFlags.Static).GetRawConstantValue();
+        string fixture=@"$ErrorActionPreference='Stop'
+"+helper+@"
+if((Invoke-ITBoundedCheck 'true' { $true }) -ne $true){throw 'true result changed'}
+if((Invoke-ITBoundedCheck 'false' { $false }) -ne $false){throw 'false result changed'}
+foreach($bad in @({ throw 'fixture condition error' }, { 'not a boolean' }, { $true; $false })) {
+ $script:itAbortWorkflow=$false; $failed=$false
+ try { [void](Invoke-ITBoundedCheck 'bad' $bad) } catch { $failed=$true }
+ if(-not $failed -or -not $script:itAbortWorkflow){throw 'failed/ambiguous check was not terminal'}
+}
+$script:itAbortWorkflow=$false; $timedOut=$false; $watch=[Diagnostics.Stopwatch]::StartNew()
+try { [void](Invoke-ITBoundedCheck 'slow' { Start-Sleep -Seconds 30; $true } 1) } catch { $timedOut=$_.Exception.Message.Contains('超时') }
+if(-not $timedOut -or -not $script:itAbortWorkflow -or $watch.Elapsed.TotalSeconds -gt 8){throw 'timeout did not return promptly'}
+Write-Output 'PASS bounded checks fixture'
+";
+        string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"bounded-checks-fixture.ps1"),fixture,new System.Text.UTF8Encoding(true));
+        File.WriteAllText(Path.Combine(folder,"wait-timeout-fixture.ps1"),wait.Replace("AddSeconds(120)","AddSeconds(1)").Replace("} 120; if(-not $found)","} 1; if(-not $found)").Replace("{ $deadline=","{ function Get-Process { @() }; $deadline="),new System.Text.UTF8Encoding(true));
+        var flowError=new List<AutoStep>{S("重试开始","3","1"),S("如果文件存在","missing"),S("等待毫秒","1"),S("否则"),S("等待毫秒","2"),S("结束条件"),S("重试结束"),S("等待毫秒","3")};string error=AutomationService.MakeScript(flowError,BatInputEngine.SendInput,0,false).Replace("Test-Path -LiteralPath 'missing' -PathType Leaf -ErrorAction Stop","throw 'fixture condition error'");
+        File.WriteAllText(Path.Combine(folder,"condition-error-fixture.ps1"),error,new System.Text.UTF8Encoding(true));
+        string falseCondition=AutomationService.MakeScript(AutomationBlockService.Compose(S("如果文件存在",Path.Combine(folder,"absent-"+Guid.NewGuid())),new List<AutoStep>{S("检查文件存在",Path.Combine(folder,"must-not-run-"+Guid.NewGuid()))},new List<AutoStep>{S("等待毫秒","1")},true),BatInputEngine.SendInput,0,false);
+        File.WriteAllText(Path.Combine(folder,"false-condition-fixture.ps1"),falseCondition,new System.Text.UTF8Encoding(true));
+    }
     static void RandomWait()
     {
         Check(AutomationService.RandomWaitBounds(" 1 ","20").SequenceEqual(new[]{1,20})&&AutomationService.RandomWaitBounds("0","0").SequenceEqual(new[]{0,0})&&AutomationService.RandomWaitBounds("3600","3600")[1]==3600,"Random wait accepts inclusive integer-second bounds including equal and zero bounds");
         foreach(var pair in new[]{new[]{"","20"},new[]{"1",""},new[]{"20","1"},new[]{"-1","20"},new[]{"1","3601"},new[]{"1.5","20"},new[]{"1","20; exit"},new[]{"1","2147483647"}})Reject(()=>AutomationService.RandomWaitBounds(pair[0],pair[1]),"Invalid random-wait bounds rejected: "+pair[0]+" / "+pair[1]);
         var steps=new List<AutoStep>{S("随机等待","1","20"),S("等待毫秒","500")};string script="";
         foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy}){script=AutomationService.MakeScript(steps,engine,0,false);Check(script.Contains("$itRandomWaitSeconds0 = Get-Random -Minimum 1 -Maximum 21")&&script.Contains("Start-Sleep -Seconds $itRandomWaitSeconds0")&&script.Contains("Start-Sleep -Milliseconds 500")&&!script.Contains("-SetSeed"),"Random wait samples at runtime with inclusive seconds and preserves fixed milliseconds: "+engine);}
-        string retry=AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("随机等待","1","20"),S("重试结束")},BatInputEngine.SendInput,0,false);Check(retry.IndexOf("Get-Random",StringComparison.Ordinal)>retry.IndexOf("for($itRetry",StringComparison.Ordinal)&&retry.IndexOf("Get-Random",StringComparison.Ordinal)<retry.IndexOf("} catch { if($itRetry",StringComparison.Ordinal),"Random wait is sampled inside retry execution rather than outside the loop");
+        string retry=AutomationService.MakeScript(new List<AutoStep>{S("重试开始","2","1"),S("随机等待","1","20"),S("重试结束")},BatInputEngine.SendInput,0,false);Check(retry.IndexOf("Get-Random",StringComparison.Ordinal)>retry.IndexOf("for($itRetry",StringComparison.Ordinal)&&retry.IndexOf("Get-Random",StringComparison.Ordinal)<retry.IndexOf("} catch { if($script:itAbortWorkflow)",StringComparison.Ordinal),"Random wait is sampled inside retry execution rather than outside the loop");
         string two=AutomationService.MakeScript(new List<AutoStep>{S("随机等待","0","0"),S("随机等待","3600","3600")},BatInputEngine.SendInput,0,false);Check(two.Contains("$itRandomWaitSeconds0 = Get-Random -Minimum 0 -Maximum 1")&&two.Contains("$itRandomWaitSeconds1 = Get-Random -Minimum 3600 -Maximum 3601"),"Each random wait has its own runtime draw and equal bounds stay valid");
         string path=Path.GetTempFileName();try{AutomationService.Save(path,steps);var loaded=AutomationService.Load(path);Check(loaded[0].Type=="随机等待"&&loaded[0].A=="1"&&loaded[0].B=="20"&&loaded[1].Type=="等待毫秒","Workflow preserves random range and legacy fixed waits without a format change");string before=File.ReadAllText(path);Reject(()=>AutomationService.Save(path,new List<AutoStep>{S("随机等待","20","1")}),"Invalid random range cannot be saved");Check(File.ReadAllText(path)==before,"Rejected random-wait save leaves the existing workflow intact");}finally{File.Delete(path);}
         string snippet=String.Join("\n",script.Replace("\r","").Split('\n').Where(line=>line.StartsWith("$itRandomWaitSeconds",StringComparison.Ordinal)||line.StartsWith("Start-Sleep -Seconds $itRandomWaitSeconds",StringComparison.Ordinal)));
@@ -155,5 +189,5 @@ Write-Output 'PASS random wait fixture'
             string example=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"example.workflow.txt");AutomationService.Save(example,AutomationBlockService.Compose(S("如果文件存在",@"C:\Windows\explorer.exe"),new List<AutoStep>{S("等待毫秒","1000")},new List<AutoStep>{S("等待毫秒","500")},true),settings);
         }finally{Directory.Delete(dir,true);}
     }
-    static int Main(){try{Flow();LauncherReview();RandomWait();ConditionBlocks();MouseBridge();Portable();Console.WriteLine("STANDALONE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{Flow();LauncherReview();TimeoutChecks();RandomWait();ConditionBlocks();MouseBridge();Portable();Console.WriteLine("STANDALONE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }
