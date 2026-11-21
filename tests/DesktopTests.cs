@@ -67,6 +67,35 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{SoftwareInventoryService.Read(cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"Cancelled software read never enumerates registry");}
         Check(data.Entries[0].Cells().Length==6&&data.Entries[0].Cells()[4].ToString().Contains("登记区"),"Software columns distinguish registration view from actual binary architecture");
     }
+    static void RejectBaseline(Action action,string name){try{action();}catch(FormatException){Check(true,name);return;}throw new Exception("Expected invalid baseline: "+name);}
+    static void Baseline()
+    {
+        var rows=new List<SoftwareBaselineEntry>{new SoftwareBaselineEntry{Name=" Editor 中文 ",Publisher="Vendor"},new SoftwareBaselineEntry{Name="editor 中文",Publisher="vendor"},new SoftwareBaselineEntry{Name="Other",Publisher=""}};
+        var clean=SoftwareBaselineService.Checked(rows);Check(clean.Count==2&&clean[0].Name=="Editor 中文","Standard list trims and deduplicates full names and publishers case-insensitively");
+        clean[0].Name="changed";Check(rows[0].Name==" Editor 中文 ","Standard draft normalization never mutates original rules");
+        string text=SoftwareBaselineService.Serialize(rows);var loaded=SoftwareBaselineService.Parse("\uFEFF"+text);Check(loaded.Count==2&&loaded[0].Publisher=="Vendor"&&loaded[1].Publisher=="","Chinese readable standard list round-trips with optional blank publisher");
+        var data=new SoftwareSnapshot();var allowed=new SoftwareEntry{Name="EDITOR 中文",Publisher="vendor",Version="999",RegistryName="allowed"};var duplicate=new SoftwareEntry{Name="editor 中文",Publisher="Vendor",Version="1",RegistryName="second-view"};var extra=new SoftwareEntry{Name="Editor 中文 Helper",Publisher="Vendor",HasUninstaller=true,RegistryName="extra"};var other=new SoftwareEntry{Name="Other",Publisher="Any vendor"};
+        data.Entries.AddRange(new[]{allowed,duplicate,extra,other});var compared=SoftwareBaselineService.Compare(data,loaded);
+        Check(compared.Extra.Count==1&&Object.ReferenceEquals(compared.Extra[0],extra)&&compared.Missing.Count==0,"Comparison preserves exact uninstall row identity, distinguishes helper names and ignores versions/registration duplicates");
+        allowed.Publisher="different";duplicate.Publisher="different";compared=SoftwareBaselineService.Compare(data,loaded);Check(compared.Extra.Count==3&&compared.Missing.Count==1&&compared.Missing[0].Name=="Editor 中文","A changed publisher does not silently satisfy a publisher-restricted standard");
+        compared=SoftwareBaselineService.Compare(new SoftwareSnapshot(),loaded);Check(compared.Extra.Count==0&&compared.Missing.Count==2,"Missing software remains a standard rule, never a fabricated uninstall registration");
+        var wildcard=new[]{new SoftwareBaselineEntry{Name="editor 中文",Publisher=""}};Check(SoftwareBaselineService.Compare(data,wildcard).Extra.Count==2,"Blank publisher permits any publisher for that exact software name only");
+        RejectBaseline(()=>SoftwareBaselineService.Checked(new SoftwareBaselineEntry[0]),"Empty standard cannot classify every installed item as extra");
+        RejectBaseline(()=>SoftwareBaselineService.Checked(new[]{new SoftwareBaselineEntry{Name="   "}}),"Blank software names are rejected");
+        RejectBaseline(()=>SoftwareBaselineService.Checked(new[]{new SoftwareBaselineEntry{Name="name\tforged"}}),"Control characters cannot inject standard list columns");
+        RejectBaseline(()=>SoftwareBaselineService.Parse("Google Chrome\t120.0"),"Old keyword/minimum-version lists cannot be confused with standard allowlists");
+        RejectBaseline(()=>SoftwareBaselineService.Parse(SoftwareBaselineService.Header+"\n软件名称\t发布者\nApp\tVendor\tcommand"),"Unrecognized extra fields cannot provide commands in the standard list");
+        RejectBaseline(()=>SoftwareBaselineService.Checked(Enumerable.Range(0,SoftwareBaselineService.Maximum+1).Select(i=>new SoftwareBaselineEntry{Name="Item "+i})),"Oversized standard lists are rejected");
+        RejectBaseline(()=>SoftwareBaselineService.Parse(new string('a',4*1024*1024+1)),"Standard text size is bounded before parsing");
+        string directory=Path.Combine(Path.GetTempPath(),"baseline-test-"+Guid.NewGuid());Directory.CreateDirectory(directory);string file=Path.Combine(directory,"中文标准.tsv");
+        try{
+            Check(SoftwareBaselineService.Load(file)==null,"Missing standard file is distinct from an empty standard");
+            SoftwareBaselineService.Save(file,loaded);Check(SoftwareBaselineService.Load(file).Count==2,"Standard file persists independently from the installed software snapshot");
+            byte[] original=File.ReadAllBytes(file);RejectBaseline(()=>SoftwareBaselineService.Save(file,new SoftwareBaselineEntry[0]),"Invalid replacement is rejected before overwriting the saved standard");Check(original.SequenceEqual(File.ReadAllBytes(file))&&Directory.GetFiles(directory).Length==1,"Failed standard save preserves old bytes and leaves no temporary file");
+            SoftwareBaselineService.Save(file,wildcard);Check(SoftwareBaselineService.Load(file).Single().Name=="editor 中文"&&Directory.GetFiles(directory).Length==1,"Valid replacement is atomic and leaves no staging files");
+        }finally{Directory.Delete(directory,true);}
+        var partial=new SoftwareSnapshot();partial.Warnings.Add("Registry view denied");partial.Entries.Add(extra);compared=SoftwareBaselineService.Compare(partial,loaded);Check(compared.Extra.Single()==extra&&partial.Warnings.Count==1,"Partial inventory retains warnings and only compares observed installed records");
+    }
     static void Uninstall()
     {
         string directory=@"C:\Windows\System32",vendor=@"C:\Program Files\Example\uninstall.exe";var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase){vendor,directory+@"\msiexec.exe",directory+@"\rundll32.exe",@"C:\Program.exe"};Func<string,bool> exists=files.Contains;
@@ -82,7 +111,7 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
     }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Uninstall();
+        Reports();Software();Baseline();Uninstall();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.15 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.16 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
