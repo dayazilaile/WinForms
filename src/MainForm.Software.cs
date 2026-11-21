@@ -15,6 +15,7 @@ namespace ITDesktopToolkit
         private Action<List<SoftwareBaselineEntry>> softwareBaselineWriter=delegate(List<SoftwareBaselineEntry> items){SoftwareBaselineService.Save(SoftwareBaselineService.DefaultPath,items);};
         private Func<string> softwareBaselineImportReader=null;
         private Action<string> softwareBaselineExporter=null;
+        private Action<List<SoftwareBaselineEntry>,bool> softwareCleanupExporter=null;
         private Func<SoftwareEntry,SoftwareUninstallPlan> softwareUninstallPlanner=SoftwareUninstallService.Prepare;
         private Action<SoftwareUninstallPlan> softwareUninstallLauncher=SoftwareUninstallService.Start;
         private Func<SoftwareUninstallPlan,bool> softwareUninstallConfirmation=delegate(SoftwareUninstallPlan plan){return MessageBox.Show("准备卸载："+plan.Name+"\r\n启动程序："+plan.FileName+"\r\n参数："+plan.Arguments+"\r\n卸载过程由该软件的卸载程序处理，是否继续？","卸载软件",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)==DialogResult.Yes;};
@@ -54,12 +55,14 @@ namespace ITDesktopToolkit
             var edit=standardMenu.Items.Add("编辑标准清单");edit.Name="editSoftwareBaseline";
             var import=standardMenu.Items.Add("导入标准清单");import.Name="importSoftwareBaseline";
             var exportStandard=standardMenu.Items.Add("导出标准清单");exportStandard.Name="exportSoftwareBaseline";
+            var cleanup=standardMenu.Items.Add("导出批量卸载脚本…");cleanup.Name="exportSoftwareCleanup";
             standard.Click+=delegate{standardMenu.Show(standard,new Point(0,standard.Height));};
-            standardMenu.Opening+=delegate{capture.Enabled=snapshot!=null&&snapshot.Entries.Count>0&&!session.Running;edit.Enabled=baseline!=null&&!session.Running;exportStandard.Enabled=baseline!=null&&!session.Running;};
+            standardMenu.Opening+=delegate{capture.Enabled=snapshot!=null&&snapshot.Entries.Count>0&&!session.Running;edit.Enabled=baseline!=null&&!session.Running;exportStandard.Enabled=cleanup.Enabled=baseline!=null&&!session.Running;};
             capture.Click+=delegate{try{if(snapshot!=null)EditSoftwareBaseline(SoftwareBaselineService.Capture(snapshot),saveBaseline,snapshot.Warnings.Count>0);}catch(Exception ex){MessageBox.Show(this,ex.Message,"标准清单");}};
             edit.Click+=delegate{if(baseline!=null)EditSoftwareBaseline(baseline,saveBaseline,false);};
             import.Click+=delegate{try{string text=softwareBaselineImportReader==null?ReadToolFile(this):softwareBaselineImportReader();if(text!=null)saveBaseline(SoftwareBaselineService.Parse(text));}catch(Exception ex){MessageBox.Show(this,ex.Message,"导入标准清单失败");}};
             exportStandard.Click+=delegate{if(baseline==null)return;string text=SoftwareBaselineService.Serialize(baseline);if(softwareBaselineExporter!=null)softwareBaselineExporter(text);else ExportToolReport(this,text,"软件标准清单.txt");};
+            cleanup.Click+=delegate{if(baseline!=null)ExportSoftwareCleanup(baseline);};
             standardMenu.Items.Add(new ToolStripSeparator());var versionCheck=new ToolStripMenuItem("版本检查");standardMenu.Items.Add(versionCheck);
             versionCheck.DropDownItems.Add("导入关键词 / 最低版本清单").Click+=delegate{try{string text=ReadToolFile(this);if(text!=null){InspectionService.CheckRequirements(new Dictionary<string,string>(),text);requirements=text;render();}}catch(Exception ex){MessageBox.Show(this,ex.Message);}};
             versionCheck.DropDownItems.Add("导出版本检查模板").Click+=delegate{ExportToolReport(this,"# 软件名称关键词<Tab>最低版本（可空）\r\nGoogle Chrome\t120.0\r\nMicrosoft Visual C++\r\n","软件检查清单.txt");};

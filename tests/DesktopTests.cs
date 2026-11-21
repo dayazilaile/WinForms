@@ -96,6 +96,95 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         }finally{Directory.Delete(directory,true);}
         var partial=new SoftwareSnapshot();partial.Warnings.Add("Registry view denied");partial.Entries.Add(extra);compared=SoftwareBaselineService.Compare(partial,loaded);Check(compared.Extra.Single()==extra&&partial.Warnings.Count==1,"Partial inventory retains warnings and only compares observed installed records");
     }
+    static void CleanupScripts()
+    {
+        var standard=new[]{new SoftwareBaselineEntry{Name="Standard's 中文",Publisher="Vendor"}};
+        string confirm=SoftwareCleanupScriptService.MakeScript(standard,false),automatic=SoftwareCleanupScriptService.MakeScript(standard,true);
+        Check(confirm.Contains("Name='Standard''s 中文'")&&confirm.Contains("Invoke-SWCleanup $standard $false")&&automatic.Contains("Invoke-SWCleanup $standard $true"),"Cleanup exports preserve Chinese/quoted standard data and selectable execution mode");
+        Check(automatic.Contains("Read-SWInventory")&&automatic.Contains("Read-SWRecord $row.Hive")&&automatic.Contains("Test-SWSameRecord")&&automatic.Contains("$remaining=@(Find-SWExtras"),"Cleanup uses target registrations, revalidates before launch and checks remaining registrations afterward");
+        Check(!automatic.Contains("Out-File")&&!automatic.Contains("WriteAll")&&!automatic.Contains("Export-Csv")&&!automatic.Contains("Start-Transcript")&&automatic.Contains("Show-SWResult"),"Cleanup reports via popups without writing its own result files or logs");
+        Check(automatic.Contains("$row.NoRemove")&&automatic.Contains("火绒")&&automatic.Contains("Quiet")&&automatic.Contains("WaitForExit(600000)")&&!automatic.Contains(".Kill()"),"Protected items and unsupported quiet uninstall are skipped and installer timeout never force-kills a process");
+        string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(directory);string file=Path.Combine(directory,"cleanup-export-test.bat");SoftwareCleanupScriptService.ExportBat(file,standard,true);string bat=File.ReadAllText(file);string marker=":__SOFTWARE_CLEANUP_V1__";
+        Check(System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(bat.Substring(bat.LastIndexOf(marker)+marker.Length).Trim()))==automatic&&!bat.Contains("-WindowStyle")&&!bat.Contains("-EncodedCommand")&&!bat.Contains("-ExecutionPolicy")&&automatic.Contains("-Verb RunAs"),"Single BAT contains exact workflow and standard UAC without hidden launch or execution-policy overrides");
+        RejectBaseline(()=>SoftwareCleanupScriptService.MakeScript(new SoftwareBaselineEntry[0],true),"No cleanup script can be generated from an empty standard");
+        byte[] original=File.ReadAllBytes(file);RejectBaseline(()=>SoftwareCleanupScriptService.ExportBat(file,new SoftwareBaselineEntry[0],true),"Invalid cleanup export is rejected before replacing an existing BAT");Check(original.SequenceEqual(File.ReadAllBytes(file))&&Directory.GetFiles(directory,"software-cleanup-*.tmp").Length==0,"Cleanup export preserves old bytes on validation failure and leaves no staging file");
+        string core=(string)typeof(SoftwareCleanupScriptService).GetField("CoreScript",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).GetRawConstantValue();
+        string fixture=@"$ErrorActionPreference='Stop'
+__CORE__
+$script:notice='';$script:noticeOk=$false;$script:confirmCount=0;$script:approved=$true;$script:starts=0;$script:changeRecord=$false;$script:keepRecord=$false;$script:readFailure=$false;$script:timeout=$false;$script:admin=$true;$script:stages=0
+function Show-SWResult([string]$text,[bool]$ok){$script:notice=$text;$script:noticeOk=$ok}
+function Confirm-SWRemoval([string]$text){$script:confirmCount++;return $script:approved}
+function Test-SWAdmin {return $script:admin}
+function Get-SWInstaller {return 'C:\Windows\System32\msiexec.exe'}
+function Test-SWFile([string]$file){return $file -in @('C:\Apps\remove.exe','C:\Program Files\Vendor\remove.exe','C:\Program.exe','C:\Program.exe Files\Vendor\remove.exe','C:\Windows\System32\msiexec.exe','C:\Windows\System32\cmd.exe')}
+function Read-SWInventory([bool]$machineOnly=$false) {if($script:readFailure){throw 'fixture incomplete registry read'};if($machineOnly){return @($script:inventory|Where-Object {$_.Hive -eq 'LocalMachine'})};return @($script:inventory)}
+function Read-SWRecord([string]$hive,[string]$view,[string]$keyName){$found=@($script:inventory|Where-Object {$_.Key -ceq $keyName});if($found.Count -eq 0){return $null};if($script:changeRecord){$copy=$found[0].PSObject.Copy();$copy.Publisher='changed';return $copy};return $found[0]}
+function Start-SWRemoval($plan){$script:starts++;if($script:timeout){$script:inventory=@($script:inventory|Where-Object {$_.Name -eq 'Standard'});throw (New-Object TimeoutException 'fixture installer still running')};if(-not $script:keepRecord){$script:inventory=@($script:inventory|Where-Object {$_.Name -eq 'Standard'})};return 0}
+function New-TestRow([string]$name,[string]$quiet='""C:\Apps\remove.exe"" /quiet') {return [pscustomobject]@{Name=$name;Publisher='Vendor';Hive='LocalMachine';View='Registry64';Key=$name;Command='""C:\Apps\remove.exe"" /remove';Quiet=$quiet;Msi=$false;NoRemove=$false;System=$false;Parent='';Release=''}}
+function Assert-True([bool]$value,[string]$name){if(-not $value){throw ('fixture assertion: '+$name)};Write-Output ('PASS '+$name)}
+$rules=@([pscustomobject]@{Name='Standard';Publisher='Vendor'})
+$standard=New-TestRow 'Standard';$extra=New-TestRow 'Extra';$script:inventory=@($standard,$extra)
+$result=Invoke-SWCleanup $rules $true
+Assert-True ($result -and $script:noticeOk -and $script:starts -eq 1 -and $script:confirmCount -eq 0) 'automatic mode uses registered quiet removal without asking'
+$script:starts=0;$script:approved=$false;$script:inventory=@($standard,(New-TestRow 'Interactive' ''))
+$result=Invoke-SWCleanup $rules $false
+Assert-True (-not $result -and $script:starts -eq 0 -and $script:confirmCount -eq 1 -and $script:notice.Contains('已取消')) 'confirm cancellation starts nothing'
+$script:approved=$true;$result=Invoke-SWCleanup $rules $false
+Assert-True ($result -and $script:starts -eq 1 -and $script:confirmCount -eq 2) 'confirm mode supports registered interactive uninstall'
+$script:starts=0;$script:inventory=@($standard,(New-TestRow 'No quiet' ''));$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and $script:starts -eq 0 -and $script:notice.Contains('静默')) 'automatic mode does not guess unsupported quiet switches'
+foreach($field in @('NoRemove','System','Parent','Release','Name')) {
+ $row=New-TestRow 'Extra';switch($field){'NoRemove'{$row.NoRemove=$true};'System'{$row.System=$true};'Parent'{$row.Parent='parent'};'Release'{$row.Release='Security Update'};'Hive'{$row.Hive='CurrentUser'};'Name'{$row.Name='火绒安全软件'}}
+ $script:inventory=@($standard,$row);$script:starts=0;$result=Invoke-SWCleanup $rules $true
+ Assert-True (-not $result -and $script:starts -eq 0) ('protected item is skipped: '+$field)
+}
+$script:inventory=@($standard,$extra);$script:changeRecord=$true;$script:starts=0;$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and $script:starts -eq 0 -and $script:notice.Contains('登记已经变化')) 'changed registry identity is never executed'
+$script:changeRecord=$false;$script:keepRecord=$true;$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and -not $script:noticeOk -and $script:starts -eq 1) 'zero exit alone is not reported as removed while registration remains'
+$script:timeout=$true;$script:keepRecord=$false;$script:starts=0;$script:inventory=@($standard,$extra);$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and -not $script:noticeOk -and $script:starts -eq 1) 'installer timeout cannot claim completion even after its registration disappears'
+$script:timeout=$false
+$script:keepRecord=$false;$script:starts=0;$script:readFailure=$true;$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and $script:starts -eq 0) 'incomplete inventory aborts before removal'
+$script:readFailure=$false;$result=Invoke-SWCleanup @() $true
+Assert-True (-not $result -and $script:starts -eq 0) 'empty standard cannot authorize mass removal'
+$script:inventory=@($standard);$result=Invoke-SWCleanup $rules $true
+Assert-True ($result -and $script:starts -eq 0 -and $script:notice.Contains('没有标准')) 'already matching computer completes without uninstall'
+$msi=New-TestRow 'MSI';$msi.Msi=$true;$msi.Key='{12345678-1234-1234-1234-1234567890AB}'
+$plan=Get-SWPlan $msi $true
+Assert-True ($plan.File -eq 'C:\Windows\System32\msiexec.exe' -and $plan.Arguments.Contains('/qn') -and $plan.Arguments.Contains('/norestart')) 'MSI automatic plan uses product identity and suppresses reboot'
+$plan=Get-SWPlan $msi $false
+Assert-True (-not $plan.Arguments.Contains('/qn')) 'MSI confirm plan retains interactive removal'
+foreach($command in @('uninstall.exe','C:\Program.exe Files\Vendor\remove.exe /remove','""C:\Apps\remove.exe""bad','""C:\Windows\System32\cmd.exe"" /c anything')) {
+ $failed=$false;try{[void](Parse-SWCommand $command)}catch{$failed=$true};Assert-True $failed ('unsafe/ambiguous command is rejected: '+$command)
+}
+$plan=Parse-SWCommand '""C:\Program Files\Vendor\remove.exe"" /remove ""literal & data""'
+Assert-True ($plan.File -eq 'C:\Program Files\Vendor\remove.exe' -and $plan.Arguments.Contains('literal & data')) 'quoted EXE and arguments remain separate without a command shell'
+$rows=@((New-TestRow 'Standard'),(New-TestRow 'Standard Helper'));$rows[0].Publisher='OTHER'
+Assert-True (@(Find-SWExtras $rows $rules).Count -eq 2) 'comparison uses exact complete names and publishers'
+$loose=@([pscustomobject]@{Name='standard';Publisher=''})
+Assert-True (@(Find-SWExtras $rows $loose).Count -eq 1) 'optional publisher and name case match the saved standard semantics'
+$script:admin=$false;$script:starts=0;$script:inventory=@($standard,(New-TestRow 'UserExtra'));$script:inventory[1].Hive='CurrentUser'
+$result=Invoke-SWCleanup $rules $true
+Assert-True ($result -and $script:starts -eq 1) 'current-user software is removed in original non-admin account'
+function Start-SWMachineStage {$script:stages++;$script:inventory=@($script:inventory|Where-Object {$_.Name -eq 'Standard'});return 0}
+$script:starts=0;$script:inventory=@($standard,(New-TestRow 'MachineExtra'));$result=Invoke-SWCleanup $rules $true
+Assert-True ($result -and $script:starts -eq 0 -and $script:stages -eq 1) 'non-admin parent delegates machine removal through standard UAC stage'
+$script:inventory=@($standard,(New-TestRow 'UserExtra'));$script:inventory[1].Hive='CurrentUser';$script:admin=$true;$script:starts=0;$script:notice='unchanged'
+$result=Invoke-SWCleanup $rules $true $true
+Assert-True ($result -and $script:starts -eq 0 -and $script:notice -eq 'unchanged') 'elevated machine stage never removes another admin user profile or displays duplicate completion popup'
+function Start-SWMachineStage {$script:inventory=@($standard);return 2}
+$script:admin=$false;$script:inventory=@($standard,(New-TestRow 'MachineExtra'));$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and -not $script:noticeOk -and $script:notice.Contains('重启')) 'machine-stage restart request is propagated to the single final popup'
+function Start-SWMachineStage {throw 'fixture UAC cancelled'}
+$script:inventory=@($standard,(New-TestRow 'MachineExtra'));$result=Invoke-SWCleanup $rules $true
+Assert-True (-not $result -and $script:notice.Contains('管理员阶段')) 'cancelled UAC cannot be reported as successful cleanup'
+foreach($name in @('NVIDIA Graphics Driver','Intel(R) Graphics','Microsoft .NET Runtime','360安全卫士')){Assert-True ((Get-SWProtection (New-TestRow $name)).Length -gt 0) ('common protected component: '+$name)}
+foreach($name in @('Paint.NET','360浏览器')){Assert-True ((Get-SWProtection (New-TestRow $name)).Length -eq 0) ('ordinary software is not protected by an overly broad name fragment: '+$name)}
+Write-Output 'PASS software cleanup fixture'
+".Replace("__CORE__",core);File.WriteAllText(Path.Combine(directory,"software-cleanup-fixture.ps1"),fixture,new UTF8Encoding(true));
+    }
     static void Uninstall()
     {
         string directory=@"C:\Windows\System32",vendor=@"C:\Program Files\Example\uninstall.exe";var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase){vendor,directory+@"\msiexec.exe",directory+@"\rundll32.exe",@"C:\Program.exe"};Func<string,bool> exists=files.Contains;
@@ -111,7 +200,7 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
     }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();Uninstall();
+        Reports();Software();Baseline();CleanupScripts();Uninstall();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

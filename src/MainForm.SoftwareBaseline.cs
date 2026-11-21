@@ -7,6 +7,20 @@ namespace ITDesktopToolkit
 {
     public sealed partial class MainForm
     {
+        private void ExportSoftwareCleanup(List<SoftwareBaselineEntry> entries)
+        {
+            var rules=SoftwareBaselineService.Checked(entries);
+            using(var dialog=new Form{Text="导出批量卸载脚本",StartPosition=FormStartPosition.CenterParent,ClientSize=new Size(660,340),Font=Ui,BackColor=Canvas,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false})
+            {
+                var info=new Label{Left=22,Top=16,Width=610,Height=84,Text="内置当前标准（"+rules.Count+" 项），下发到学生机后重新读取本机软件，保留标准内项目。\r\n单个 BAT，使用正常 UAC；结束只弹窗，不生成结果报告或脚本日志。\r\n请在交互式桌面运行，以便看到确认和完成弹窗。"};
+                var confirm=new RadioButton{Name="cleanupConfirm",Text="确认后批量卸载（支持静默的优先静默，其余打开卸载向导）",Left=24,Top=112,Width=610,Height=32,Checked=true};
+                var automatic=new RadioButton{Name="cleanupAutomatic",Text="自动执行（仅使用登记的静默卸载方式，不猜测静默参数）",Left=24,Top=154,Width=610,Height=32};
+                var note=new Label{Left=24,Top=202,Width=610,Height=62,Text="保护项或不支持的卸载方式会跳过，最后提示未全部完成。\r\n用户软件在原账户处理，全机软件按需申请 UAC；火绒、系统组件和驱动会跳过。"};
+                var save=new Button{Text="生成 BAT",Left=410,Top=284,Width=106,Height=34};var cancel=new Button{Text="取消",Left=532,Top=284,Width=106,Height=34,DialogResult=DialogResult.Cancel};dialog.CancelButton=cancel;
+                save.Click+=delegate{try{if(softwareCleanupExporter!=null)softwareCleanupExporter(rules,automatic.Checked);else using(var file=new SaveFileDialog{FileName=automatic.Checked?"标准软件清理_自动.bat":"标准软件清理_确认.bat",Filter="BAT 脚本|*.bat",OverwritePrompt=true}){if(file.ShowDialog(dialog)!=DialogResult.OK)return;SoftwareCleanupScriptService.ExportBat(file.FileName,rules,automatic.Checked);}dialog.DialogResult=DialogResult.OK;dialog.Close();}catch(Exception ex){MessageBox.Show(dialog,"生成失败："+ex.Message);}};
+                dialog.Controls.AddRange(new Control[]{info,confirm,automatic,note,save,cancel});dialog.ShowDialog(this);
+            }
+        }
         private void EditSoftwareBaseline(IEnumerable<SoftwareBaselineEntry> entries,Action<List<SoftwareBaselineEntry>> commit,bool incomplete)
         {
             using(var dialog=new Form{Text="编辑软件标准清单",StartPosition=FormStartPosition.CenterParent,Size=new Size(900,580),MinimumSize=new Size(780,480),Font=Ui,BackColor=Canvas,AutoScaleMode=AutoScaleMode.Font})
