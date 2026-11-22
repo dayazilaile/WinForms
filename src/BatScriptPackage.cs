@@ -13,7 +13,7 @@ namespace ITDesktopToolkit
         }
         internal static void AppendForeground(StringBuilder text)
         {
-            text.AppendLine("powershell.exe -NoLogo -NoProfile -STA -Command \"$f=$env:IT_TOOLKIT_BAT; $t=[IO.File]::ReadAllText($f); $m=':__ITTOOLKIT_PAYLOAD_V1__'; $x=$t.Substring($t.LastIndexOf($m)+$m.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s))\"");
+            text.AppendLine("powershell.exe -NoLogo -NoProfile -STA -Command \"if($PSVersionTable.PSVersion -lt [version]'5.1'){Write-Error 'Requires Windows PowerShell 5.1'; exit 1}; $f=$env:IT_TOOLKIT_BAT; $t=[IO.File]::ReadAllText($f); $m=':__ITTOOLKIT_PAYLOAD_V1__'; $x=$t.Substring($t.LastIndexOf($m)+$m.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s))\"");
         }
         internal static void Write(string path,StringBuilder text,string script,bool windowsLines)
         {

@@ -1,6 +1,6 @@
 {
   "assembly": "BatAutomation.exe",
-  "sha256": "334da4ef869cbac0e8a860c46929c2029cb68392bccdffc790ee5b9cf56f56f2",
+  "sha256": "2a9872cd9aabbcf5987f1aa8df010f5307a738d5bb7cabe2b9317873592c28af",
   "reference_profile": "Microsoft .NET Framework 4.8",
   "framework_assemblies": [
     "System",

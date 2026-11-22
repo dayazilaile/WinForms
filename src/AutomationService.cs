@@ -531,8 +531,9 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             {
                 b.AppendLine(@"function Assert-Admin { $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $p=New-Object Security.Principal.WindowsPrincipal($id); if(-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw '网络配置需要管理员权限，请右键以管理员身份运行 BAT。'} }");
                 b.AppendLine(@"function Target-Nic([string]$name) { if($name -ne '自动有线' -and $name -ne '自动无线') { $n=Get-NetAdapter -Name $name -ErrorAction Stop; if($n.Status -eq 'Disabled'){throw '目标网卡已禁用'}; return $n.Name }; $all=@(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object {$_.Status -ne 'Disabled'}); $list=@($all|Where-Object { $wifi=($_.NdisPhysicalMedium -eq 9) -or ($_.InterfaceDescription -match 'Wireless|Wi-Fi|WLAN|802\.11'); if($name -eq '自动无线'){$wifi}else{-not $wifi} }); if($list.Count -ne 1){throw ('自动筛选网卡结果为 '+$list.Count+' 个，未执行修改。请改填明确的网卡名称。')}; return $list[0].Name }");
-                b.AppendLine(@"function Backup-Net { $file=Join-Path $env:TEMP ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); (& netsh.exe interface ipv4 dump) | Out-File -FilePath $file -Encoding Unicode; Write-Host ('旧IPv4配置备份：'+$file) }");
+                b.AppendLine(@"function Backup-Net { $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT); if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录，未修改网络配置'}; $folder=Join-Path $root 'Logs'; [void][IO.Directory]::CreateDirectory($folder); $file=Join-Path $folder ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); $dump=& netsh.exe interface ipv4 dump; if($LASTEXITCODE -ne 0){throw '读取原网络配置失败，未修改网络配置'}; $dump | Out-File -LiteralPath $file -Encoding Unicode -ErrorAction Stop; Write-Host ('旧IPv4配置备份：'+$file) }");
                 b.AppendLine("Assert-Admin");
+                b.AppendLine("foreach($itRequired in @('Get-NetAdapter','Get-NetIPInterface','Get-NetIPAddress','Get-NetIPConfiguration','Get-NetRoute','Get-NetNeighbor')){if(-not (Get-Command $itRequired -ErrorAction SilentlyContinue)){throw ('当前系统缺少 '+$itRequired+'；该网络自动化动作需要 Windows 8 / Server 2012 或更新系统。Win7/2008 R2 可使用工具箱的手动 IPv4 配置。')}}");
             }
             if(steps.Exists(delegate(AutoStep x){return x.Type=="随机设置 IPv4";}))b.AppendLine(RandomIpv4Helper);
             if (HasFormatStep(steps))
@@ -766,7 +767,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             if (options.HideConsole)
             {
                 // Keep optional hidden execution, but make the complete bootstrap directly readable.
-                string runner="$ErrorActionPreference='Stop'; $f=$env:IT_TOOLKIT_BAT; $rc=0; try { $t=[IO.File]::ReadAllText($f); $mark=':__ITTOOLKIT_PAYLOAD_V1__'; $ix=$t.LastIndexOf($mark); if($ix -lt 0){throw 'BAT payload marker missing'}; $x=$t.Substring($ix+$mark.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s)) *> $null; if(-not $?){$rc=1} } catch {$rc=1}";
+                string runner="$ErrorActionPreference='Stop'; if($PSVersionTable.PSVersion -lt [version]'5.1'){throw 'Requires Windows PowerShell 5.1'}; $f=$env:IT_TOOLKIT_BAT; $rc=0; try { $t=[IO.File]::ReadAllText($f); $mark=':__ITTOOLKIT_PAYLOAD_V1__'; $ix=$t.LastIndexOf($mark); if($ix -lt 0){throw 'BAT payload marker missing'}; $x=$t.Substring($ix+$mark.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s)) *> $null; if(-not $?){$rc=1} } catch {$rc=1}";
                 if(options.DeleteOnSuccess)runner+=" finally { Start-Sleep -Seconds 2; try {Remove-Item -LiteralPath $f -Force -ErrorAction Stop} catch {$rc=1} }";
                 runner+="; exit $rc";
                 text.AppendLine("rem Optional hidden worker; the main workflow remains the original Unicode payload");

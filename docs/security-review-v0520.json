@@ -1,0 +1,24 @@
+{
+  "version": "0.5.20",
+  "reported_trigger": "double-clicking toolbox after classroom software standard/cleanup feature was added",
+  "reported_360_risk": "process creation",
+  "user_v0519_tested": false,
+  "user_flagged_binary_available": false,
+  "source_startup_reviewed": true,
+  "startup_managed_process_requests_in_ui_fixture": 0,
+  "process_entrypoints_instrumented": [
+    "CommandService",
+    "NetworkConfigService",
+    "SoftwareUninstallService"
+  ],
+  "management_powershell_encoded_command": false,
+  "management_executables_pinned_to_system_directory": true,
+  "cleanup_template_sha256": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+  "toolkit_build_sha256": "116210ac59b262aead409f04e6976249c64b953320cdf06bfb06bfac774026e5",
+  "server_build_sha256": "29ec47203cab10280a15702ed04aeaeeaa25fd920ce20e8e502fd31db807c206",
+  "native_windows_tested": false,
+  "huorong_scan_performed": false,
+  "antivirus_360_scan_performed": false,
+  "virus_database_scan_performed": false,
+  "verdict": "Source audit and functional validation only; no malware-free or false-positive verdict. Keep reported issue open pending Windows/sample evidence."
+}

@@ -139,6 +139,7 @@ function Get-NetIPAddress {param($InterfaceIndex,$AddressFamily,$ErrorAction)
 }
 function Get-NetRoute {param($InterfaceIndex,$AddressFamily,$DestinationPrefix,$ErrorAction) [pscustomobject]@{InterfaceIndex=7;DestinationPrefix='0.0.0.0/0';NextHop=$(if($script:routeBad -and $script:setCount -gt 0){'192.0.2.99'}else{$script:gateway})}}
 function Get-NetNeighbor {param($InterfaceIndex,$AddressFamily,$ErrorAction) }
+function Get-NetIPConfiguration {}
 function Probe-RandomIp([string]$ip,[string]$source){$script:probed+=,$ip;if($ip -eq $script:peerBusy){return '020000000077'};return ''}
 function Get-Random {param([int]$Minimum,[int]$Maximum) return $Minimum}
 function Start-Sleep {param($Milliseconds,$Seconds) }

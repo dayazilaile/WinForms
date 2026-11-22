@@ -1,10 +1,18 @@
-# BAT 自动化独立版 v0.5.19-BAT
+# BAT 自动化独立版 v0.5.20-BAT
 
-从 [IT 桌面运维工具箱 v0.5.19](https://github.com/dayazilaile/WinForms/tree/v0.5.19) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.19-BAT`，与工具箱 v0.5.19 同步。
+从 [IT 桌面运维工具箱 v0.5.20](https://github.com/dayazilaile/WinForms/tree/v0.5.20) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.20-BAT`，与工具箱 v0.5.20 同步。
+
+## V0.5.20 Win7 基线与便携备份
+
+Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Windows PowerShell 5.1。旧系统缺少 NetTCPIP 时，DNS/静态或随机 IPv4/网关/DHCP 自动化会在修改前拒绝；基础输入、分支、等待等保留。系统清单和运行库前置检查与工具箱同步。
+
+网络动作原有配置备份改存 BAT 所在目录的 Logs，不用 TEMP；独立编辑器不额外保存执行日志。软件目录/脚本目录不可写时不回退用户目录。保存工作流/报告仍由保存窗口决定。不能保证清除 Windows、卸载器或杀软自己的记录。
+
+本次共 11 个源文件直接复用工具箱（含运行库检查），总计 15 个 C# 源文件。仍只需单个 EXE 打开编辑器。131 项云端检查通过，但真实 Win7/Server 与 360/火绒未验证；用户尚未测试 v0.5.19。Server 定版另提供工具箱 v0.5.20-Server，独立版不混入其他模块。
 
 ## V0.5.19 随机设置 IPv4
 
-入口：**BAT 自动化 → 添加动作 → 随机设置 IPv4**。仍导出一个 BAT；工具箱与 [v0.5.19-BAT 独立版](https://github.com/dayazilaile/WinForms/archive/refs/tags/v0.5.19-BAT.zip) 使用相同自动化代码。
+入口：**BAT 自动化 → 添加动作 → 随机设置 IPv4**。仍导出一个 BAT；工具箱与 [v0.5.20-BAT 独立版](https://github.com/dayazilaile/WinForms/archive/refs/tags/v0.5.20-BAT.zip) 使用相同自动化代码。
 
 | 填写项 | 示例 | 说明 |
 | --- | --- | --- |
@@ -129,7 +137,7 @@
 
 ## 编译、测试与来源
 
-- 完整源码位于 `src/`，共 14 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.19。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
+- 完整源码位于 `src/`，共 15 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.20。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
 - Windows 编译：`Build_Only.bat --no-pause`；验收：`powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1`。
 - 当前云环境通过 **131 项检查（引擎/流程 94 + 独立界面 33 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
 - 新增范围校验、含上下限、相等边界、运行时脚本、重试内抽取、保存与界面编辑测试；Windows 随机用例拦截等待并验证反复抽取，不实际休眠。

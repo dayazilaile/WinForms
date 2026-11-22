@@ -222,7 +222,7 @@ namespace ITDesktopToolkit
             };
             Action(bar,"复制动作",delegate{duplicate();},false);
             steps.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.Control&&e.KeyCode==Keys.D){duplicate();e.Handled=true;e.SuppressKeyPress=true;}};
-            Action(bar,"保存流程",delegate {using(SaveFileDialog d=new SaveFileDialog()){
+            Action(bar,"保存流程",delegate {using(SaveFileDialog d=new SaveFileDialog()){d.InitialDirectory=AppDomain.CurrentDomain.BaseDirectory;
                 d.Filter="自动化工作流 (*.workflow.txt)|*.workflow.txt";d.FileName="我的自动化流程.workflow.txt";
                 if(d.ShowDialog(this)==DialogResult.OK){try{AutomationService.Save(d.FileName,autoSteps,readOptions());MessageBox.Show(this,"流程和生成选项均已保存。","保存成功");}catch(Exception ex){MessageBox.Show(this,ex.Message);}}
             }},false);
@@ -239,7 +239,7 @@ namespace ITDesktopToolkit
                     show();
                 }catch(Exception ex){MessageBox.Show(this,"加载失败："+ex.Message);}}
             }},false);
-            Action(bar,"生成 BAT",delegate {using(SaveFileDialog d=new SaveFileDialog()){
+            Action(bar,"生成 BAT",delegate {using(SaveFileDialog d=new SaveFileDialog()){d.InitialDirectory=AppDomain.CurrentDomain.BaseDirectory;
                 d.Filter="BAT 批处理 (*.bat)|*.bat";
                 d.FileName=engineChoice.SelectedIndex==1?"桌面自动化_传统兼容.bat":"桌面自动化_SendInput.bat";
                 if(d.ShowDialog(this)==DialogResult.OK){try{

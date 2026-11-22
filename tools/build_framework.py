@@ -62,6 +62,8 @@ def main():
     command = [str(mono / 'usr/bin/mono-sgen'), '--config', str(mono / 'etc/mono/config'),
                str(mono / 'usr/lib/mono/4.5/mcs.exe'), '-noconfig', '-nostdlib', '-langversion:5',
                '-nologo', '-target:winexe', '-platform:anycpu', '-optimize+', '-codepage:65001', '-out:' + str(output)]
+    manifest=project/'app.manifest'
+    if manifest.is_file():command += ['-win32manifest:'+str(manifest)]
     command += ['-r:' + str(refs / (name + '.dll')) for name in required]
     command += [str(path) for path in sorted((project / 'src').glob('*.cs'))]
     subprocess.run(command, env=env, check=True)

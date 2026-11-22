@@ -1,0 +1,33 @@
+{
+  "version": "0.5.20",
+  "toolkit_checks": {
+    "features": 107,
+    "network": 34,
+    "workspace": 49,
+    "trial": 36,
+    "desktop": 95,
+    "student_wake": 41,
+    "ui": 139,
+    "total": 501
+  },
+  "server_same_checks": 501,
+  "standalone_checks": {
+    "features": 94,
+    "ui": 33,
+    "metadata": 4,
+    "total": 131
+  },
+  "native_windows_tested": false,
+  "av_scan_performed": false,
+  "user_v0519_tested": false,
+  "startup_managed_process_requests": 0,
+  "new_runtime_fixtures": [
+    "legacy WMI configuration",
+    "portable BAT network backup",
+    "random IPv4 retry/restore and continue/finish",
+    "direct PowerShell arguments"
+  ],
+  "simulated_system_calls": true,
+  "storage": "EXE/Logs and EXE/Data; generated BAT backups in BAT/Logs; no AppData or TEMP fallback",
+  "server_frozen_tag": "v0.5.20-Server"
+}
