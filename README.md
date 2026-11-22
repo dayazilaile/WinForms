@@ -1,3 +1,19 @@
+# Windows Server 兼容定版 v0.5.20-Server
+
+本包按用户要求从 v0.5.20 冻结，后续不随 Win7/Win10/Win11 日常版本更新。不得把主分支新文件混入本包；需要后续更新时须另行决定。
+
+完整解压后可直接运行根目录 ITDesktopToolkit.exe，保留 Database、Scripts 和之后创建的 Data/Logs；也可运行 Build_And_Run.bat 重新编译。源码、校验清单和来源记录一并提供。
+
+范围：带桌面的 Server 2008 R2 SP1、2012/R2、2016、2019、2022、2025；需要 .NET Framework 4.8 或更新的 4.x，PowerShell 功能请具备 Windows PowerShell 5.1。Server Core/Nano 和 2008 非 R2 不在此 GUI 包范围。缺少无线/打印/管理等角色会限制对应功能，不自动安装服务器角色或改企业策略。
+
+2008 R2 使用 Win7 兼容读取路径，仅 IPv4 路由/ARP 兼容表；IPv6 兼容路由表不提供。缺少新版网络模块时，相关 BAT 网络写动作在修改前拒绝，手工 IPv4 配置保留。
+
+自动日志在软件目录 Logs，配置/恢复备份在 Data；生成 BAT 的网络备份在 BAT 旁 Logs。不回退 AppData/TEMP，不自动迁移/删除旧文件。
+
+**本包是兼容实现快照，没有逐版 Server 实机验收，也没有 360/火绒扫描结论。** 用户尚未测试 v0.5.19，不把旧告警记成已解决。以下保留同版完整说明。
+
+---
+
 # IT 桌面运维工具箱 V0.5.20
 
 面向 Windows 7 SP1、Windows 10/11 与带桌面的 Windows Server 的 C# WinForms 离线运维工具。V0.5.20 复核机房软件清理告警，补充旧系统兼容、系统命令加固及 U 盘便携存储；另保留 Server 冻结包。

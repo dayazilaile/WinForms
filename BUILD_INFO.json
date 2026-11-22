@@ -1,0 +1,30 @@
+{
+  "assembly": "ITDesktopToolkit.exe",
+  "sha256": "29ec47203cab10280a15702ed04aeaeeaa25fd920ce20e8e502fd31db807c206",
+  "reference_profile": "Microsoft .NET Framework 4.8",
+  "framework_assemblies": [
+    "System",
+    "System.Core",
+    "System.Drawing",
+    "System.Management",
+    "System.Windows.Forms",
+    "System.Xml",
+    "mscorlib"
+  ],
+  "stack_owners": [
+    "System"
+  ],
+  "type_reference_check": "passed",
+  "reference_package_url": "https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net48/1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg",
+  "reference_package_sha256": "8a7e348538e7eb91351696911689f49e3d4f63f8bab517432bbe159b8b1104a2",
+  "reference_assembly_sha256": {
+    "mscorlib": "6b35530467b914b0b195146ca1d1485ddd219afaad6461103f16f54e952f75a9",
+    "System": "2fe343569f794f2ca92ee14a41875571a9f21bf92637b8f8ee86306534209cca",
+    "System.Core": "94a1fc97eb0d36f13acd209bb7207da504c8be10caf7e5096b2c46e671dc6fe2",
+    "System.Drawing": "65a42d3e5bd4508e3c75133cd1967301a84b5dae6698f300cd831ff79c54b611",
+    "System.Windows.Forms": "0b0bc1f2ebfefe0cf827b2e2a0caa3fb8c772d84df26ab8e40abe98e0f2eb300",
+    "System.Management": "23b6d4e6fc3514b0b44feb5acf96e8bd6e1d76c79a39e17f5c3714e7aa3fb965",
+    "Microsoft.CSharp": "cd5767fef2ab0069042bb0c09f9095afcf29d2ceee82213728448d64e14eddd7",
+    "System.Xml": "00208e20e3d1d520c233e7ffc10e4e56f9e6b3920bf4a971faee864268c7e5a5"
+  }
+}

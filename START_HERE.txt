@@ -1,3 +1,7 @@
+Windows Server 兼容定版 v0.5.20-Server，不随日常版更新。
+完整解压，可直接运行根目录 ITDesktopToolkit.exe。需要 .NET 4.8；PowerShell 功能请配备 5.1。
+没有各版 Server / 360 / 火绒实机验收结论，详见 README.md。
+
 【当前版本 V0.5.20】
 Win7 SP1 / Win10 / Win11 日常版；另提供 v0.5.20-Server 冻结包，不随日常版更新。
 需要 .NET Framework 4.8 或更新 4.x；PowerShell 功能请配备 Windows PowerShell 5.1。
