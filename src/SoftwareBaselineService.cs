@@ -18,7 +18,7 @@ namespace ITDesktopToolkit
     {
         public const string Header="# ITDesktopToolkit Software Baseline V1";
         public const int Maximum=10000;
-        public static string DefaultPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ITDesktopToolkit","software-baseline-v1.tsv"); } }
+        public static string DefaultPath { get { return Path.Combine(Paths.UserDir,"software-baseline-v1.tsv"); } }
         private static string Field(string value,bool required)
         {
             string text=(value??"").Trim();

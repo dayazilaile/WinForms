@@ -12,12 +12,19 @@ namespace ITDesktopToolkit
         { return RunScript(script,minutes,CancellationToken.None); }
         public static string RunScript(string script,int minutes,CancellationToken cancel)
         {
-            string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes("$ProgressPreference='SilentlyContinue'; " + script));
-            string raw=CommandService.Run("powershell.exe", "-NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand " + encoded, minutes,cancel);
-            int start=raw.IndexOf("\r\n返回代码：",StringComparison.Ordinal);
-            if(start<0)start=raw.IndexOf("\n返回代码：",StringComparison.Ordinal);
-            if(start>=0)return FormatErrors("命令：Windows PowerShell（省略编码参数）"+raw.Substring(start));
-            return FormatErrors(raw.Replace(encoded,"[编码的 PowerShell 指令]"));
+            string args=Arguments(script);
+            string raw=CommandService.Run("powershell.exe",args,minutes,cancel);
+            int start=raw.IndexOf("返回代码：",StringComparison.Ordinal);
+            if(start>=0)return FormatErrors("命令：Windows PowerShell（直接命令，无编码参数）\r\n"+raw.Substring(start));
+            return FormatErrors(raw);
+        }
+        internal static string Arguments(string script)
+        {
+            if(script==null)throw new ArgumentNullException("script");
+            string plain="$ProgressPreference='SilentlyContinue'; "+script;
+            string args="-NoLogo -NoProfile -NonInteractive -OutputFormat Text -Command "+SystemCommandPath.Argument(plain);
+            if(args.Length>30000)throw new ArgumentException("PowerShell 命令超过直接命令行长度限制，未创建进程。请拆分操作。");
+            return args;
         }
         // Windows PowerShell 5.1 can emit serialized CLIXML to redirected stderr.
         // Decode only for display; preserve the command return code for callers.

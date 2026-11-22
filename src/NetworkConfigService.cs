@@ -74,7 +74,7 @@ namespace ITDesktopToolkit
             object sync = new object();
             using (Process p = new Process())
             {
-                p.StartInfo = new ProcessStartInfo("netsh.exe", args);
+                p.StartInfo = CommandService.CreateCommand("netsh.exe", args);
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.StartInfo.RedirectStandardError = true;
@@ -87,7 +87,7 @@ namespace ITDesktopToolkit
                     p.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) {
                         if (e.Data != null) lock(sync) { if (output.Length < 60000) output.AppendLine("[stderr] " + e.Data); }
                     };
-                    p.Start();
+                    CommandService.NotifyProcess(p.StartInfo.FileName);p.Start();
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
                     if (!p.WaitForExit(90000))
@@ -154,10 +154,10 @@ namespace ITDesktopToolkit
             try { before = GetAdapters().Find(delegate(NicSetting x) { return String.Equals(x.Id,nic.Id,StringComparison.OrdinalIgnoreCase); }); }
             catch(Exception ex) { return "【配置结果】失败：读取原始网卡状态失败："+ex.Message; }
             if (before == null) return "【配置结果】失败：找不到原来的网卡（可能已断开或重命名）。未执行修改。";
-            string backup = Path.Combine(Paths.UserDir, "network_before_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".txt");
+            string backup = Path.Combine(Paths.MachineDir, "network_before_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".txt");
             try
             {
-                Directory.CreateDirectory(Paths.UserDir);
+                Directory.CreateDirectory(Paths.MachineDir);
                 File.WriteAllText(backup, "修改时间：" + DateTime.Now + "\r\n网卡：" + before.Name + "\r\nID：" + before.Id + "\r\nDHCP：" + before.Dhcp + "\r\nIP：" + before.IPv4 + "\r\n掩码：" + before.Mask + "\r\n网关：" + before.Gateway + "\r\nDNS：" + before.Dns + "\r\nDNS自动：" + before.AutoDns + "\r\n", Encoding.UTF8);
             }
             catch(Exception ex) { return "【配置结果】失败：无法保存修改前备份，已中止："+ex.Message; }
@@ -206,7 +206,7 @@ namespace ITDesktopToolkit
         public static string RestoreLatest(NicSetting nic)
         {
             if (!CommandService.IsAdministrator()) return "需要管理员权限。";
-            string[] paths=Directory.GetFiles(Paths.UserDir, "network_before_*.txt");
+            string[] paths=Directory.GetFiles(Paths.MachineDir, "network_before_*.txt");
             Array.Sort(paths, StringComparer.OrdinalIgnoreCase);
             Array.Reverse(paths);
             foreach(string path in paths)

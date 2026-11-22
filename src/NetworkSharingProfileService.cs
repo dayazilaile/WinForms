@@ -38,7 +38,7 @@ namespace ITDesktopToolkit
             if(profile==null)return "未选择网络。";
             if(profile.Category=="DomainAuthenticated")return "域认证网络不允许在此切换网络类别。";
             if(value!="Private" && value!="Public")return "只能设置专用/公用网络。";
-            string backup=Path.Combine(Paths.UserDir,"network_profile_"+profile.Index+".txt");
+            string backup=Path.Combine(Paths.MachineDir,"network_profile_"+profile.Index+".txt");
             string ps="$ErrorActionPreference='Stop'; $idx="+profile.Index+"; $path="+PowerShellService.Quote(backup)+"; "+
                 "$now=Get-NetConnectionProfile -InterfaceIndex $idx -ErrorAction Stop; "+
                 "if($now.NetworkCategory -eq 'DomainAuthenticated'){throw '域认证网络禁止修改'}; ";

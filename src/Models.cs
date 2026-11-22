@@ -192,19 +192,25 @@ namespace ITDesktopToolkit
         {
             get
             {
-                string p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ITDesktopToolkit");
+                string p = Path.Combine(BaseDir, "Data");
                 Directory.CreateDirectory(p);
                 return p;
             }
         }
+        public static string MachineDir
+        {
+            get{string name=System.Text.RegularExpressions.Regex.Replace(Environment.MachineName,@"[^A-Za-z0-9_.-]","_");string path=Path.Combine(UserDir,"Computers",name);Directory.CreateDirectory(path);return path;}
+        }
+        public static string LastLogError="";
         public static void Log(string message)
         {
             try
             {
-                File.AppendAllText(Path.Combine(UserDir, "toolkit.log"),
-                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + message + Environment.NewLine, Encoding.UTF8);
+                string folder=Path.Combine(BaseDir,"Logs");Directory.CreateDirectory(folder);
+                File.AppendAllText(Path.Combine(folder, "toolkit.log"),
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ["+Environment.MachineName+"] " + message + Environment.NewLine, Encoding.UTF8);
             }
-            catch { }
+            catch(Exception ex){LastLogError="软件目录日志不可写："+ex.Message;}
         }
     }
 }

@@ -61,7 +61,7 @@ namespace ITDesktopToolkit
         {
             return @"$ErrorActionPreference='Stop';$readWarnings=@{};
 function Emit($key,$value) { 'ITCFG:'+ [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$key)) + ""`t"" + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$value)) }
-function Read-Cim($class) { try { Get-CimInstance $class -ErrorAction Stop } catch { $readWarnings[$class]=$_.Exception.Message } }
+function Read-Cim($class) { try { if(Get-Command Get-CimInstance -ErrorAction SilentlyContinue){Get-CimInstance $class -ErrorAction Stop}else{Get-WmiObject -Class $class -ErrorAction Stop} } catch { $readWarnings[$class]=$_.Exception.Message } }
 function GiB($value) { if($null -eq $value){return '未提供'};([double]$value/1GB).ToString('0.##',[Globalization.CultureInfo]::InvariantCulture)+' GiB' }
 Emit '报告/电脑名' $env:COMPUTERNAME
 foreach($os in Read-Cim 'Win32_OperatingSystem'){Emit '系统/名称' $os.Caption;Emit '系统/版本' $os.Version;Emit '系统/Build' $os.BuildNumber;Emit '系统/架构' $os.OSArchitecture}
@@ -69,11 +69,16 @@ foreach($c in Read-Cim 'Win32_ComputerSystem'){Emit '整机/厂商' $c.Manufactu
 $i=0;foreach($c in (Read-Cim 'Win32_Processor' | Sort-Object DeviceID)){$i++;$k='CPU/'+$i+'/';Emit ($k+'型号') $c.Name;Emit ($k+'核心数') $c.NumberOfCores;Emit ($k+'逻辑处理器') $c.NumberOfLogicalProcessors;Emit ($k+'最大报告频率 MHz') $c.MaxClockSpeed}
 $i=0;foreach($c in (Read-Cim 'Win32_BaseBoard' | Sort-Object Tag)){$i++;$k='主板/'+$i+'/';Emit ($k+'厂商') $c.Manufacturer;Emit ($k+'型号') $c.Product;Emit ($k+'版本') $c.Version}
 foreach($c in Read-Cim 'Win32_BIOS'){Emit 'BIOS/厂商' $c.Manufacturer;Emit 'BIOS/版本' $c.SMBIOSBIOSVersion}
-$i=0;foreach($c in (Read-Cim 'Win32_PhysicalMemory' | Sort-Object DeviceLocator,BankLabel)){$i++;$k='内存/'+$i+'/';Emit ($k+'插槽') $c.DeviceLocator;Emit ($k+'厂商') $c.Manufacturer;Emit ($k+'零件号') ([string]$c.PartNumber).Trim();Emit ($k+'容量') (GiB $c.Capacity);Emit ($k+'配置频率 MHz') $c.ConfiguredClockSpeed}
+$i=0;foreach($c in (Read-Cim 'Win32_PhysicalMemory' | Sort-Object DeviceLocator,BankLabel)){$i++;$k='内存/'+$i+'/';Emit ($k+'插槽') $c.DeviceLocator;Emit ($k+'厂商') $c.Manufacturer;Emit ($k+'零件号') ([string]$c.PartNumber).Trim();Emit ($k+'容量') (GiB $c.Capacity);Emit ($k+'配置频率 MHz') $(if($c.ConfiguredClockSpeed){$c.ConfiguredClockSpeed}else{$c.Speed})}
 $i=0;foreach($c in (Read-Cim 'Win32_VideoController' | Sort-Object DeviceID)){$i++;$k='显卡/'+$i+'/';Emit ($k+'型号') $c.Name;Emit ($k+'驱动版本') $c.DriverVersion}
 $i=0;foreach($c in (Read-Cim 'Win32_DiskDrive' | Sort-Object Index)){$i++;$k='磁盘/'+$i+'/';Emit ($k+'型号') $c.Model;Emit ($k+'容量') (GiB $c.Size);Emit ($k+'接口') $c.InterfaceType}
+if((Get-Command Get-NetAdapter -ErrorAction SilentlyContinue) -and (Get-Command Get-NetIPConfiguration -ErrorAction SilentlyContinue)){
 foreach($n in Get-NetAdapter){$k='网卡/'+$n.Name+'/';Emit ($k+'型号') $n.InterfaceDescription;Emit ($k+'MAC') $n.MacAddress;Emit ($k+'接口速率') $n.LinkSpeed}
 foreach($n in Get-NetIPConfiguration){$k='网络/'+$n.InterfaceAlias+'/';Emit ($k+'IPv4') (($n.IPv4Address|ForEach-Object {$_.IPAddress+'/'+$_.PrefixLength}|Sort-Object)-join ',');Emit ($k+'IPv6') (($n.IPv6Address|ForEach-Object {$_.IPAddress+'/'+$_.PrefixLength}|Sort-Object)-join ',');Emit ($k+'网关') (($n.IPv4DefaultGateway.NextHop|Sort-Object)-join ',');Emit ($k+'DNS') (($n.DNSServer.ServerAddresses)-join ',')}
+}else{
+foreach($n in (Read-Cim 'Win32_NetworkAdapter')){if(-not $n.NetConnectionID){continue};$k='网卡/'+$n.NetConnectionID+'/';Emit ($k+'型号') $n.Name;Emit ($k+'MAC') $n.MACAddress;if($n.Speed){Emit ($k+'接口速率') (([double]$n.Speed/1000000).ToString('0.##')+' Mb')}}
+foreach($n in (Read-Cim 'Win32_NetworkAdapterConfiguration')){if(-not $n.IPEnabled){continue};$k='网络/'+$n.Description+'/';$v4=@();$v6=@();for($i=0;$i -lt @($n.IPAddress).Count;$i++){$value=$n.IPAddress[$i];if($value -match ':'){$v6+=,$value}else{$v4+=,($value+'/'+$n.IPSubnet[$i])}};Emit ($k+'IPv4') ($v4 -join ',');Emit ($k+'IPv6') ($v6 -join ',');Emit ($k+'网关') ($n.DefaultIPGateway -join ',');Emit ($k+'DNS') ($n.DNSServerSearchOrder -join ',')}
+}
 foreach($name in $readWarnings.Keys){Emit ('读取状态/'+$name) $readWarnings[$name]}
 ";
         }

@@ -41,7 +41,7 @@ namespace ITDesktopToolkit
         {
             string key=VolumeIdentity(root);
             using(var sha=System.Security.Cryptography.SHA256.Create())
-                return Path.Combine(Paths.UserDir,"usb_ntfs_acl_"+BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(key))).Replace("-","").Substring(0,24)+".txt");
+                return Path.Combine(Paths.MachineDir,"usb_ntfs_acl_"+BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(key))).Replace("-","").Substring(0,24)+".txt");
         }
         private static string NtfsRoot(string root)
         {

@@ -106,6 +106,7 @@ namespace ITDesktopToolkit
                 }
                 token.ThrowIfCancellationRequested();return result;
             }
+            catch(DllNotFoundException){result.Dispose();throw new NotSupportedException("系统没有无线 LAN 组件；Windows Server 未安装/启用无线 LAN 服务时无法读取无线配置。");}
             catch{result.Dispose();throw;}
             finally{if(interfaces!=IntPtr.Zero)WlanFreeMemory(interfaces);if(handle!=IntPtr.Zero)WlanCloseHandle(handle,IntPtr.Zero);}
         }

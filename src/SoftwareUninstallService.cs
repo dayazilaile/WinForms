@@ -50,17 +50,20 @@ namespace ITDesktopToolkit
             }
             if(!Absolute(file)||!file.EndsWith(".exe",StringComparison.OrdinalIgnoreCase)||!exists(file))return Unavailable(name,"卸载程序路径不可用，请使用 Windows 应用设置。");
             string basename=file.Substring(Math.Max(file.LastIndexOf('\\'),file.LastIndexOf('/'))+1);
+            if(file.StartsWith(@"\\",StringComparison.Ordinal))return Unavailable(name,"不直接运行网络共享中的卸载程序，请在 Windows 程序管理中核对。");
+            foreach(string runner in new[]{"cmd.exe","powershell.exe","pwsh.exe","mshta.exe","wscript.exe","cscript.exe","rundll32.exe","regsvr32.exe"})
+                if(basename.Equals(runner,StringComparison.OrdinalIgnoreCase))return Unavailable(name,"卸载登记指向通用脚本/加载器，工具箱不代为执行；请在 Windows 程序管理中核对。");
             if(basename.Equals("msiexec.exe",StringComparison.OrdinalIgnoreCase))
             {
                 var match=Regex.Match(args,@"^/[ix]\s*(\{[0-9a-fA-F-]{36}\})(?:\s|$)",RegexOptions.IgnoreCase);Guid code;
-                if(match.Success&&Guid.TryParse(match.Groups[1].Value,out code)){file=SystemFile("msiexec.exe",systemDirectory);if(!exists(file))return Unavailable(name,"Windows Installer 不可用。");args="/x "+code.ToString("B").ToUpperInvariant();}
+                if(match.Success&&Guid.TryParse(match.Groups[1].Value,out code)){file=SystemFile("msiexec.exe",systemDirectory);if(!exists(file))return Unavailable(name,"Windows Installer 不可用。");args="/x "+code.ToString("B").ToUpperInvariant();}else return Unavailable(name,"MSI 卸载登记没有可核对的产品代码，未执行安装器。");
             }
             return new SoftwareUninstallPlan{Name=name,FileName=file,Arguments=args};
         }
         public static void Start(SoftwareUninstallPlan plan)
         {
             if(plan==null||!plan.CanStart)throw new ArgumentException("没有可执行的卸载计划。");
-            Process process=Process.Start(new ProcessStartInfo(plan.FileName,plan.Arguments){UseShellExecute=true});if(process==null)throw new InvalidOperationException("系统未启动卸载程序。");process.Dispose();
+            CommandService.NotifyProcess(plan.FileName);Process process=Process.Start(new ProcessStartInfo(plan.FileName,plan.Arguments){UseShellExecute=true});if(process==null)throw new InvalidOperationException("系统未启动卸载程序。");process.Dispose();
         }
     }
 }

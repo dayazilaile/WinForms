@@ -33,7 +33,7 @@ namespace ITDesktopToolkit
         }
         private void ExportToolReport(Form owner,string text,string name)
         {
-            using(var d=new SaveFileDialog{FileName=name,Filter=name.EndsWith(".csv")?"CSV 文件|*.csv":"文本报告|*.txt",OverwritePrompt=true})
+            using(var d=new SaveFileDialog{InitialDirectory=Paths.BaseDir,FileName=name,Filter=name.EndsWith(".csv")?"CSV 文件|*.csv":"文本报告|*.txt",OverwritePrompt=true})
             if(d.ShowDialog(owner)==DialogResult.OK)try{File.WriteAllText(d.FileName,text,new UTF8Encoding(true));}catch(Exception ex){MessageBox.Show(owner,"导出失败："+ex.Message);}
         }
         private string ReadToolFile(Form f)

@@ -79,7 +79,7 @@ namespace ITDesktopToolkit
             byte[] original = null;
             using (RegistryKey r = (item.Hive == RegistryHive.CurrentUser ? Registry.CurrentUser : Registry.LocalMachine).OpenSubKey(item.ApprovalKey))
                 original = r == null ? null : r.GetValue(item.ValueName) as byte[];
-            string log = Path.Combine(Paths.UserDir, "startup_changes.tsv");
+            string log = Path.Combine(Paths.MachineDir, "startup_changes.tsv");
             string old = original == null ? "(无值)" : Convert.ToBase64String(original);
             File.AppendAllText(log, DateTime.Now.ToString("s") + "\t" + item.Source + "\t" + item.ValueName.Replace("\t", " ") + "\t" + old + "\t" + enabled + Environment.NewLine);
             byte[] value = new byte[12];

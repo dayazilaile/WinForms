@@ -62,7 +62,7 @@ Write-Output '说明：缺失命令/服务可能与系统版本、第三方杀�
         public static string Change(bool disable)
         {
             if (!CommandService.IsAdministrator()) return "需要管理员权限，未执行。";
-            string backupFile = Path.Combine(Paths.UserDir, "security_snapshot.clixml");
+            string backupFile = Path.Combine(Paths.MachineDir, "security_snapshot.clixml");
             string escapedBackup = backupFile.Replace("'", "''");
             // 备份使用与旧版一致的 Mp/Firewall 属性结构，保留兼容性。
             // 缺失 Defender cmdlet 时只处理能检测且能备份的项目；不以注册表绕过防护。

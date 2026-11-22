@@ -186,14 +186,15 @@ namespace ITDesktopToolkit
                 });
             }
             int index = 0;
-            foreach (ManagementObject m in Query("SELECT Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed,DeviceLocator,BankLabel,FormFactor,SMBIOSMemoryType FROM Win32_PhysicalMemory",cancel))
+            foreach (ManagementObject m in Query("SELECT * FROM Win32_PhysicalMemory",cancel))
             {
                 index++;
                 string vendor = P(m, "Manufacturer").Trim();
                 string part = P(m, "PartNumber").Trim();
                 string locator = P(m, "DeviceLocator");
                 string bank = P(m, "BankLabel");
-                string kind = MemoryKind(P(m, "SMBIOSMemoryType"));
+                string memoryType=P(m,"SMBIOSMemoryType");if(String.IsNullOrWhiteSpace(memoryType)||memoryType=="0")memoryType=P(m,"MemoryType");
+                string kind = MemoryKind(memoryType);
                 string cap = GB(P(m, "Capacity"));
                 string rated = P(m, "Speed");
                 string configured = P(m, "ConfiguredClockSpeed");

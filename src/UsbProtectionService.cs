@@ -120,7 +120,7 @@ namespace ITDesktopToolkit
         private static string PolicyPath(bool writeProtect){return writeProtect?@"SYSTEM\CurrentControlSet\Control\StorageDevicePolicies":@"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";}
         private static string PolicyName(bool writeProtect){return writeProtect?"WriteProtect":"NoDriveTypeAutoRun";}
         private static RegistryKey PolicyRoot(bool writeProtect){return writeProtect?Registry.LocalMachine:Registry.CurrentUser;}
-        private static string BackupFile(bool writeProtect){return System.IO.Path.Combine(Paths.UserDir,writeProtect?"usb_writeprotect_before_v045.txt":"autoplay_before_v045.txt");}
+        private static string BackupFile(bool writeProtect){return System.IO.Path.Combine(Paths.MachineDir,writeProtect?"usb_writeprotect_before_v045.txt":"autoplay_before_v045.txt");}
         public static string PolicyStatus()
         {
             StringBuilder b=new StringBuilder();

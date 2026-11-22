@@ -10,7 +10,7 @@ namespace ITDesktopToolkit
     public static class Win11MutualShareService
     {
         private const string RuleName = "ITToolkit-Guest-Private-TCP445-v043";
-        private static string BackupRoot { get { return Path.Combine(Paths.UserDir,"Win11GuestShareBackups"); } }
+        private static string BackupRoot { get { return Path.Combine(Paths.MachineDir,"Win11GuestShareBackups"); } }
         private static string Ps(string command) { return PowerShellService.RunScript(command,3); }
         private static bool Ok(string result) { return result.Contains("返回代码：0"); }
         private static string Q(string text) { return PowerShellService.Quote(text); }

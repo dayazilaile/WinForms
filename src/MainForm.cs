@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.19 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.20 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -79,7 +79,7 @@ namespace ITDesktopToolkit
         }
         private void SetStatus(string message)
         {
-            status.Text = "权限：" + (CommandService.IsAdministrator() ? "管理员" : "普通用户") + "     |     " + message;
+            status.Text = (Paths.LastLogError.Length>0?"[软件目录日志不可写] ":"")+"权限：" + (CommandService.IsAdministrator() ? "管理员" : "普通用户") + "     |     " + message;
         }
         private void ShowPage(string name)
         {
@@ -213,7 +213,7 @@ namespace ITDesktopToolkit
             {
                 s.Filter = "文本报告 (*.txt)|*.txt";
                 s.FileName = defaultName;
-                s.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                s.InitialDirectory = Paths.BaseDir;
                 if (s.ShowDialog(this) == DialogResult.OK)
                 {
                     try
@@ -879,7 +879,7 @@ namespace ITDesktopToolkit
                 "版本、来源和许可见 Database\\SOURCES-v052.md；内置数据只在本地读取，不会自动联网。\r\n" +
                 "保存文本后点击“重载数据库”即可生效，无需编译 EXE。\r\n" +
                 "数据库补充内容仅供参考；系统原始检测值会保留。\r\n" +
-                "日志位置：" + Path.Combine(Paths.UserDir, "toolkit.log");
+                "日志位置：" + Path.Combine(Paths.BaseDir, "Logs", "toolkit.log");
         }
         private void AddRuleForm()
         {

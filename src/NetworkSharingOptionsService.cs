@@ -45,7 +45,7 @@ namespace ITDesktopToolkit
         {
             if(!CommandService.IsAdministrator())return "需要管理员权限。";
             profile=Profile(profile);string wildcard=Prefix(section);
-            string path=Path.Combine(Paths.UserDir,"share_fw_original_"+profile+"_"+section+".txt");
+            string path=Path.Combine(Paths.MachineDir,"share_fw_original_"+profile+"_"+section+".txt");
             string ps="$ErrorActionPreference='Stop'; $profile='"+profile+"'; $pattern='"+wildcard+"'; $backup="+PowerShellService.Quote(path)+"; $restoring="+(restore?"$true":"$false")+"; "+@"
               $rules=@(Get-NetFirewallRule -ErrorAction Stop | Where-Object {$_.Name -like $pattern -and [string]$_.Profile -match $profile});
               if($rules.Count -eq 0){throw '未找到对应的防火墙规则，没有进行任何修改'};

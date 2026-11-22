@@ -11,7 +11,7 @@ namespace ITDesktopToolkit
         {
             byte[] hash;
             using(SHA256 sha=SHA256.Create()) hash=sha.ComputeHash(Encoding.UTF8.GetBytes((name+"|"+folder).ToUpperInvariant()));
-            return Path.Combine(Paths.UserDir,"ntfs_share_original_"+BitConverter.ToString(hash).Replace("-","").Substring(0,24)+".txt");
+            return Path.Combine(Paths.MachineDir,"ntfs_share_original_"+BitConverter.ToString(hash).Replace("-","").Substring(0,24)+".txt");
         }
         private static string Validate(string name,string folder)
         {

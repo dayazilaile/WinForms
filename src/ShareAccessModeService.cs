@@ -11,7 +11,7 @@ namespace ITDesktopToolkit
     {
         private static string Backup(string name)
         {
-            return Path.Combine(Paths.UserDir, "share_access_mode_original_" + name + ".txt");
+            return Path.Combine(Paths.MachineDir, "share_access_mode_original_" + name + ".txt");
         }
         public static string ReadStatus()
         {

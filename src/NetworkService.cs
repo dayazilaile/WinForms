@@ -37,7 +37,7 @@ namespace ITDesktopToolkit
                 {
                     IPInterfaceProperties ip = ni.GetIPProperties();
                     foreach (UnicastIPAddressInformation u in ip.UnicastAddresses)
-                        b.AppendLine("IP：" + u.Address + (u.IPv4Mask == null ? "" : " / 掩码 " + u.IPv4Mask));
+                        b.AppendLine("IP：" + u.Address + (u.Address.AddressFamily != AddressFamily.InterNetwork || u.IPv4Mask == null ? "" : " / 掩码 " + u.IPv4Mask));
                     foreach (GatewayIPAddressInformation g in ip.GatewayAddresses) b.AppendLine("网关：" + g.Address);
                     foreach (IPAddress dns in ip.DnsAddresses) b.AppendLine("DNS：" + dns);
                     foreach (IPAddress server in ip.DhcpServerAddresses) b.AppendLine("DHCP 服务器：" + server);

@@ -10,6 +10,11 @@ namespace ITDesktopToolkit
 {
     public static class CommandService
     {
+        internal static event Action<string> ProcessStarting;
+        internal static void NotifyProcess(string file){var handler=ProcessStarting;if(handler!=null)handler(file);}
+        internal static ProcessStartInfo CreateCommand(string file,string args)
+        {return new ProcessStartInfo(SystemCommandPath.Resolve(file),args){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};}
+
         public static bool IsAdministrator()
         {
             try
@@ -27,7 +32,7 @@ namespace ITDesktopToolkit
                 ProcessStartInfo i = new ProcessStartInfo(Application.ExecutablePath);
                 i.UseShellExecute = true;
                 i.Verb = "runas";
-                Process.Start(i);
+                NotifyProcess(i.FileName);Process.Start(i);
                 return true;
             }
             catch (Exception ex)
@@ -47,7 +52,7 @@ namespace ITDesktopToolkit
             object guard = new object();
             using (Process p = new Process())
             {
-                p.StartInfo = new ProcessStartInfo(fileName, arguments);
+                p.StartInfo = CreateCommand(fileName, arguments);
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.StartInfo.RedirectStandardError = true;
@@ -62,7 +67,7 @@ namespace ITDesktopToolkit
                 };
                 try
                 {
-                    p.Start();
+                    NotifyProcess(p.StartInfo.FileName);p.Start();
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
                     var clock=Stopwatch.StartNew();
@@ -93,10 +98,13 @@ namespace ITDesktopToolkit
         {
             try
             {
+                WindowsCompatibility.ManagementTarget(ref target,ref args,WindowsCompatibility.Legacy);
+                target=SystemCommandPath.Resolve(target);
+                if((target.EndsWith(".exe",StringComparison.OrdinalIgnoreCase)||target.EndsWith(".msc",StringComparison.OrdinalIgnoreCase)||target.EndsWith(".cpl",StringComparison.OrdinalIgnoreCase))&&!System.IO.File.Exists(target))throw new System.IO.FileNotFoundException("当前系统未安装该管理组件，请先核对系统版本/服务器角色。",target);
                 ProcessStartInfo p = new ProcessStartInfo(target);
                 p.Arguments = args;
                 p.UseShellExecute = true;
-                Process.Start(p);
+                NotifyProcess(p.FileName);Process.Start(p);
                 Paths.Log("Opened tool: " + target + " " + args);
             }
             catch (Exception ex) { MessageBox.Show("无法打开：" + target + "\r\n" + ex.Message, "提示"); }

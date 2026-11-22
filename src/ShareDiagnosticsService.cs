@@ -132,7 +132,7 @@ namespace ITDesktopToolkit
             bool client=key.StartsWith("Client",StringComparison.Ordinal);
             string getter=client?"Get-SmbClientConfiguration":"Get-SmbServerConfiguration";
             string setter=client?"Set-SmbClientConfiguration":"Set-SmbServerConfiguration";
-            string backup=Path.Combine(Paths.UserDir,"smb_original_"+key+".txt");
+            string backup=Path.Combine(Paths.MachineDir,"smb_original_"+key+".txt");
             string ps="$ErrorActionPreference='Stop'; $path="+PowerShellService.Quote(backup)+"; "+
                 "$name='"+prop+"'; $before=("+getter+" -ErrorAction Stop).$name; "+
                 "if($null -eq $before){throw '当前 Windows 版本没有此 SMB 属性'}; ";

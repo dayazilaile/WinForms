@@ -1,6 +1,12 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
+REM Check the installed runtime without starting PowerShell or downloading components.
+set "NET_RELEASE="
+for /f "tokens=3" %%R in ('"%SystemRoot%\System32\reg.exe" query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release 2^>nul') do set "NET_RELEASE=%%R"
+if not defined NET_RELEASE goto missing_runtime
+set /a NET_RELEASE_DEC=%NET_RELEASE% >nul 2>nul
+if %NET_RELEASE_DEC% LSS 528040 goto missing_runtime
 set "CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC%" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 if not exist "%CSC%" (
@@ -25,10 +31,10 @@ if not exist "Scripts\SoftwareCleanup.ps1" (
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== IT Desktop Toolkit V0.5.19 =====
+echo ===== IT Desktop Toolkit V0.5.20 =====
 echo Compiler: "%CSC%"
 pushd "src"
-"%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
+"%CSC%" /nologo /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
 set "RESULT=%ERRORLEVEL%"
 popd
 if not "%RESULT%"=="0" (
@@ -71,3 +77,10 @@ echo [SUCCESS] build\ITDesktopToolkit.exe
  echo [NOTE] Keep the complete build folder including Database when moving to other computers.
 if /I not "%~1"=="--no-pause" pause
 exit /b 0
+
+:missing_runtime
+echo [ERROR] Requires .NET Framework 4.8 or a later 4.x runtime.
+echo Windows 7 and Server 2008 R2 require SP1. Install official offline prerequisites, then retry.
+echo No installation, PowerShell or security-policy change was attempted.
+if /I not "%~1"=="--no-pause" pause
+exit /b 5

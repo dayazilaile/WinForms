@@ -31,6 +31,7 @@ namespace ITDesktopToolkit
                 foreach(var a in ip.UnicastAddresses){if(a.Address.AddressFamily==AddressFamily.InterNetwork)v4[a.Address.ToString()]=PrefixText(a.IPv4Mask==null?null:a.IPv4Mask.ToString());else if(a.Address.AddressFamily==AddressFamily.InterNetworkV6)v6.Add(a.Address.ToString());}
                 result.Adapters.Add(new RouteAdapterRow{Name=nic.Name,State=AdapterState(nic.OperationalStatus),Mac=hardware,IPv4=v4.Count==0?"无地址":String.Join("; ",v4.Keys),Prefix=v4.Count==0?"—":String.Join("; ",v4.Values),IPv6=v6.Count==0?"无地址":String.Join("; ",v6),Gateway4=GatewayText(ip,AddressFamily.InterNetwork),Gateway6=GatewayText(ip,AddressFamily.InterNetworkV6),Dns4=DnsText(ip,AddressFamily.InterNetwork),Dns6=DnsText(ip,AddressFamily.InterNetworkV6),Speed=speed});
             }
+            if(WindowsCompatibility.Legacy){LegacyNetworkReader.Read(result,cancel);return result;}
             string raw=PowerShellService.RunScript(@"$ErrorActionPreference='Stop';function Emit([string]$kind,[object[]]$cells){$values=@($cells|ForEach-Object{[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$_))});'ITNET|'+$kind+'|'+($values -join '|')};try{
 foreach($r in Get-NetRoute){Emit 'route' @($r.InterfaceAlias,$r.AddressFamily,$r.DestinationPrefix,$r.NextHop,$r.RouteMetric,$r.Protocol)}
 foreach($n in Get-NetNeighbor){Emit 'neighbor' @($n.InterfaceAlias,$n.IPAddress,$n.LinkLayerAddress,$n.State,$n.AddressFamily)}

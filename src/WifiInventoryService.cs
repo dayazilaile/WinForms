@@ -99,7 +99,7 @@ namespace ITDesktopToolkit
         public static WifiInventory Read(CancellationToken cancel)
         {
             cancel.ThrowIfCancellationRequested();if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("无线表格读取需要 Windows WLAN API；当前平台无法提供真实无线信息。");
-            IntPtr handle;uint version;uint status=WlanOpenHandle(2,IntPtr.Zero,out version,out handle);if(status!=0)throw new InvalidOperationException("无法打开无线接口："+Error(status));
+            IntPtr handle;uint version;uint status;try{status=WlanOpenHandle(2,IntPtr.Zero,out version,out handle);}catch(DllNotFoundException){throw new NotSupportedException("系统没有无线 LAN 组件；Windows Server 请核对 Wireless LAN Service 角色/服务，无需为有线功能安装它。");}if(status!=0)throw new InvalidOperationException("无法打开无线接口："+Error(status));
             var result=new WifiInventory();
             try
             {

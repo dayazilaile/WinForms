@@ -210,10 +210,76 @@ Write-Output 'PASS software cleanup fixture'
         Check(!SoftwareUninstallService.Build("Missing",@"C:\Missing\uninstall.exe /remove",false,"",false,directory,exists).CanStart,"Missing registered executable never launches a different program");
         Check(!SoftwareUninstallService.Build("Bad","\""+vendor+"\"bad",false,"",false,directory,exists).CanStart&&!SoftwareUninstallService.Build("Bad",vendor+"\n/remove",false,"",false,directory,exists).CanStart,"Malformed quote and control characters are rejected before process creation");
         Check(!SoftwareUninstallService.Build("Bare","uninstall.exe",false,"",false,directory,exists).CanStart,"Uninstaller is not searched in the working directory or PATH");
+        foreach(string runner in new[]{"cmd.exe","powershell.exe","rundll32.exe"})Check(!SoftwareUninstallService.Build("Scripted", "\""+directory+"\\"+runner+"\" /c something",false,"",false,directory,delegate{return true;}).CanStart,"Interactive uninstall refuses generic command runners: "+runner);
+        Check(!SoftwareUninstallService.Build("MSI", "\""+directory+"\\msiexec.exe\" /uninstall other.msi",false,"",false,directory,delegate{return true;}).CanStart,"MSI removal needs a registered product GUID, not an arbitrary installer argument");
         Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
     }
+    static void Compatibility()
+    {
+        Check(WindowsCompatibility.StartupProblem(new Version(6,1),"Service Pack 1",528040)=="","Win7 SP1 with .NET 4.8 satisfies the desktop baseline");
+        Check(WindowsCompatibility.StartupProblem(new Version(6,1),"",528040).Contains("SP1"),"Win7 / 2008 R2 without SP1 is rejected clearly");
+        Check(WindowsCompatibility.StartupProblem(new Version(6,0),"Service Pack 2",528040).Length>0,"Unsupported pre-Win7 systems are not claimed compatible");
+        Check(WindowsCompatibility.StartupProblem(new Version(10,0),"",461808).Contains("4.8"),"Older .NET is reported before constructing the async UI");
+        foreach(var v in new[]{new Version(6,2),new Version(6,3),new Version(10,0)})Check(WindowsCompatibility.StartupProblem(v,"",533320)=="","Server-era desktop baseline accepted with newer .NET: "+v);
+        string target="ms-settings:appsfeatures",args="";WindowsCompatibility.ManagementTarget(ref target,ref args,true);Check(target=="appwiz.cpl","Legacy software management opens Programs and Features");
+        target="ms-settings:windowsupdate";WindowsCompatibility.ManagementTarget(ref target,ref args,true);Check(target=="control.exe"&&args.Contains("WindowsUpdate"),"Win7 update shortcut uses its real control panel");
+        target="ms-settings:appsfeatures";WindowsCompatibility.ManagementTarget(ref target,ref args,false);Check(target=="ms-settings:appsfeatures","Current Windows keeps its normal Settings URI");
+        Check(Path.GetFullPath(Paths.UserDir)==Path.GetFullPath(Path.Combine(Paths.BaseDir,"Data")),"Portable settings stay under the executable directory, independent of working directory");
+        Check(SoftwareBaselineService.DefaultPath.StartsWith(Paths.UserDir+Path.DirectorySeparatorChar)&&Paths.MachineDir.StartsWith(Paths.UserDir+Path.DirectorySeparatorChar),"Software standards and per-computer rollback data share the portable tree");
+        Paths.Log("portable-storage-fixture");Check(File.Exists(Path.Combine(Paths.BaseDir,"Logs","toolkit.log")),"Application logs are written beside the EXE without AppData fallback");
+        string networkScript=AutomationService.MakeScript(new List<AutoStep>{new AutoStep{Type="设置静态 IPv4",A="Ethernet",B="192.0.2.9",C="255.255.255.0|192.0.2.1"}},BatInputEngine.SendInput,0,false);Check(!networkScript.Contains("$env:TEMP")&&networkScript.Contains("GetDirectoryName($env:IT_TOOLKIT_BAT)")&&networkScript.Contains("Out-File -LiteralPath"),"Exported network backup uses BAT directory and preserves literal paths");
+        string system=Path.Combine(Path.GetTempPath(),"trusted-system"),windows=Path.Combine(Path.GetTempPath(),"trusted-windows");
+        Check(SystemCommandPath.ResolveWindows("powershell.exe",system,windows)==Path.Combine(system,"WindowsPowerShell","v1.0","powershell.exe"),"PowerShell is pinned to the Windows installation, not PATH");
+        Check(SystemCommandPath.ResolveWindows("netsh.exe",system,windows)==Path.Combine(system,"netsh.exe")&&SystemCommandPath.ResolveWindows("explorer.exe",system,windows)==Path.Combine(windows,"explorer.exe"),"System tools resolve to their real Windows directories");
+        var start=CommandService.CreateCommand("netsh.exe","interface ipv4 show config");Check(!start.UseShellExecute&&start.RedirectStandardError&&start.RedirectStandardOutput,"Noninteractive management commands avoid cmd.exe chaining and capture failure output");
+        string script="Write-Output '中文 O''Reilly &100%! ` $ ()'; Write-Output \"double-quote\"; Write-Output 'C:\\Space Folder\\'; if(1 -eq 1){Write-Output 'PASS direct command'}";
+        string command=PowerShellService.Arguments(script);Check(command.Contains("-Command ")&&!command.Contains("-EncodedCommand")&&!command.Contains("ExecutionPolicy")&&!command.Contains("WindowStyle"),"Management PowerShell uses directly reviewable commands without encoded or policy-bypass switches");
+        bool rejected=false;try{PowerShellService.Arguments(new string('a',31000));}catch(ArgumentException){rejected=true;}Check(rejected,"Oversized direct commands stop before process creation");
+        string shell=Environment.GetEnvironmentVariable("IT_TEST_POWERSHELL");if(Environment.OSVersion.Platform==PlatformID.Win32NT)shell=SystemCommandPath.Resolve("powershell.exe");
+        if(!String.IsNullOrEmpty(shell)){string output=CommandService.Run(shell,command,1);Check(output.Contains("返回代码：0")&&output.Contains("PASS direct command")&&output.Contains("O'Reilly &100%! ` $ ()")&&output.Replace("\r", "").Split('\n').Contains("double-quote")&&output.Contains("C:\\Space Folder\\"),"Actual PowerShell direct-argument round trip preserves quotes, symbols and backslashes");}
+        byte[] row=new byte[28];Array.Copy(BitConverter.GetBytes(1u),row,4);Array.Copy(BitConverter.GetBytes(7),0,row,4,4);Array.Copy(BitConverter.GetBytes(6u),0,row,8,4);for(int i=0;i<6;i++)row[12+i]=(byte)(i+1);row[20]=192;row[22]=2;row[23]=9;Array.Copy(BitConverter.GetBytes(3u),0,row,24,4);
+        var neighbors=LegacyNetworkReader.ParseNeighbors(row,new Dictionary<int,string>{{7,"Legacy NIC"}});Check(neighbors.Count==1&&(string)neighbors[0][1]=="192.0.2.9"&&(string)neighbors[0][2]=="01:02:03:04:05:06"&&(string)neighbors[0][3]=="动态缓存","Win7 ARP ABI maps interface, address and MAC without localized command parsing");
+        rejected=false;try{LegacyNetworkReader.ParseNeighbors(new byte[]{1,0,0,0},new Dictionary<int,string>());}catch(FormatException){rejected=true;}Check(rejected,"Truncated native ARP rows are rejected before traversal");
+        string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(folder);
+        string backupFunction=System.Text.RegularExpressions.Regex.Match(networkScript,@"function Backup-Net[^\r\n]+").Value;
+        string backupFixture=@"$ErrorActionPreference='Stop'
+function netsh.exe {$global:LASTEXITCODE=0;'# harmless fixture network dump'}
+__BACKUP__
+$folder=Join-Path $PSScriptRoot 'portable backup [test]'
+[void][IO.Directory]::CreateDirectory($folder)
+try {
+ $env:IT_TOOLKIT_BAT=Join-Path $folder '网络 O''Reilly.bat'
+ Backup-Net
+ $files=@([IO.Directory]::GetFiles((Join-Path $folder 'Logs')))
+ if($files.Count -ne 1 -or [IO.File]::ReadAllText($files[0]) -notmatch 'harmless fixture'){throw 'Backup not stored beside BAT'}
+ 'PASS portable network backup fixture'
+}finally{[IO.Directory]::Delete($folder,$true)}
+".Replace("__BACKUP__",backupFunction);File.WriteAllText(Path.Combine(folder,"portable-network-backup-fixture.ps1"),backupFixture,new UTF8Encoding(true));
+        string fixture=@"$ErrorActionPreference='Stop'
+function Get-Command {param($Name,$ErrorAction) return $null}
+function Get-WmiObject {param($Class,$ErrorAction)
+ switch($Class){
+ 'Win32_OperatingSystem'{[pscustomobject]@{Caption='Legacy OS';Version='6.1';BuildNumber='7601';OSArchitecture='64-bit'}}
+ 'Win32_Processor'{[pscustomobject]@{DeviceID='CPU0';Name='Legacy CPU'}}
+ 'Win32_PhysicalMemory'{[pscustomobject]@{DeviceLocator='DIMM0';Capacity=4GB;Speed=1600}}
+ 'Win32_NetworkAdapter'{[pscustomobject]@{NetConnectionID='Legacy NIC';Name='Legacy adapter';MACAddress='02:00:00:00:00:07';Speed=1000000000}}
+ 'Win32_NetworkAdapterConfiguration'{[pscustomobject]@{IPEnabled=$true;Description='Legacy adapter';IPAddress=@('192.0.2.9','2001:db8::9');IPSubnet=@('255.255.255.0','64');DefaultIPGateway=@('192.0.2.1');DNSServerSearchOrder=@('192.0.2.53')}}
+ }
+}
+$data=@(& { __CONFIG__ })
+function Has([string]$key,[string]$value){$line='ITCFG:'+ [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($key)) + ""`t"" + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($value));if($data -notcontains $line){throw ('Missing legacy field '+$key)}}
+Has '系统/名称' 'Legacy OS'
+Has 'CPU/1/型号' 'Legacy CPU'
+Has '内存/1/配置频率 MHz' '1600'
+Has '网卡/Legacy NIC/MAC' '02:00:00:00:00:07'
+Has '网卡/Legacy NIC/接口速率' '1000 Mb'
+Has '网络/Legacy adapter/IPv4' '192.0.2.9/255.255.255.0'
+Has '网络/Legacy adapter/IPv6' '2001:db8::9'
+'PASS legacy configuration fixture'
+".Replace("__CONFIG__",InspectionService.ConfigurationScript());File.WriteAllText(Path.Combine(folder,"legacy-configuration-fixture.ps1"),fixture,new UTF8Encoding(true));
+    }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();
+        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

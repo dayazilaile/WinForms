@@ -17,7 +17,7 @@ namespace ITDesktopToolkit
                 var automatic=new RadioButton{Name="cleanupAutomatic",Text="自动执行（仅使用登记的静默卸载方式，不猜测静默参数）",Left=24,Top=154,Width=610,Height=32};
                 var note=new Label{Left=24,Top=202,Width=610,Height=62,Text="保护项或不支持的卸载方式会跳过，最后提示未全部完成。\r\n用户软件在原账户处理，全机软件按需申请 UAC；火绒、系统组件和驱动会跳过。"};
                 var save=new Button{Text="生成 BAT",Left=410,Top=284,Width=106,Height=34};var cancel=new Button{Text="取消",Left=532,Top=284,Width=106,Height=34,DialogResult=DialogResult.Cancel};dialog.CancelButton=cancel;
-                save.Click+=delegate{try{if(softwareCleanupExporter!=null)softwareCleanupExporter(rules,automatic.Checked);else using(var file=new SaveFileDialog{FileName=automatic.Checked?"标准软件清理_自动.bat":"标准软件清理_确认.bat",Filter="BAT 脚本|*.bat",OverwritePrompt=true}){if(file.ShowDialog(dialog)!=DialogResult.OK)return;SoftwareCleanupScriptService.ExportBat(file.FileName,rules,automatic.Checked);}dialog.DialogResult=DialogResult.OK;dialog.Close();}catch(Exception ex){MessageBox.Show(dialog,"生成失败："+ex.Message);}};
+                save.Click+=delegate{try{if(softwareCleanupExporter!=null)softwareCleanupExporter(rules,automatic.Checked);else using(var file=new SaveFileDialog{InitialDirectory=Paths.BaseDir,FileName=automatic.Checked?"标准软件清理_自动.bat":"标准软件清理_确认.bat",Filter="BAT 脚本|*.bat",OverwritePrompt=true}){if(file.ShowDialog(dialog)!=DialogResult.OK)return;SoftwareCleanupScriptService.ExportBat(file.FileName,rules,automatic.Checked);}dialog.DialogResult=DialogResult.OK;dialog.Close();}catch(Exception ex){MessageBox.Show(dialog,"生成失败："+ex.Message);}};
                 dialog.Controls.AddRange(new Control[]{info,confirm,automatic,note,save,cancel});dialog.ShowDialog(this);
             }
         }
