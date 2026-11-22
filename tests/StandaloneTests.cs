@@ -104,6 +104,85 @@ Write-Output 'PASS bounded checks fixture'
         string falseCondition=AutomationService.MakeScript(AutomationBlockService.Compose(S("如果文件存在",Path.Combine(folder,"absent-"+Guid.NewGuid())),new List<AutoStep>{S("检查文件存在",Path.Combine(folder,"must-not-run-"+Guid.NewGuid()))},new List<AutoStep>{S("等待毫秒","1")},true),BatInputEngine.SendInput,0,false);
         File.WriteAllText(Path.Combine(folder,"false-condition-fixture.ps1"),falseCondition,new System.Text.UTF8Encoding(true));
     }
+    static void RandomIpv4()
+    {
+        var config=AutomationService.RandomIpv4("自动有线","192.0.2","192.0.2.254|继续流程");Check(config.Network=="192.0.2.0/24"&&config.Hosts.Length==252&&config.Hosts.First()==1&&config.Hosts.Last()==253&&!config.Hosts.Contains(100),"Random IPv4 uses exact requested host ranges excluding 100/254/255/0");
+        var finish=AutomationService.RandomIpv4("Ethernet Space","192.0.2.0/24","192.0.2.1|结束脚本");Check(finish.Finish&&!finish.Hosts.Contains(1)&&finish.Hosts.Length==251,"Gateway in the random range is excluded and finish mode is retained");
+        Check(AutomationService.RandomIpv4("自动有线","172.26.8.198/20","172.26.0.1").Network=="172.26.8.0/20","Wider CIDR retains the selected first three octets and accepts a gateway elsewhere in that subnet");
+        config=AutomationService.RandomIpv4("自动有线","192.0.2.128/25","192.0.2.129");Check(config.Hosts.All(n=>n>=130&&n<=253),"Narrow subnet excludes its network/broadcast and out-of-subnet pool members");
+        foreach(var fields in new[]{new[]{"","192.0.2","192.0.2.254"},new[]{"自动有线","127.0.0","127.0.0.1"},new[]{"自动有线","192.0.2.0/32","192.0.2.1"},new[]{"自动有线","192.0.2","198.51.100.1"},new[]{"自动有线","192.0.2","192.0.2.0"},new[]{"自动有线","192.0.2","192.0.2.255"},new[]{"自动有线","192.0.2","192.0.2.1|invalid"},new[]{"自动有线","192.0.2.252/30","192.0.2.253"}})Reject(()=>AutomationService.RandomIpv4(fields[0],fields[1],fields[2]),"Invalid random IPv4 configuration rejected: "+String.Join(" / ",fields));
+        foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy}){
+            string next=AutomationService.MakeScript(new List<AutoStep>{S("随机设置 IPv4","自动有线","192.0.2","192.0.2.254|继续流程"),S("等待毫秒","1")},engine,0,false),end=AutomationService.MakeScript(new List<AutoStep>{S("随机设置 IPv4","自动有线","192.0.2","192.0.2.254|结束脚本"),S("等待毫秒","1")},engine,0,false);
+            Check(next.Contains("Invoke-RandomIPv4 '自动有线' '192.0.2' 24 '192.0.2.254'")&&next.Contains("Assert-Admin")&&!next.Contains("Write-Host 'All steps complete.'; return")&&end.Contains("Write-Host 'All steps complete.'; return"),"Both success modes emit the requested flow semantics without bypassing UAC: "+engine);
+        }
+        var steps=new List<AutoStep>{S("随机设置 IPv4","Ethernet Space","192.0.2.0/24","192.0.2.254|结束脚本")};string file=Path.GetTempFileName();try{AutomationService.Save(file,steps);Check(AutomationService.Load(file).Single().C==steps[0].C,"Random IPv4 configuration and finish mode round-trip in existing workflow format");byte[] old=File.ReadAllBytes(file);Reject(()=>AutomationService.Save(file,new List<AutoStep>{S("随机设置 IPv4","自动有线","192.0.2","bad")}),"Invalid random IPv4 cannot overwrite a saved workflow");Check(old.SequenceEqual(File.ReadAllBytes(file)),"Failed random IPv4 save preserves the previous workflow");}finally{File.Delete(file);}
+        string helper=(string)typeof(AutomationService).GetField("RandomIpv4Helper",BindingFlags.NonPublic|BindingFlags.Static).GetRawConstantValue();Check(helper.Contains("TotalSeconds -lt 10")&&helper.Contains("AddressState -eq 'Duplicate'")&&helper.Contains("$pool.RemoveAt($pick)")&&helper.Contains("Restore-RandomIp")&&!helper.Contains("Test-Connection"),"Conflict observation is bounded to ten seconds, uses ARP/DAD and does not reuse failed candidates or equate no Ping with safety");
+        string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(folder);string fixture=@"$ErrorActionPreference='Stop'
+__HELPER__
+function Check([bool]$ok,[string]$name){if(-not $ok){throw ('Random IP fixture failed: '+$name)};Write-Output ('PASS '+$name)}
+$script:NativeSet=${function:Set-RandomIpAddress};$script:NativeRestore=${function:Restore-RandomIp}
+function netsh.exe {$script:NativeArgs=@($args);$global:LASTEXITCODE=0}
+& $script:NativeSet 'Ethernet Space' '192.0.2.2' 24 '192.0.2.254'
+Check ($script:NativeArgs -contains 'name=Ethernet Space') 'netsh receives exact interface as one argument'
+Check ($script:NativeArgs -contains 'mask=255.255.255.0' -and $script:NativeArgs -contains 'gateway=192.0.2.254') 'netsh receives calculated mask and gateway'
+function New-TestClock {$clock=[pscustomobject]@{Tick=0};$clock|Add-Member ScriptProperty Elapsed {$this.Tick++;[TimeSpan]::FromSeconds($this.Tick)};$script:LastClock=$clock;return $clock}
+function Reset-Test {
+ $script:address='10.0.0.10';$script:prefix=24;$script:gateway='10.0.0.1';$script:dhcp='Enabled';$script:dad=1;$script:up='Up';$script:dup='';$script:peerBusy='';$script:otherIp='';$script:multiple=$false;$script:routeBad=$false;$script:restoreFail=$false;$script:readFail=$false;$script:setFail=$false;$script:setCount=0;$script:restored=0;$script:probed=@();$script:assigned=@();$script:itAbortWorkflow=$false
+}
+function Get-NetAdapter {param([switch]$Physical,$ErrorAction) [pscustomobject]@{Name='Ethernet Space';ifIndex=7;Status=$script:up;MacAddress='02-00-00-00-00-10';NdisPhysicalMedium=14;InterfaceDescription='Ethernet'}}
+function Get-NetIPInterface {param($InterfaceIndex,$AddressFamily,$ErrorAction) [pscustomobject]@{Dhcp=$script:dhcp;DadTransmits=$script:dad}}
+function Get-NetIPAddress {param($InterfaceIndex,$AddressFamily,$ErrorAction)
+ if($script:readFail){throw 'fixture interface query failed'}
+ [pscustomobject]@{IPAddress=$script:address;InterfaceIndex=7;PrefixLength=$script:prefix;AddressState=$(if($script:address -eq $script:dup){'Duplicate'}else{'Preferred'})}
+ if($script:multiple){[pscustomobject]@{IPAddress='10.0.0.11';InterfaceIndex=7;PrefixLength=24;AddressState='Preferred'}}
+ if($script:otherIp.Length -gt 0){[pscustomobject]@{IPAddress=$script:otherIp;InterfaceIndex=8;PrefixLength=24;AddressState='Preferred'}}
+}
+function Get-NetRoute {param($InterfaceIndex,$AddressFamily,$DestinationPrefix,$ErrorAction) [pscustomobject]@{InterfaceIndex=7;DestinationPrefix='0.0.0.0/0';NextHop=$(if($script:routeBad -and $script:setCount -gt 0){'192.0.2.99'}else{$script:gateway})}}
+function Get-NetNeighbor {param($InterfaceIndex,$AddressFamily,$ErrorAction) }
+function Probe-RandomIp([string]$ip,[string]$source){$script:probed+=,$ip;if($ip -eq $script:peerBusy){return '020000000077'};return ''}
+function Get-Random {param([int]$Minimum,[int]$Maximum) return $Minimum}
+function Start-Sleep {param($Milliseconds,$Seconds) }
+function Set-DnsClientServerAddress {throw 'random IPv4 must not modify DNS'}
+function Set-RandomIpAddress([string]$nic,[string]$address,[int]$prefix,[string]$gateway){$script:setCount++;$script:assigned+=,$address;if($script:setFail){throw 'fixture set failed'};$script:address=$address;$script:prefix=$prefix;$script:gateway=$gateway;$script:dhcp='Disabled'}
+function Restore-RandomIp($saved,[string]$candidate,[string]$gateway){$script:restored++;$script:restoredDhcp=$saved.Dhcp;$script:restoredAddress=$saved.Addresses[0].IPAddress;if($script:restoreFail){throw 'fixture restore failed'};$script:address=$saved.Addresses[0].IPAddress;$script:gateway=$saved.Routes[0].NextHop;$script:dhcp=$saved.Dhcp}
+Reset-Test
+Check ((Resolve-RandomIpNic '自动有线').Name -eq 'Ethernet Space') 'automatic wired selector resolves the connected physical adapter'
+$result=Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1,2,3))
+Check ($result -eq '192.0.2.1' -and $script:setCount -eq 1 -and $script:restored -eq 0) 'free candidate sets address once and does not roll back success'
+Check ($script:LastClock.Tick -ge 10) 'success waits the full ten-second observation with accelerated fixture clock'
+Reset-Test;$script:peerBusy='192.0.2.1';$result=Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1,2))
+Check ($result -eq '192.0.2.2' -and $script:setCount -eq 1 -and $script:probed.Count -eq 2) 'ARP evidence skips an occupied candidate before assignment'
+Reset-Test;$script:dup='192.0.2.1';$result=Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1,2))
+Check ($result -eq '192.0.2.2' -and $script:setCount -eq 2 -and ($script:assigned -join ',') -eq '192.0.2.1,192.0.2.2') 'DAD duplicate triggers a different candidate without replacement'
+Reset-Test;$script:otherIp='192.0.2.1';$result=Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1,2))
+Check ($result -eq '192.0.2.2' -and $script:setCount -eq 1) 'other local interfaces are excluded'
+foreach($bad in @('dad','down','multiple','readFail')) {
+ Reset-Test;switch($bad){'dad'{$script:dad=0};'down'{$script:up='Disconnected'};'multiple'{$script:multiple=$true};'readFail'{$script:readFail=$true}}
+ $failed=$false;try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1,2)))}catch{$failed=$true}
+ Check ($failed -and $script:setCount -eq 0 -and $script:itAbortWorkflow) ('invalid initial state fails before modification: '+$bad)
+}
+Reset-Test;$script:dup='192.0.2.1';$failed=$false
+try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1)))}catch{$failed=$true}
+Check ($failed -and $script:restored -eq 1 -and $script:restoredDhcp -eq 'Enabled' -and $script:restoredAddress -eq '10.0.0.10') 'exhausted pool restores original mode and records terminal failure'
+Reset-Test;$script:routeBad=$true;$failed=$false
+try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1)))}catch{$failed=$true}
+Check ($failed -and $script:restored -eq 1) 'gateway verification failure cannot be called success'
+Reset-Test;$script:setFail=$true;$script:restoreFail=$true;$message=''
+try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1)))}catch{$message=$_.Exception.Message}
+Check ($message.Contains('恢复原配置也失败') -and $script:restored -eq 1) 'partial set plus restore failure is reported honestly'
+Reset-Test
+& $script:NativeRestore ([pscustomobject]@{Name='Ethernet Space';Index=7;Dhcp='Enabled';Addresses=@();Routes=@()}) '192.0.2.2' '192.0.2.254'
+Check ($script:NativeArgs -contains 'name=Ethernet Space' -and $script:NativeArgs -contains 'source=dhcp') 'DHCP rollback targets exact original interface'
+".Replace("__HELPER__",helper.Replace("[Diagnostics.Stopwatch]::StartNew()","(New-TestClock)"));
+        foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy})foreach(bool stop in new[]{false,true}){
+            var modeSteps=new List<AutoStep>{S("重试开始","2","1"),S("随机设置 IPv4","自动有线","192.0.2","192.0.2.254|"+(stop?"结束脚本":"继续流程")),S("重试结束"),S("等待毫秒","1")};
+            string modeScript=AutomationService.MakeScript(modeSteps,engine,0,false).Replace("Assert-Admin"+Environment.NewLine,"# Mocked administrator check"+Environment.NewLine).Replace(helper,"function Invoke-RandomIPv4 { $script:randomCalls++; return '192.0.2.2' }");
+            fixture+="$script:randomCalls=0;$script:followingCalls=0\nfunction Start-Sleep {param($Milliseconds,$Seconds) $script:followingCalls++}\n& ([scriptblock]::Create('"+modeScript.Replace("'","''")+"'))\nCheck ($script:randomCalls -eq 1 -and $script:followingCalls -eq "+(stop?"0":"1")+") 'Success mode executes correct subsequent flow through retry: "+engine+" / "+stop+"'\n";
+        }
+        int nativeStart=helper.IndexOf("using System;",StringComparison.Ordinal),nativeEnd=helper.IndexOf("'@",nativeStart,StringComparison.Ordinal);string native=helper.Substring(nativeStart,nativeEnd-nativeStart).Replace("[DllImport(\"iphlpapi.dll\", ExactSpelling=true)] private static extern uint SendARP(uint dst,uint src,[Out] byte[] mac,ref uint len);","private static uint SendARP(uint dst,uint src,byte[] mac,ref uint len){for(int i=0;i<6;i++)mac[i]=(byte)(i+1);len=6;return 0;}");
+        if(native.Contains("DllImport"))throw new Exception("Native ARP fixture must remove OS calls before execution");
+        fixture+="Add-Type -TypeDefinition '"+native.Replace("'","''")+"'\nCheck ([ITRandomIPv4Arp]::Probe('192.0.2.1','192.0.2.2') -eq '010203040506') 'compiled ARP task bridge returns normalized evidence with a managed native stub'\nWrite-Output 'PASS random IPv4 fixture'\n";File.WriteAllText(Path.Combine(folder,"random-ip-fixture.ps1"),fixture,new System.Text.UTF8Encoding(true));
+    }
     static void RandomWait()
     {
         Check(AutomationService.RandomWaitBounds(" 1 ","20").SequenceEqual(new[]{1,20})&&AutomationService.RandomWaitBounds("0","0").SequenceEqual(new[]{0,0})&&AutomationService.RandomWaitBounds("3600","3600")[1]==3600,"Random wait accepts inclusive integer-second bounds including equal and zero bounds");
@@ -189,5 +268,5 @@ Write-Output 'PASS random wait fixture'
             string example=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"example.workflow.txt");AutomationService.Save(example,AutomationBlockService.Compose(S("如果文件存在",@"C:\Windows\explorer.exe"),new List<AutoStep>{S("等待毫秒","1000")},new List<AutoStep>{S("等待毫秒","500")},true),settings);
         }finally{Directory.Delete(dir,true);}
     }
-    static int Main(){try{Flow();LauncherReview();TimeoutChecks();RandomWait();ConditionBlocks();MouseBridge();Portable();Console.WriteLine("STANDALONE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{Flow();LauncherReview();TimeoutChecks();RandomIpv4();RandomWait();ConditionBlocks();MouseBridge();Portable();Console.WriteLine("STANDALONE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }
