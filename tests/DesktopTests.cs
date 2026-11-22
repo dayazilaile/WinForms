@@ -104,11 +104,12 @@ if(@($fields.Keys | Where-Object {$_ -match '^(服务|共享)/'}).Count -ne 0){t
         Check(automatic.Contains("Read-SWInventory")&&automatic.Contains("Read-SWRecord $row.Hive")&&automatic.Contains("Test-SWSameRecord")&&automatic.Contains("$remaining=@(Find-SWExtras"),"Cleanup uses target registrations, revalidates before launch and checks remaining registrations afterward");
         Check(!automatic.Contains("Out-File")&&!automatic.Contains("WriteAll")&&!automatic.Contains("Export-Csv")&&!automatic.Contains("Start-Transcript")&&automatic.Contains("Show-SWResult"),"Cleanup reports via popups without writing its own result files or logs");
         Check(automatic.Contains("$row.NoRemove")&&automatic.Contains("火绒")&&automatic.Contains("Quiet")&&automatic.Contains("WaitForExit(600000)")&&!automatic.Contains(".Kill()"),"Protected items and unsupported quiet uninstall are skipped and installer timeout never force-kills a process");
-        string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(directory);string file=Path.Combine(directory,"cleanup-export-test.bat");SoftwareCleanupScriptService.ExportBat(file,standard,true);string bat=File.ReadAllText(file);string marker=":__SOFTWARE_CLEANUP_V1__";
+        string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(directory);string file=Path.Combine(directory,"cleanup-export-test.bat");SoftwareCleanupScriptService.ExportBat(file,standard,true);string bat=File.ReadAllText(file);string marker=":__ITTOOLKIT_PAYLOAD_V1__";
         Check(System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(bat.Substring(bat.LastIndexOf(marker)+marker.Length).Trim()))==automatic&&!bat.Contains("-WindowStyle")&&!bat.Contains("-EncodedCommand")&&!bat.Contains("-ExecutionPolicy")&&automatic.Contains("-Verb RunAs"),"Single BAT contains exact workflow and standard UAC without hidden launch or execution-policy overrides");
+        string autoFile=Path.Combine(directory,"cleanup-shared-writer-auto.bat");AutomationService.ExportBat(autoFile,new List<AutoStep>{new AutoStep{Type="等待毫秒",A="1"}},new AutoWorkflowSettings{DeleteOnSuccess=false,RunAsAdministrator=false,DiagnosticMode=false,StartupDelaySeconds=0});string autoBat=File.ReadAllText(autoFile);string autoCommand=autoBat.Split('\n').Single(line=>line.StartsWith("powershell.exe -NoLogo -NoProfile -STA -Command",StringComparison.Ordinal)).TrimEnd('\r');Check(bat.Replace("\r\n","\n").StartsWith("@echo off\nsetlocal DisableDelayedExpansion\nset \"IT_TOOLKIT_BAT=%~f0\"\n")&&bat.Contains(autoCommand)&&bat.Contains(":__ITTOOLKIT_PAYLOAD_V1__"),"Software cleanup and automation share the exact tested BAT header, visible launcher and payload marker");
         RejectBaseline(()=>SoftwareCleanupScriptService.MakeScript(new SoftwareBaselineEntry[0],true),"No cleanup script can be generated from an empty standard");
-        byte[] original=File.ReadAllBytes(file);RejectBaseline(()=>SoftwareCleanupScriptService.ExportBat(file,new SoftwareBaselineEntry[0],true),"Invalid cleanup export is rejected before replacing an existing BAT");Check(original.SequenceEqual(File.ReadAllBytes(file))&&Directory.GetFiles(directory,"software-cleanup-*.tmp").Length==0,"Cleanup export preserves old bytes on validation failure and leaves no staging file");
-        string core=(string)typeof(SoftwareCleanupScriptService).GetField("CoreScript",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).GetRawConstantValue();
+        byte[] original=File.ReadAllBytes(file);RejectBaseline(()=>SoftwareCleanupScriptService.ExportBat(file,new SoftwareBaselineEntry[0],true),"Invalid cleanup export is rejected before replacing an existing BAT");Check(original.SequenceEqual(File.ReadAllBytes(file))&&Directory.GetFiles(directory,"it-bat-*.tmp").Length==0,"Cleanup export preserves old bytes on validation failure and leaves no staging file");
+        string core=SoftwareCleanupScriptService.ReadTemplate(SoftwareCleanupScriptService.TemplatePath);
         string fixture=@"$ErrorActionPreference='Stop'
 __CORE__
 $script:notice='';$script:noticeOk=$false;$script:confirmCount=0;$script:approved=$true;$script:starts=0;$script:changeRecord=$false;$script:keepRecord=$false;$script:readFailure=$false;$script:timeout=$false;$script:admin=$true;$script:stages=0
@@ -185,6 +186,18 @@ foreach($name in @('Paint.NET','360浏览器')){Assert-True ((Get-SWProtection (
 Write-Output 'PASS software cleanup fixture'
 ".Replace("__CORE__",core);File.WriteAllText(Path.Combine(directory,"software-cleanup-fixture.ps1"),fixture,new UTF8Encoding(true));
     }
+    static void TemplateIntegrity()
+    {
+        string original=SoftwareCleanupScriptService.ReadTemplate(SoftwareCleanupScriptService.TemplatePath);Check(original.Contains("function Invoke-SWCleanup")&&original.Contains("function Start-SWMachineStage"),"Reviewable cleanup template is deployed beside the application and loads only as export input");
+        string folder=Path.Combine(Path.GetTempPath(),"cleanup-template-"+Guid.NewGuid());Directory.CreateDirectory(folder);string file=Path.Combine(folder,"SoftwareCleanup.ps1");
+        try{
+            File.WriteAllText(file,original.Replace("\n","\r\n"),new UTF8Encoding(true));Check(SoftwareCleanupScriptService.ReadTemplate(file)==original,"Template integrity tolerates UTF-8 BOM and Windows line endings without changing script meaning");
+            File.AppendAllText(file,"# unexpected change");bool rejected=false;try{SoftwareCleanupScriptService.ReadTemplate(file);}catch(InvalidDataException){rejected=true;}Check(rejected,"Modified or mismatched cleanup template cannot generate an uninstall script");
+            File.Delete(file);rejected=false;try{SoftwareCleanupScriptService.ReadTemplate(file);}catch(IOException){rejected=true;}Check(rejected,"Missing template produces a clear export failure rather than executing a fallback payload");
+            File.WriteAllText(file,new string('x',4*1024*1024+1));rejected=false;try{SoftwareCleanupScriptService.ReadTemplate(file);}catch(InvalidDataException){rejected=true;}Check(rejected,"Oversized template is rejected before text parsing");
+        }finally{Directory.Delete(folder,true);}
+        byte[] assembly=File.ReadAllBytes(typeof(SoftwareCleanupScriptService).Assembly.Location);byte[] marker=Encoding.Unicode.GetBytes("function Read-SWInventory");bool embedded=false;for(int i=0;i<=assembly.Length-marker.Length&&!embedded;i++){int j=0;for(;j<marker.Length&&assembly[i+j]==marker[j];j++){}embedded=j==marker.Length;}Check(!embedded,"Production EXE no longer embeds the bulk-uninstall implementation as a managed string");
+    }
     static void Uninstall()
     {
         string directory=@"C:\Windows\System32",vendor=@"C:\Program Files\Example\uninstall.exe";var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase){vendor,directory+@"\msiexec.exe",directory+@"\rundll32.exe",@"C:\Program.exe"};Func<string,bool> exists=files.Contains;
@@ -200,7 +213,7 @@ Write-Output 'PASS software cleanup fixture'
         Check(!SoftwareUninstallService.Build("None","",false,"",false,directory,exists).CanStart,"Missing uninstall registration remains a settings fallback");
     }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();CleanupScripts();Uninstall();
+        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

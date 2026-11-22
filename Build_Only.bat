@@ -17,10 +17,15 @@ if not exist "src\Program.cs" (
  if /I not "%~1"=="--no-pause" pause
  exit /b 2
 )
+if not exist "Scripts\SoftwareCleanup.ps1" (
+ echo [ERROR] Missing Scripts\SoftwareCleanup.ps1. Unzip the ENTIRE source package first.
+ if /I not "%~1"=="--no-pause" pause
+ exit /b 4
+)
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== IT Desktop Toolkit V0.5.17 =====
+echo ===== IT Desktop Toolkit V0.5.18 =====
 echo Compiler: "%CSC%"
 pushd "src"
 "%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
@@ -37,6 +42,14 @@ if not exist "build\ITDesktopToolkit.exe" (
  echo [ERROR] Compiler returned success but output EXE is missing.
  if /I not "%~1"=="--no-pause" pause
  exit /b 3
+)
+REM Deploy the reviewable template; its version/content is checked before script export.
+if not exist "build\Scripts" mkdir "build\Scripts"
+copy /Y "Scripts\SoftwareCleanup.ps1" "build\Scripts\SoftwareCleanup.ps1" >nul
+if errorlevel 1 (
+ echo [ERROR] Could not deploy Scripts\SoftwareCleanup.ps1. Build package is incomplete.
+ if /I not "%~1"=="--no-pause" pause
+ exit /b 5
 )
 REM Source Database is the distribution baseline; never overwrite user edits in build\Database.
 if not exist "build\Database\hardware_models.tsv" copy /Y "Database\hardware_models.tsv" "build\Database\hardware_models.tsv" >nul

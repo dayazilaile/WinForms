@@ -1,0 +1,18 @@
+{
+  "reported_detection": "HEUR:Trojan/MSIL.AutoRun",
+  "sample_from_user_available": false,
+  "user_reported_trigger": "double-clicking v0.5.17 main EXE",
+  "source_v0517_commit": "41cc8709e56f500386d14b4eda3c880a9dca2586",
+  "cloud_rebuild_v0517_sha256": "46f70327b61c6e9caa65aebd6a8efdd4a9168f9e8d90b2b3b09b524493e7a17f",
+  "cloud_rebuild_matches_existing_cloud_exe": true,
+  "entry_point_il_v0516_v0517_identical": true,
+  "v0517_cleanup_type_initializer": false,
+  "native_windows_user_binary_verified": false,
+  "huorong_scan_performed": false,
+  "clamav_database_available": false,
+  "template_canonical_sha256": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+  "template_logic_changed_only_shared_path_variable": true,
+  "existing_automation_exports_checked": 96,
+  "existing_automation_exports_all_byte_identical": true,
+  "constructor_delta_only_version_and_null_export_delegate": true
+}

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import io
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import urllib.request
@@ -42,6 +43,11 @@ def main():
     parser.add_argument('--download-references', action='store_true')
     args = parser.parse_args()
     project, refs, mono = args.project.resolve(), args.references.resolve(), args.mono_root.resolve()
+    template = None
+    if not args.standalone:
+        template = project / 'Scripts' / 'SoftwareCleanup.ps1'
+        if not template.is_file():
+            parser.error('Missing Scripts/SoftwareCleanup.ps1; extract the complete source package')
     if args.download_references and not (refs / 'mscorlib.dll').is_file():
         download_references(refs)
     required = ['mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms']
@@ -59,6 +65,11 @@ def main():
     command += ['-r:' + str(refs / (name + '.dll')) for name in required]
     command += [str(path) for path in sorted((project / 'src').glob('*.cs'))]
     subprocess.run(command, env=env, check=True)
+    # Script templates stay as reviewable files beside the EXE, not executable strings in it.
+    if not args.standalone:
+        target = output.parent / 'Scripts' / template.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(template, target)
     result = verify(output, refs)
     result['reference_package_url'], result['reference_package_sha256'] = PACKAGE_URL, PACKAGE_SHA256
     result['reference_assembly_sha256'] = {name: hashlib.sha256((refs/(name+'.dll')).read_bytes()).hexdigest() for name in required}
