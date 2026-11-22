@@ -284,6 +284,10 @@ namespace ITDesktopToolkit
                 desktopScope.Items.AddRange(new object[]{"当前用户桌面","公共桌面","两者"});
                 string savedScope=current==null?"":(current.B??"");
                 desktopScope.SelectedItem=desktopScope.Items.Contains(savedScope)?savedScope:"当前用户桌面";
+                var ipModeLabel=FormLabel("成功后",25,208,130);
+                var ipMode=new ComboBox{Left=170,Top=208,Width=530,DropDownStyle=ComboBoxStyle.DropDownList,AccessibleName="随机IPv4成功后"};ipMode.Items.AddRange(new object[]{"继续流程","结束脚本"});ipMode.SelectedIndex=0;
+                bool randomIpInitialized=current!=null&&current.Type=="随机设置 IPv4";
+                if(randomIpInitialized){var stored=(current.C??"").Split('|');c.Text=stored[0];if(stored.Length==2&&stored[1]=="结束脚本")ipMode.SelectedIndex=1;}
                 Label parameterALabel=FormLabel("参数 1",25,77,130);
                 Label parameterBLabel=FormLabel("参数 2",25,120,130);
                 Label parameterCLabel=FormLabel("参数 3",25,164,130);
@@ -375,11 +379,11 @@ namespace ITDesktopToolkit
                             "确认清空回收站动作",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;
                     }
                     var edited=new AutoStep{Type=type.Text,A=type.Text=="清空当前用户回收站"?"":a.Text,B=type.Text=="清空当前用户回收站"?"":type.Text=="删除桌面指定文件"?desktopScope.Text:b.Text,C=type.Text=="清空当前用户回收站"||type.Text=="删除桌面指定文件"?"":c.Text};
-                    try{if(edited.Type=="随机等待"){var bounds=AutomationService.RandomWaitBounds(edited.A,edited.B);edited.A=bounds[0].ToString(System.Globalization.CultureInfo.InvariantCulture);edited.B=bounds[1].ToString(System.Globalization.CultureInfo.InvariantCulture);edited.C="";}if(AutomationBlockService.IsCondition(edited.Type)){edited.C="";if(edited.Type!="如果系统版本")edited.B="";edited.A=(edited.A??"").Trim();edited.B=(edited.B??"").Trim();if(yes.Count+no.Count==0)throw new ArgumentException("请至少在一个分支添加动作；无需执行的分支可留空。");result=AutomationBlockService.Compose(edited,yes,no,includeElse);}else{if(yes.Count+no.Count>0&&MessageBox.Show(f,"改为普通动作会移除当前条件的两个分支，是否继续？","更改动作类型",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;result=new List<AutoStep>{edited};}}catch(Exception ex){conditionError.Text=ex.Message;return;}
+                    try{if(edited.Type=="随机设置 IPv4"){var config=AutomationService.RandomIpv4(edited.A,edited.B,edited.C+"|"+ipMode.Text);edited.A=config.Nic;edited.B=config.Network;edited.C=config.Gateway+"|"+(config.Finish?"结束脚本":"继续流程");}if(edited.Type=="随机等待"){var bounds=AutomationService.RandomWaitBounds(edited.A,edited.B);edited.A=bounds[0].ToString(System.Globalization.CultureInfo.InvariantCulture);edited.B=bounds[1].ToString(System.Globalization.CultureInfo.InvariantCulture);edited.C="";}if(AutomationBlockService.IsCondition(edited.Type)){edited.C="";if(edited.Type!="如果系统版本")edited.B="";edited.A=(edited.A??"").Trim();edited.B=(edited.B??"").Trim();if(yes.Count+no.Count==0)throw new ArgumentException("请至少在一个分支添加动作；无需执行的分支可留空。");result=AutomationBlockService.Compose(edited,yes,no,includeElse);}else{if(yes.Count+no.Count>0&&MessageBox.Show(f,"改为普通动作会移除当前条件的两个分支，是否继续？","更改动作类型",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;result=new List<AutoStep>{edited};}}catch(Exception ex){conditionError.Text=ex.Message;return;}
                     f.DialogResult=DialogResult.OK;f.Close();
                 });
                 f.Controls.AddRange(new Control[]{FormLabel("动作类型",25,23,130),type,parameterALabel,a,
-                    parameterBLabel,b,desktopScope,parameterCLabel,c,guide,browse,capture,testMove,captureState,recordKey,selectWindow,delayShortcuts,branchArea,conditionError,save});
+                    parameterBLabel,b,desktopScope,parameterCLabel,c,ipModeLabel,ipMode,guide,browse,capture,testMove,captureState,recordKey,selectWindow,delayShortcuts,branchArea,conditionError,save});
                 // 只有『运行程序』需要文件浏览；坐标捕获主要用于『移动鼠标』。
                 Action refreshActionOptions=delegate {
                     browse.Visible=type.Text=="运行程序" || type.Text=="运行程序并等待" || type.Text=="如果文件存在" || type.Text=="检查文件存在" || type.Text=="删除指定路径文件";
@@ -399,11 +403,12 @@ namespace ITDesktopToolkit
                     parameterALabel.Text=desktopAction?"准确文件名":type.Text=="删除指定路径文件"?"文件完整路径":"参数 1";
                     parameterBLabel.Text=desktopAction?"桌面范围":"参数 2";
                     if(type.Text=="删除指定路径文件"){b.Visible=false;c.Visible=false;parameterBLabel.Visible=false;parameterCLabel.Visible=false;}else{parameterBLabel.Visible=!noParameters;}
-                    bool condition=AutomationBlockService.IsCondition(type.Text),random=type.Text=="随机等待";branchArea.Visible=condition;conditionError.Visible=condition||random;conditionError.Text="";
+                    bool condition=AutomationBlockService.IsCondition(type.Text),random=type.Text=="随机等待",randomIp=type.Text=="随机设置 IPv4";branchArea.Visible=condition;conditionError.Visible=condition||random||randomIp;ipMode.Visible=ipModeLabel.Visible=randomIp;parameterCLabel.Text="参数 3";c.AccessibleName="参数 3";conditionError.Text="";
                     f.MinimumSize=Size.Empty;f.MaximumSize=Size.Empty;f.ClientSize=condition?new Size(1000,620):new Size(730,458);f.MinimumSize=f.Size;f.MaximumSize=f.Size;save.Left=condition?780:505;save.Top=condition?566:389;guide.Top=condition?(type.Text=="如果系统版本"?170:122):216;browse.Top=condition?180:274;branchArea.Top=228;conditionError.Top=condition?522:340;conditionError.Width=condition?950:675;
+                    guide.Height=randomIp?72:48;if(randomIp){guide.Top=253;parameterALabel.Text="网卡名称";parameterBLabel.Text="地址段 / CIDR";parameterCLabel.Text="IPv4 网关";a.AccessibleName=parameterALabel.Text;b.AccessibleName=parameterBLabel.Text;c.AccessibleName=parameterCLabel.Text;if(!randomIpInitialized){randomIpInitialized=true;a.Text="自动有线";b.Text="192.168.1.0/24";c.Text="192.168.1.254";ipMode.SelectedIndex=0;}}
                     if(condition){parameterALabel.Text=type.Text=="如果文件存在"?"文件完整路径":type.Text=="如果网络可达"?"目标 IP / 主机名":"Build 下限";parameterBLabel.Text="Build 上限（可空）";b.Visible=parameterBLabel.Visible=type.Text=="如果系统版本";c.Visible=parameterCLabel.Visible=false;a.AccessibleName=parameterALabel.Text;b.AccessibleName=parameterBLabel.Text;guide.Text=type.Text=="如果网络可达"?"填写一个 IP 或主机名，例如 192.168.1.1。Ping 有回应执行左栏，无回应执行右栏；禁止 Ping 时也可能无回应。":type.Text=="如果文件存在"?"选择完整文件路径。文件存在执行左栏，不存在执行右栏；不需要执行的分支可以留空。":"填写 Windows Build 范围，例如下限 22000、上限 26100。范围内执行左栏，范围外执行右栏。";}
                     else if(random){parameterALabel.Text="最短等待（秒）";parameterBLabel.Text="最长等待（秒）";a.AccessibleName=parameterALabel.Text;b.AccessibleName=parameterBLabel.Text;c.Visible=parameterCLabel.Visible=false;if(!randomInitialized){randomInitialized=true;a.Text="1";b.Text="20";c.Text="";}}
-                    else{a.AccessibleName="参数 1";b.AccessibleName="参数 2";}
+                    else if(!randomIp){a.AccessibleName="参数 1";b.AccessibleName="参数 2";}
 
                 };
                 type.SelectedIndexChanged+=delegate {refreshActionOptions();};

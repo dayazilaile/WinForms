@@ -29,7 +29,7 @@ namespace ITDesktopToolkit
 
     public static partial class AutomationService
     {
-        public static readonly string[] Types = { "运行程序", "等待毫秒", "随机等待", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
+        public static readonly string[] Types = { "运行程序", "等待毫秒", "随机等待", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "随机设置 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
         public static string Guide(string type)
         {
             switch(type)
@@ -54,6 +54,7 @@ namespace ITDesktopToolkit
                 case "滚轮": return "参数1=滚动档数，正向上、负向下";
                 case "设置 DNS": return "参数1=网卡名称或 自动有线/自动无线；参数2=首选DNS或 自动；参数3=备用DNS（可空）。需要管理员。";
                 case "设置默认网关": return "参数1=网卡名称或 自动有线/自动无线；参数2=新的IPv4网关；参数3=路由跃点数（默认25）。要求静态IPv4。";
+                case "随机设置 IPv4": return "指定网卡、网段/CIDR和网关；末段从 1–99、101–253 随机抽取，排除网关与其他网卡地址。设置后观察 10 秒，冲突换号；仅代表当时未检测到，不保证离线设备无重复。需要管理员。";
                 case "设置静态 IPv4": return "参数1=网卡名称或 自动有线/自动无线；参数2=IPv4地址；参数3=子网掩码|网关，例如 255.255.255.0|192.168.1.1。";
                 case "IP及DNS切换 DHCP": return "参数1=网卡名称或 自动有线/自动无线；参数2/3留空。将IP和DNS都改为自动获取。";
                 case "删除指定路径文件": return "参数1=选择或填写文件的完整绝对路径（支持本地盘/UNC），参数2/3留空；只删除一个文件，不删除目录或匹配通配符，不进入回收站。";
@@ -525,7 +526,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
 
             // Network steps use Windows built-in PowerShell NetTCPIP/DnsClient cmdlets.
             // Fail closed if an auto selector has zero or multiple physical matches.
-            bool hasNetwork = steps.Exists(delegate(AutoStep x){return x.Type=="设置 DNS"||x.Type=="设置默认网关"||x.Type=="设置静态 IPv4"||x.Type=="IP及DNS切换 DHCP";});
+            bool hasNetwork = steps.Exists(delegate(AutoStep x){return x.Type=="设置 DNS"||x.Type=="设置默认网关"||x.Type=="设置静态 IPv4"||x.Type=="随机设置 IPv4"||x.Type=="IP及DNS切换 DHCP";});
             if(hasNetwork)
             {
                 b.AppendLine(@"function Assert-Admin { $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $p=New-Object Security.Principal.WindowsPrincipal($id); if(-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw '网络配置需要管理员权限，请右键以管理员身份运行 BAT。'} }");
@@ -533,6 +534,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                 b.AppendLine(@"function Backup-Net { $file=Join-Path $env:TEMP ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); (& netsh.exe interface ipv4 dump) | Out-File -FilePath $file -Encoding Unicode; Write-Host ('旧IPv4配置备份：'+$file) }");
                 b.AppendLine("Assert-Admin");
             }
+            if(steps.Exists(delegate(AutoStep x){return x.Type=="随机设置 IPv4";}))b.AppendLine(RandomIpv4Helper);
             if (HasFormatStep(steps))
             {
                 b.AppendLine(@"function Invoke-FormatStep([string]$drive, [string]$filesystem, [string]$newLabel) {");
@@ -656,6 +658,11 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                         }
                         b.AppendLine("Get-DnsClientServerAddress -InterfaceAlias $nic -AddressFamily IPv4 | Format-List | Out-String | Write-Host");
                         break;
+                    }
+                    case "随机设置 IPv4":
+                    {
+                        var randomIp=RandomIpv4(s.A,s.B,s.C);b.AppendLine("$itRandomAddress=Invoke-RandomIPv4 "+P(randomIp.Nic)+" "+P(randomIp.Base)+" "+randomIp.Prefix+" "+P(randomIp.Gateway)+" ([int[]]@("+String.Join(",",Array.ConvertAll(randomIp.Hosts,delegate(int n){return n.ToString(System.Globalization.CultureInfo.InvariantCulture); }))+"))");
+                        if(randomIp.Finish)b.AppendLine("Write-Host 'All steps complete.'; return");break;
                     }
                     case "设置静态 IPv4":
                     {

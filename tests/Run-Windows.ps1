@@ -75,9 +75,9 @@ try {
         if ($errors.Count -gt 0) { throw ($file.Name + ': ' + ($errors | Out-String)) }
         Write-Output ('PASS PowerShell parse: ' + $file.Name)
     }
-    foreach ($fixture in @('trial-dns-fixture.ps1', 'trial-connections-fixture.ps1', 'configuration-fixture.ps1', 'random-wait-fixture.ps1', 'software-cleanup-fixture.ps1')) {
+    foreach ($fixture in @('trial-dns-fixture.ps1', 'trial-connections-fixture.ps1', 'configuration-fixture.ps1', 'random-wait-fixture.ps1', 'software-cleanup-fixture.ps1', 'random-ip-fixture.ps1')) {
         $result = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File (Join-Path 'build\generated-tests' $fixture) 2>&1 | Out-String)
-        if ($LASTEXITCODE -ne 0 -or -not ($result.Contains('PASS trial fixture') -or $result.Contains('PASS random wait fixture') -or $result.Contains('PASS software cleanup fixture'))) { throw ($fixture + ': ' + $result) }
+        if ($LASTEXITCODE -ne 0 -or -not ($result.Contains('PASS trial fixture') -or $result.Contains('PASS random wait fixture') -or $result.Contains('PASS software cleanup fixture') -or $result.Contains('PASS random IPv4 fixture'))) { throw ($fixture + ': ' + $result) }
         Write-Output $result.Trim()
     }
     $result = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File build\generated-tests\success.ps1 2>&1 | Out-String)

@@ -1,0 +1,36 @@
+{
+  "version": "0.5.19",
+  "standalone_version": "0.5.19-BAT",
+  "toolkit_checks": {
+    "features": 107,
+    "network": 34,
+    "workspace": 49,
+    "trial": 36,
+    "desktop": 69,
+    "student_wake": 41,
+    "ui": 138,
+    "total": 474
+  },
+  "standalone_checks": {
+    "features": 94,
+    "ui": 33,
+    "framework_metadata": 4,
+    "total": 131
+  },
+  "shared_sources": 10,
+  "old_bat_exports_byte_identical": 96,
+  "power_shell": "7.4.13 on Linux",
+  "new_runtime_fixture": "passed: mocked netsh, ARP, NetTCPIP, clock and administrator check; no real network modification",
+  "success_modes": "continue and return from whole script, including within retry, both engines",
+  "native_arp_bridge": "compiled with SendARP replaced by managed stub; no native call",
+  "other_runtime_fixtures": [
+    "random wait",
+    "bounded checks",
+    "false condition",
+    "wait timeout",
+    "condition error",
+    "software cleanup"
+  ],
+  "windows_network_tested": false,
+  "huorong_scan_performed": false
+}
