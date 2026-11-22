@@ -78,6 +78,8 @@ try {
         if ($errors.Count -gt 0) { throw ($file.Name + ': ' + ($errors | Out-String)) }
         Write-Output ('PASS PowerShell parse: ' + $file.Name)
     }
+    $auditResult = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File build\generated-tests\network-audit-fixture.ps1 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or -not $auditResult.Contains('PASS network audit fixture')) { throw ('Network audit fixture failed: '+$auditResult) }
     $ipResult = (& powershell.exe -NoLogo -NoProfile -NonInteractive -File build\generated-tests\random-ip-fixture.ps1 2>&1 | Out-String)
     if ($LASTEXITCODE -ne 0 -or -not $ipResult.Contains('PASS random IPv4 fixture')) { throw ('Random IPv4 runtime fixture failed: ' + $ipResult) }
     Write-Output 'PASS mocked random IPv4 conflicts, rollback and both success modes'
@@ -100,7 +102,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.20-BAT-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\BatAutomation-v0.5.21-BAT-Windows.zip -Force
     Write-Output 'Standalone Windows validation and package completed.'
 }
 finally { Pop-Location }

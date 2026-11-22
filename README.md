@@ -1,6 +1,14 @@
-# BAT 自动化独立版 v0.5.20-BAT
+# BAT 自动化独立版 v0.5.21-BAT
 
-从 [IT 桌面运维工具箱 v0.5.20](https://github.com/dayazilaile/WinForms/tree/v0.5.20) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.20-BAT`，与工具箱 v0.5.20 同步。
+从 [IT 桌面运维工具箱 v0.5.21](https://github.com/dayazilaile/WinForms/tree/v0.5.21) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.21-BAT`，与工具箱 v0.5.21 同步。
+
+## V0.5.21 网络操作身份日志
+
+包含网络设置动作的 BAT 在自身目录的 Logs/network-operations-v1.tsv 写入19列中文表格：时间/时区、主机名、设备标识/来源、硬件UUID、BIOS序列号、每张网卡的MAC/IP/掩码/DHCP/网关/DNS、账户/权限、系统/版本、会话/操作编号、阶段/结果/耗时/详情。
+
+记录开始、结束、请求目标和修改前后；随机IP另记占用、换号和恢复。不可写时停止后续网络步骤，不回退TEMP；结束日志失败时设置可能已经生效，应核对实际状态。硬件标识可能缺失或重复，不将某一MAC当作不可伪造的整机身份。密码、输入文字和输出全文不写入日志。
+
+纯输入/等待BAT不新增文件日志；共享源码从工具箱同版重新复制，共12个，独立程序仍只需一个EXE，全部源码16个文件。133项云端检查及PowerShell模拟通过，Windows/硬件/杀软实测仍需验收。Server保持v0.5.20-Server定版。
 
 ## V0.5.20 Win7 基线与便携备份
 
@@ -137,9 +145,9 @@ Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Wi
 
 ## 编译、测试与来源
 
-- 完整源码位于 `src/`，共 15 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.20。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
+- 完整源码位于 `src/`，共 16 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.20。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
 - Windows 编译：`Build_Only.bat --no-pause`；验收：`powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1`。
-- 当前云环境通过 **131 项检查（引擎/流程 94 + 独立界面 33 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
+- 当前云环境通过 **133 项检查（引擎/流程 96 + 独立界面 33 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
 - 新增范围校验、含上下限、相等边界、运行时脚本、重试内抽取、保存与界面编辑测试；Windows 随机用例拦截等待并验证反复抽取，不实际休眠。
 - 测试没有执行用户程序、真实 Ping、输入、鼠标移动或修改系统设置；UI 中的鼠标接口由模拟替代。Windows 测试另外检查生成 PowerShell 的语法与仅访问测试文件的成功/失败重试场景，云端不能代替其执行结果。
 - 兼容性回归会检查发布 EXE/构建记录一致性及源码来源，并用 Mono 错误引用生成反例，确认可以阻止本次同类错误。开发者跨编译入口为 `tools/build_framework.py`，先安装 `tools/requirements-build.txt`，使用 `--references` 指定微软引用程序集目录；缺失时可用 `--download-references` 下载固定哈希的官方包，引用 DLL 不随运行 EXE 分发。`tests/test_framework_metadata.py` 检查实际发布文件。

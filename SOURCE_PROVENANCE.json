@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.5.20",
-  "base_commit": "57de9c9e8bfe2c87ff834250ec8cf1064c83ee38",
+  "base_tag": "v0.5.21",
+  "base_commit": "d4f7037d239c33551c39a72aab9a4cef3e146526",
   "unchanged_sources_sha256": {
-    "src/AutomationService.cs": "c26e890d7acd90f031dcdd398fd39c1af4eae7feb1661a4d8a0d225a7caacfd4",
+    "src/AutomationService.cs": "501b3f3189c5f173d00ec3c7667426e28347e9d49fc2b99027f8d4495f668670",
     "src/AutomationFlow.cs": "4429b80f7156ead8c8c2ef8ff7d3fd2f0642b6a20854f7dfe96107e98a814a84",
     "src/AutomationBlockService.cs": "d5cb1434947ce9cf6ab95dc20969080c79cdfa0175a3d0c5ad4b68f4f0e472d6",
     "src/MainForm.Automation.cs": "c89615845585b963a80a7278e5486db3839a1ff9421bf8da0c1585dec71e031a",
@@ -12,8 +12,9 @@
     "src/KeyCaptureDialog.cs": "17b48853aed09d4209510ea491c6504e3dafb054027df39d575300cb25527cde",
     "src/WindowCatalog.cs": "87802439e8a2c4b1facdc559ac62a739c091cea00c4ea8ba4c6ff3bdb645859b",
     "src/BatScriptPackage.cs": "932690d698c78f8f81c35bb14f692263fbe519ad46341f91f6f14034f092c7fc",
-    "src/AutomationRandomIp.cs": "904d0aaa9e6f79ab20ea018b3ff6a62d636f9bc82106998f995903f42afed689",
-    "src/WindowsCompatibility.cs": "3e9f80d4b7d4b1310a38cfd69ce91d59598d6dcc03f44f293021815e0484ad50"
+    "src/AutomationRandomIp.cs": "8c939acf85007565f92a6ed92b573bbc8bff0ec5576e347f6a66b226b7a807f3",
+    "src/WindowsCompatibility.cs": "3e9f80d4b7d4b1310a38cfd69ce91d59598d6dcc03f44f293021815e0484ad50",
+    "src/AutomationNetworkAudit.cs": "a19376ab8db983f8aad49f7b60f21d57f5a179f8f40d85407c5273a0fb9e9b61"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -21,6 +22,6 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.5.20-BAT",
-  "change": "Fresh extraction for explicit Windows 7 SP1 / .NET 4.8 prerequisites and PowerShell 5.1 preflight. No removal of existing BAT settings. Network automation remains dependent on modern NetTCPIP cmdlets."
+  "standalone_version": "0.5.21-BAT",
+  "change": "Fresh extraction: structured network-operation audit in BAT/Logs with machine UUID/serial, MAC/IP snapshots, correlated operation IDs, before/after/failure and random IPv4 attempts. Basic input and popup-only cleanup behavior retained. Server v0.5.20-Server remains frozen."
 }

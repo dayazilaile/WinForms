@@ -531,10 +531,11 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             {
                 b.AppendLine(@"function Assert-Admin { $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $p=New-Object Security.Principal.WindowsPrincipal($id); if(-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw '网络配置需要管理员权限，请右键以管理员身份运行 BAT。'} }");
                 b.AppendLine(@"function Target-Nic([string]$name) { if($name -ne '自动有线' -and $name -ne '自动无线') { $n=Get-NetAdapter -Name $name -ErrorAction Stop; if($n.Status -eq 'Disabled'){throw '目标网卡已禁用'}; return $n.Name }; $all=@(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object {$_.Status -ne 'Disabled'}); $list=@($all|Where-Object { $wifi=($_.NdisPhysicalMedium -eq 9) -or ($_.InterfaceDescription -match 'Wireless|Wi-Fi|WLAN|802\.11'); if($name -eq '自动无线'){$wifi}else{-not $wifi} }); if($list.Count -ne 1){throw ('自动筛选网卡结果为 '+$list.Count+' 个，未执行修改。请改填明确的网卡名称。')}; return $list[0].Name }");
-                b.AppendLine(@"function Backup-Net { $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT); if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录，未修改网络配置'}; $folder=Join-Path $root 'Logs'; [void][IO.Directory]::CreateDirectory($folder); $file=Join-Path $folder ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); $dump=& netsh.exe interface ipv4 dump; if($LASTEXITCODE -ne 0){throw '读取原网络配置失败，未修改网络配置'}; $dump | Out-File -LiteralPath $file -Encoding Unicode -ErrorAction Stop; Write-Host ('旧IPv4配置备份：'+$file) }");
+                b.AppendLine(@"function Backup-Net { $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT); if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录，未修改网络配置'}; $folder=Join-Path $root 'Logs'; [void][IO.Directory]::CreateDirectory($folder); $file=Join-Path $folder ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); $dump=& netsh.exe interface ipv4 dump; if($LASTEXITCODE -ne 0){throw '读取原网络配置失败，未修改网络配置'}; $who=Get-ITNetworkIdentity; @('# 时间='+[DateTimeOffset]::Now.ToString('o'),'# 主机名='+$who.HostName,'# 设备标识='+$who.Device,'# 硬件UUID='+$who.Uuid,'# BIOS序列号='+$who.Serial,'# '+$who.Facts,'# 操作='+$script:itNetworkLogOperation)+@($dump) | Out-File -LiteralPath $file -Encoding Unicode -ErrorAction Stop; Write-Host ('旧IPv4配置备份：'+$file) }");
                 b.AppendLine("Assert-Admin");
                 b.AppendLine("foreach($itRequired in @('Get-NetAdapter','Get-NetIPInterface','Get-NetIPAddress','Get-NetIPConfiguration','Get-NetRoute','Get-NetNeighbor')){if(-not (Get-Command $itRequired -ErrorAction SilentlyContinue)){throw ('当前系统缺少 '+$itRequired+'；该网络自动化动作需要 Windows 8 / Server 2012 或更新系统。Win7/2008 R2 可使用工具箱的手动 IPv4 配置。')}}");
             }
+            if(hasNetwork)b.AppendLine(NetworkAuditHelper);
             if(steps.Exists(delegate(AutoStep x){return x.Type=="随机设置 IPv4";}))b.AppendLine(RandomIpv4Helper);
             if (HasFormatStep(steps))
             {
@@ -596,6 +597,8 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                 b.AppendLine("Write-Host " + P("步骤 " + (i+1) + "/" + steps.Count + " - " + s.Type));
                 if (diagnostic && (s.Type == "按键/组合键" || s.Type == "输入文字" || s.Type == "移动鼠标" || s.Type == "鼠标左击" || s.Type == "鼠标双击" || s.Type == "鼠标右击"))
                     b.AppendLine("[ITAutomationDiag]::FocusInfo()");
+                bool auditNetwork=s.Type=="设置 DNS"||s.Type=="设置默认网关"||s.Type=="设置静态 IPv4"||s.Type=="随机设置 IPv4"||s.Type=="IP及DNS切换 DHCP";
+                if(auditNetwork)b.AppendLine("$script:itNetworkLogOperation="+P(s.Type)+"; $script:itNetworkLogId=[guid]::NewGuid().ToString('N'); $script:itNetworkClock=[Diagnostics.Stopwatch]::StartNew(); Write-ITNetworkAudit '开始' '执行中' "+P("网卡选择="+s.A+";参数2="+s.B+";参数3="+s.C+";配置前网卡信息见本行")+"; try {");
                 switch(s.Type)
                 {
                     case "检查文件存在":
@@ -663,7 +666,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                     case "随机设置 IPv4":
                     {
                         var randomIp=RandomIpv4(s.A,s.B,s.C);b.AppendLine("$itRandomAddress=Invoke-RandomIPv4 "+P(randomIp.Nic)+" "+P(randomIp.Base)+" "+randomIp.Prefix+" "+P(randomIp.Gateway)+" ([int[]]@("+String.Join(",",Array.ConvertAll(randomIp.Hosts,delegate(int n){return n.ToString(System.Globalization.CultureInfo.InvariantCulture); }))+"))");
-                        if(randomIp.Finish)b.AppendLine("Write-Host 'All steps complete.'; return");break;
+                        if(randomIp.Finish)b.AppendLine("Write-ITNetworkAudit '结束' '10秒观察通过' '设置后结束脚本；配置后网卡信息见本行'; Write-Host 'All steps complete.'; return");break;
                     }
                     case "设置静态 IPv4":
                     {
@@ -721,6 +724,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                         b.AppendLine("[" + apiClass + "]::Mouse(2048," + (count*120) + ")"); break;
                     default: throw new ArgumentException("未知步骤："+s.Type);
                 }
+                if(auditNetwork)b.AppendLine("Write-ITNetworkAudit '结束' "+P(s.Type=="随机设置 IPv4"?"10秒观察通过":s.Type=="设置静态 IPv4"?"静态IPv4已核对":"命令执行结束")+" '配置后网卡信息见本行；不将命令结束等同于业务成功'; } catch { $itNetworkError=$_; try {Write-ITNetworkAudit '结束' '失败或未完成' $itNetworkError.Exception.Message}catch{Write-Warning $_.Exception.Message}; throw $itNetworkError }");
             }
             b.AppendLine("Write-Host 'All steps complete.'");
             b.AppendLine("} catch { Write-Host ('FAILED: ' + $_.Exception.Message) -ForegroundColor Red; throw }");
