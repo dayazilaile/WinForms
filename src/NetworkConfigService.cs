@@ -143,6 +143,11 @@ namespace ITDesktopToolkit
         }
         public static string ApplyIPv4(NicSetting nic, bool dhcp, string ip, string mask, string gateway, bool autoDns, string dns1, string dns2)
         {
+            using(var audit=OperationAudit.Begin("手动配置IPv4", "网卡="+(nic==null?"未选择":nic.Name)+";目标IPv4="+(dhcp?"DHCP":ip)+";掩码="+mask+";网关="+gateway+";DNS="+(autoDns?"自动":dns1+","+dns2)))
+            {if(!audit.StartWritten){audit.End("未执行","无法保存操作日志");return "【配置结果】失败：软件目录日志不可写，未修改网络配置。";}try{string result=ApplyIPv4Core(nic,dhcp,ip,mask,gateway,autoDns,dns1,dns2);audit.End(OperationAudit.Outcome(result));return result;}catch(Exception ex){audit.End("失败",ex.Message);throw;}}
+        }
+        private static string ApplyIPv4Core(NicSetting nic, bool dhcp, string ip, string mask, string gateway, bool autoDns, string dns1, string dns2)
+        {
             if (!CommandService.IsAdministrator()) return "【配置结果】失败：需要以管理员权限启动工具箱。未执行修改。";
             if (nic == null || String.IsNullOrWhiteSpace(nic.Name) || String.IsNullOrWhiteSpace(nic.Id)) return "【配置结果】失败：未选中有效网卡。";
             if (nic.Name.Contains("\"")) return "【配置结果】失败：网卡名称包含特殊引号，拒绝执行。";
@@ -158,7 +163,7 @@ namespace ITDesktopToolkit
             try
             {
                 Directory.CreateDirectory(Paths.MachineDir);
-                File.WriteAllText(backup, "修改时间：" + DateTime.Now + "\r\n网卡：" + before.Name + "\r\nID：" + before.Id + "\r\nDHCP：" + before.Dhcp + "\r\nIP：" + before.IPv4 + "\r\n掩码：" + before.Mask + "\r\n网关：" + before.Gateway + "\r\nDNS：" + before.Dns + "\r\nDNS自动：" + before.AutoDns + "\r\n", Encoding.UTF8);
+                File.WriteAllText(backup, OperationAudit.Stamp("手动配置IPv4 / 修改前备份")+"修改时间：" + DateTimeOffset.Now.ToString("o") + "\r\n主机名："+Environment.MachineName+"\r\n设备标识："+OperationAudit.Capture().DeviceId+"\r\nMAC："+before.Mac+ "\r\n网卡：" + before.Name + "\r\nID：" + before.Id + "\r\nDHCP：" + before.Dhcp + "\r\nIP：" + before.IPv4 + "\r\n掩码：" + before.Mask + "\r\n网关：" + before.Gateway + "\r\nDNS：" + before.Dns + "\r\nDNS自动：" + before.AutoDns + "\r\n", Encoding.UTF8);
             }
             catch(Exception ex) { return "【配置结果】失败：无法保存修改前备份，已中止："+ex.Message; }
             StringBuilder report = new StringBuilder();
@@ -232,7 +237,12 @@ namespace ITDesktopToolkit
             }
             return "没有找到该网卡的历史配置备份。";
         }
-        public static string ApplyMac(NicSetting nic, string mac, bool reset)
+        public static string ApplyMac(NicSetting nic,string mac,bool reset)
+        {
+            using(var audit=OperationAudit.Begin("修改网卡MAC","网卡="+(nic==null?"未选择":nic.Name)+";目标="+(reset?"恢复默认MAC":mac)))
+            {if(!audit.StartWritten){audit.End("未执行","无法保存操作日志");return "软件目录日志不可写，未修改MAC。";}try{string output=ApplyMacCore(nic,mac,reset);audit.End(OperationAudit.Outcome(output));return output;}catch(Exception ex){audit.End("失败",ex.Message);throw;}}
+        }
+        private static string ApplyMacCore(NicSetting nic, string mac, bool reset)
         {
             if (!CommandService.IsAdministrator()) return "需要管理员权限。";
             string clean = Regex.Replace(mac ?? "", "[-:]", "").ToUpperInvariant();

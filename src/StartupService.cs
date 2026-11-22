@@ -81,7 +81,7 @@ namespace ITDesktopToolkit
                 original = r == null ? null : r.GetValue(item.ValueName) as byte[];
             string log = Path.Combine(Paths.MachineDir, "startup_changes.tsv");
             string old = original == null ? "(无值)" : Convert.ToBase64String(original);
-            File.AppendAllText(log, DateTime.Now.ToString("s") + "\t" + item.Source + "\t" + item.ValueName.Replace("\t", " ") + "\t" + old + "\t" + enabled + Environment.NewLine);
+            File.AppendAllText(log, OperationAudit.Stamp("修改启动项 / "+item.Name) + DateTimeOffset.Now.ToString("o") + "\t" + item.Source + "\t" + item.ValueName.Replace("\t", " ") + "\t" + old + "\t" + enabled + Environment.NewLine);
             byte[] value = new byte[12];
             value[0] = enabled ? (byte)2 : (byte)3;
             using (RegistryKey r = (item.Hive == RegistryHive.CurrentUser ? Registry.CurrentUser : Registry.LocalMachine).CreateSubKey(item.ApprovalKey)) r.SetValue(item.ValueName, value, RegistryValueKind.Binary);

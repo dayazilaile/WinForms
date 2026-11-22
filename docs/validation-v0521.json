@@ -1,0 +1,36 @@
+{
+  "version": "0.5.21",
+  "toolkit_checks": {
+    "features": 109,
+    "network": 34,
+    "workspace": 49,
+    "trial": 36,
+    "desktop": 109,
+    "student_wake": 41,
+    "ui": 139,
+    "total": 517
+  },
+  "standalone_checks": {
+    "features": 96,
+    "ui": 33,
+    "framework_metadata": 4,
+    "total": 133
+  },
+  "runtime_fixtures": [
+    "network audit identities/fields/escaping/unwritable directory",
+    "random IPv4 retry/restore and rollback audit failure",
+    "portable network backup",
+    "legacy configuration",
+    "configuration",
+    "random wait",
+    "software cleanup",
+    "four bounded-check fixtures"
+  ],
+  "shared_sources": 12,
+  "network_modified_by_tests": false,
+  "real_windows_hardware_validated": false,
+  "antivirus_validated": false,
+  "server_frozen_tag": "v0.5.20-Server",
+  "server_frozen_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb",
+  "server_changed": false
+}

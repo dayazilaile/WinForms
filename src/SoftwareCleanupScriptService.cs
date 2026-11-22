@@ -29,7 +29,7 @@ namespace ITDesktopToolkit
             string script=MakeScript(entries,automatic);var text=BatScriptPackage.Begin();
             text.AppendLine("set \"IT_SOFTWARE_CLEANUP_STAGE=%~1\"");
             BatScriptPackage.AppendForeground(text);text.AppendLine("exit /b %ERRORLEVEL%");
-            BatScriptPackage.Write(path,text,script,true);
+            BatScriptPackage.Write(path,text,script,true);OperationAudit.Record("生成标准软件清理BAT","已生成，未执行","方式="+(automatic?"自动":"确认")+";文件="+path);
         }
     }
 }

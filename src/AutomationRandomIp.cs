@@ -114,8 +114,9 @@ function Invoke-RandomIPv4([string]$name,[string]$base,[int]$prefix,[string]$gat
    $source=if($current.Count -gt 0){[string]$current[0].IPAddress}else{''}
    $peer=Probe-RandomIp $candidate $source
    $neighbors=@(Get-NetNeighbor -ErrorAction Stop | Where-Object {$_.InterfaceIndex -eq $index -and $_.IPAddress -eq $candidate -and $_.State -notin @('Incomplete','Unreachable')})
-   if(($peer.Length -gt 0 -and $peer -ne $mac) -or @($neighbors | Where-Object {($_.LinkLayerAddress -replace '[:-]','').ToUpperInvariant() -match '^[0-9A-F]{12}$' -and ($_.LinkLayerAddress -replace '[:-]','').ToUpperInvariant() -notin @($mac,'000000000000','FFFFFFFFFFFF')}).Count -gt 0){Write-Host ('地址已有 ARP/邻居证据，换一个：'+$candidate);continue}
+   if(($peer.Length -gt 0 -and $peer -ne $mac) -or @($neighbors | Where-Object {($_.LinkLayerAddress -replace '[:-]','').ToUpperInvariant() -match '^[0-9A-F]{12}$' -and ($_.LinkLayerAddress -replace '[:-]','').ToUpperInvariant() -notin @($mac,'000000000000','FFFFFFFFFFFF')}).Count -gt 0){Write-Host ('地址已有 ARP/邻居证据，换一个：'+$candidate);if(Get-Command Write-ITNetworkEvent -ErrorAction SilentlyContinue){Write-ITNetworkEvent ('ARP占用，跳过 '+$candidate)};continue}
    Write-Host ('尝试 '+$candidate+'/'+$prefix+'，网关 '+$gateway+'；观察冲突 10 秒。')
+   if(Get-Command Write-ITNetworkEvent -ErrorAction SilentlyContinue){Write-ITNetworkEvent ('尝试地址='+$candidate+';前缀='+$prefix+';网关='+$gateway)}
    $changed=$true;Set-RandomIpAddress $nic.Name $candidate $prefix $gateway
    if(Watch-RandomIp $index $candidate) {
     $configured=@(Get-NetIPInterface -InterfaceIndex $index -AddressFamily IPv4 -ErrorAction Stop)
@@ -125,12 +126,13 @@ function Invoke-RandomIPv4([string]$name,[string]$base,[int]$prefix,[string]$gat
     $success=$true;Write-Host ('已设置 '+$candidate+'；10 秒内未检测到冲突（不保证关机/未响应设备无重复地址）。');return $candidate
    }
    Write-Host ('检测到重复或地址未成为 Preferred，重新抽取：'+$candidate)
+   if(Get-Command Write-ITNetworkEvent -ErrorAction SilentlyContinue){Write-ITNetworkEvent ('重复/未就绪，换号 '+$candidate)}
    Start-Sleep -Milliseconds (Get-Random -Minimum 250 -Maximum 1251)
   }
   throw '允许地址池已尝试完或均被本机其他网卡占用，未找到通过检测的地址。'
  } catch {
   $original=$_.Exception.Message;$script:itAbortWorkflow=$true
-  if($changed -and -not $success){try{Restore-RandomIp $saved $candidate $gateway;Write-Host '已请求恢复原 IPv4 模式/地址，DNS 未改动。'}catch{throw ($original+'；恢复原配置也失败：'+$_.Exception.Message)}}
+  if($changed -and -not $success){try{Restore-RandomIp $saved $candidate $gateway;Write-Host '已请求恢复原 IPv4 模式/地址，DNS 未改动。'}catch{throw ($original+'；恢复原配置也失败：'+$_.Exception.Message)};if(Get-Command Write-ITNetworkEvent -ErrorAction SilentlyContinue){try{Write-ITNetworkEvent '已请求恢复原IPv4配置，结果需核对'}catch{Write-Warning $_.Exception.Message}}}
   throw $original
  }
 }

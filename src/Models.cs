@@ -203,14 +203,6 @@ namespace ITDesktopToolkit
         }
         public static string LastLogError="";
         public static void Log(string message)
-        {
-            try
-            {
-                string folder=Path.Combine(BaseDir,"Logs");Directory.CreateDirectory(folder);
-                File.AppendAllText(Path.Combine(folder, "toolkit.log"),
-                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ["+Environment.MachineName+"] " + message + Environment.NewLine, Encoding.UTF8);
-            }
-            catch(Exception ex){LastLogError="软件目录日志不可写："+ex.Message;}
-        }
+        {OperationAudit.Record("程序诊断","信息",message);}
     }
 }

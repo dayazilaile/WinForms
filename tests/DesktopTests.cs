@@ -226,7 +226,7 @@ Write-Output 'PASS software cleanup fixture'
         target="ms-settings:appsfeatures";WindowsCompatibility.ManagementTarget(ref target,ref args,false);Check(target=="ms-settings:appsfeatures","Current Windows keeps its normal Settings URI");
         Check(Path.GetFullPath(Paths.UserDir)==Path.GetFullPath(Path.Combine(Paths.BaseDir,"Data")),"Portable settings stay under the executable directory, independent of working directory");
         Check(SoftwareBaselineService.DefaultPath.StartsWith(Paths.UserDir+Path.DirectorySeparatorChar)&&Paths.MachineDir.StartsWith(Paths.UserDir+Path.DirectorySeparatorChar),"Software standards and per-computer rollback data share the portable tree");
-        Paths.Log("portable-storage-fixture");Check(File.Exists(Path.Combine(Paths.BaseDir,"Logs","toolkit.log")),"Application logs are written beside the EXE without AppData fallback");
+        Paths.Log("portable-storage-fixture");Check(File.Exists(OperationAudit.LogPath),"Application logs are written beside the EXE without AppData fallback");
         string networkScript=AutomationService.MakeScript(new List<AutoStep>{new AutoStep{Type="设置静态 IPv4",A="Ethernet",B="192.0.2.9",C="255.255.255.0|192.0.2.1"}},BatInputEngine.SendInput,0,false);Check(!networkScript.Contains("$env:TEMP")&&networkScript.Contains("GetDirectoryName($env:IT_TOOLKIT_BAT)")&&networkScript.Contains("Out-File -LiteralPath"),"Exported network backup uses BAT directory and preserves literal paths");
         string system=Path.Combine(Path.GetTempPath(),"trusted-system"),windows=Path.Combine(Path.GetTempPath(),"trusted-windows");
         Check(SystemCommandPath.ResolveWindows("powershell.exe",system,windows)==Path.Combine(system,"WindowsPowerShell","v1.0","powershell.exe"),"PowerShell is pinned to the Windows installation, not PATH");
@@ -244,6 +244,7 @@ Write-Output 'PASS software cleanup fixture'
         string backupFunction=System.Text.RegularExpressions.Regex.Match(networkScript,@"function Backup-Net[^\r\n]+").Value;
         string backupFixture=@"$ErrorActionPreference='Stop'
 function netsh.exe {$global:LASTEXITCODE=0;'# harmless fixture network dump'}
+function Get-ITNetworkIdentity {return [pscustomobject]@{HostName='FixtureHost';Device='FixtureDevice';Uuid='FixtureUUID';Serial='FixtureSerial';Facts='MAC=02:00:00:00:00:07'}}
 __BACKUP__
 $folder=Join-Path $PSScriptRoot 'portable backup [test]'
 [void][IO.Directory]::CreateDirectory($folder)
@@ -278,8 +279,30 @@ Has '网络/Legacy adapter/IPv6' '2001:db8::9'
 'PASS legacy configuration fixture'
 ".Replace("__CONFIG__",InspectionService.ConfigurationScript());File.WriteAllText(Path.Combine(folder,"legacy-configuration-fixture.ps1"),fixture,new UTF8Encoding(true));
     }
+    static void AuditLog()
+    {
+        Check(OperationAudit.ValidUuid("00000000-0000-0000-0000-000000000000")==""&&OperationAudit.ValidUuid("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")=="","Placeholder hardware UUIDs are not represented as device identity");
+        Check(OperationAudit.ValidSerial("System Serial Number")==""&&OperationAudit.ValidSerial(" unknown ")=="","Generic OEM serial placeholders are not treated as identifiers");
+        string source,first=OperationAudit.DeviceKey("12345678-1234-1234-1234-1234567890ab","A",new[]{"02:00:00:00:00:01"},out source),renamed=OperationAudit.DeviceKey("12345678-1234-1234-1234-1234567890AB","B",new[]{"02:00:00:00:00:99"},out source);
+        Check(first==renamed&&source=="硬件UUID","Hardware-based ID remains stable when MAC or other labels change");
+        Check(first!=OperationAudit.DeviceKey("22345678-1234-1234-1234-1234567890AB","A",new[]{"02:00:00:00:00:01"},out source),"Different UUIDs distinguish computers even if their host names were cloned");
+        string a=OperationAudit.DeviceKey("","",new[]{"02:00:00:00:00:02","02:00:00:00:00:01"},out source),b=OperationAudit.DeviceKey("","",new[]{"02:00:00:00:00:01","02:00:00:00:00:02","02:00:00:00:00:01"},out source);Check(a==b&&source.Contains("MAC"),"MAC fallback is explicit and independent of adapter order or duplicate rows");
+        string missing=OperationAudit.DeviceKey("","",new string[0],out source);Check(missing.StartsWith("SESSION-")&&source.Contains("仅本次会话"),"Missing identifiers are labelled as session-only instead of invented hardware");
+        var who=new AuditIdentity{Host="教室-PC01",DeviceId=first,IdentitySource="硬件UUID",Uuid="12345678-1234-1234-1234-1234567890AB",Serial="SN-TEST",Adapters="Ethernet;MAC=02:00:00:00:00:07;IP=192.0.2.9 | WLAN;MAC=02:00:00:00:00:08",Account="LAB\\Teacher",Permission="管理员",System="Fixture Windows / 64位"};
+        string row=OperationAudit.Format(who,new DateTimeOffset(2026,11,22,10,2,3,TimeSpan.FromHours(8)),"operation-id","parent-id","改IP","结束","失败",123,"password=fixture-secret; note\tsecond\nforged line");var cells=row.TrimEnd('\r','\n').Split('\t');
+        Check(cells.Length==19&&cells[0].Contains("+08:00")&&cells[1]==who.Host&&cells[6].Contains("00:07")&&cells[6].Contains("00:08")&&cells[12]=="operation-id"&&cells[13]=="parent-id","Each audit row carries timezone, host, both adapters and correlated operation IDs");
+        Check(!row.Contains("fixture-secret")&&cells[18].Contains("\\t")&&cells[18].Contains("\\n")&&row.Count(c=>c=='\n')==1,"Secrets and embedded row separators cannot become exposed or forged log entries");
+        Check(OperationAudit.Cell("=1+2")=="'=1+2"&&OperationAudit.Cell("@SUM(1)").StartsWith("'"),"Spreadsheet import treats untrusted formula-like fields as text");
+        string dir=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"audit-write-fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
+        try{string file=Path.Combine(dir,"Logs","events.tsv");var jobs=Enumerable.Range(0,32).Select(i=>System.Threading.Tasks.Task.Run(delegate{OperationAudit.Append(file,OperationAudit.Format(who,DateTimeOffset.Now,"id-"+i,"","operation","结束","已返回",i,""));})).ToArray();System.Threading.Tasks.Task.WaitAll(jobs);var lines=File.ReadAllLines(file);Check(lines.Length==33&&lines.Count(l=>l==OperationAudit.Header)==1&&lines.Skip(1).All(l=>l.Split('\t').Length==19),"Concurrent operations produce exactly one header and complete independent rows");}finally{Directory.Delete(dir,true);}
+        string parentId,childId;using(var parent=OperationAudit.Begin("audit-parent-fixture")){parentId=parent.Id;childId=System.Threading.Tasks.Task.Run(delegate{using(var child=OperationAudit.Begin("audit-child-fixture")){Check(child.ParentId==parentId,"Async child commands keep their parent operation ID");child.End("测试结束");return child.Id;}}).GetAwaiter().GetResult();parent.End("测试结束");}
+        var records=File.ReadAllLines(OperationAudit.LogPath).Select(l=>l.Split('\t')).Where(c=>c.Length==19&&c[12]==childId).ToArray();Check(records.Length==2&&records.All(c=>c[13]==parentId)&&records[0][15]=="开始"&&records[1][15]=="结束","Start and end records remain correlated across worker threads");
+        Check(OperationAudit.Outcome("返回代码：7")=="失败或未完成"&&OperationAudit.Outcome("返回代码：0")!="成功","Process exit is distinguished from verified business success");
+        Check(OperationAudit.LogPath.StartsWith(Paths.BaseDir)&&!OperationAudit.LogPath.Contains("AppData"),"Structured audit remains in the portable program directory");
+
+    }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();
+        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

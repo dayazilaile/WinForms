@@ -119,6 +119,40 @@ Write-Output 'PASS bounded checks fixture'
         string falseCondition=AutomationService.MakeScript(AutomationBlockService.Compose(S("如果文件存在",Path.Combine(folder,"absent-"+Guid.NewGuid())),new List<AutoStep>{S("检查文件存在",Path.Combine(folder,"must-not-run-"+Guid.NewGuid()))},new List<AutoStep>{S("等待毫秒","1")},true),BatInputEngine.SendInput,0,false);
         File.WriteAllText(Path.Combine(folder,"false-condition-fixture.ps1"),falseCondition,new System.Text.UTF8Encoding(true));
     }
+    static void NetworkAudit()
+    {
+        string helper=(string)typeof(AutomationService).GetField("NetworkAuditHelper",BindingFlags.NonPublic|BindingFlags.Static).GetRawConstantValue();
+        string basic=AutomationService.MakeScript(new List<AutoStep>{S("等待毫秒","1")},BatInputEngine.SendInput,0,false),network=AutomationService.MakeScript(new List<AutoStep>{S("随机设置 IPv4","自动有线","192.0.2","192.0.2.254|结束脚本")},BatInputEngine.SendInput,0,false);
+        Check(!basic.Contains("network-operations-v1.tsv")&&network.Contains("network-operations-v1.tsv"),"Network audit is generated only for network actions; basic input workflows retain their file-free behavior");
+        Check(network.Contains("Write-ITNetworkAudit '开始'")&&network.Contains("'10秒观察通过'")&&network.Contains("$itNetworkError.Exception.Message"),"Network workflows record before/after/failure including finish-immediately mode");
+        string dir=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"generated-tests");Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir,"network-audit-fixture.ps1"),@"$ErrorActionPreference='Stop'
+__HELPER__
+function Get-ITNetworkIdentity {return [pscustomobject]@{HostName='SameHost';Device='DEV-test';Source='硬件UUID';Uuid='12345678-1234-1234-1234-1234567890AB';Serial='BIOS-TEST';Facts='网卡=Ethernet;MAC=02:00:00:00:00:07;IP=192.0.2.9';Account='LAB\Teacher';Permission='管理员';System='Fixture OS / 64位'}}
+$root=Join-Path $PSScriptRoot 'network audit [test]'
+[void][IO.Directory]::CreateDirectory($root)
+try {
+ $env:IT_TOOLKIT_BAT=Join-Path $root '自动化 O''Reilly.bat'
+ $script:itNetworkLogOperation='随机设置 IPv4';$script:itNetworkLogId='fixture-operation';$script:itNetworkClock=[Diagnostics.Stopwatch]::StartNew()
+ Write-ITNetworkAudit '开始' '执行中' '目标设置'
+ Write-ITNetworkEvent ""失败 password=demo-secret;`n另起一行""
+ Write-ITNetworkAudit '结束' '失败或未完成' '没有伪造成功'
+ $file=Join-Path (Join-Path $root 'Logs') 'network-operations-v1.tsv'
+ $lines=[IO.File]::ReadAllLines($file);if($lines.Length -ne 4){throw 'Audit rows or header are duplicated'}
+ foreach($line in $lines){if($line.Split(""`t"").Length -ne 19){throw 'Audit field count is wrong'}}
+ $data=[IO.File]::ReadAllText($file)
+ foreach($text in @('SameHost','02:00:00:00:00:07','192.0.2.9','BIOS-TEST','fixture-operation','随机设置 IPv4','失败或未完成','\n')){if(-not $data.Contains($text)){throw ('Missing audit metadata '+$text)}}
+ if($data.Contains('demo-secret')){throw 'Secret was written'}
+ if((Convert-ITAuditCell '=1+2') -ne ""'=1+2""){throw 'Spreadsheet formula not protected'}
+ # Make Logs a file: the real writer must stop, never use TEMP or continue network steps.
+ $blocked=Join-Path $root 'blocked';[void][IO.Directory]::CreateDirectory($blocked);[IO.File]::WriteAllText((Join-Path $blocked 'Logs'),'fixture')
+ $env:IT_TOOLKIT_BAT=Join-Path $blocked 'test.bat';$script:itAbortWorkflow=$false;$failed=$false
+ try{Write-ITNetworkAudit '开始' '执行中' ''}catch{$failed=$true}
+ if(-not $failed -or -not $script:itAbortWorkflow){throw 'Failed logging did not abort before the operation'}
+ 'PASS network audit fixture'
+}finally{[IO.Directory]::Delete($root,$true)}
+".Replace("__HELPER__",helper),new System.Text.UTF8Encoding(true));
+    }
     static void RandomIpv4()
     {
         var config=AutomationService.RandomIpv4("自动有线","192.0.2","192.0.2.254|继续流程");Check(config.Network=="192.0.2.0/24"&&config.Hosts.Length==252&&config.Hosts.First()==1&&config.Hosts.Last()==253&&!config.Hosts.Contains(100),"Random IPv4 uses exact requested host ranges excluding 100/254/255/0");
@@ -186,13 +220,19 @@ Check ($failed -and $script:restored -eq 1) 'gateway verification failure cannot
 Reset-Test;$script:setFail=$true;$script:restoreFail=$true;$message=''
 try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1)))}catch{$message=$_.Exception.Message}
 Check ($message.Contains('恢复原配置也失败') -and $script:restored -eq 1) 'partial set plus restore failure is reported honestly'
+Reset-Test;$script:dup='192.0.2.1';$message=''
+function Write-ITNetworkEvent([string]$detail){if($detail -like '已请求恢复*'){throw 'fixture audit write failed'}}
+try{[void](Invoke-RandomIPv4 'Ethernet Space' '192.0.2' 24 '192.0.2.254' ([int[]]@(1)))}catch{$message=$_.Exception.Message}
+Check ($script:restored -eq 1 -and $message.Contains('允许地址池') -and -not $message.Contains('恢复原配置也失败')) 'audit failure after rollback never falsely reports that rollback itself failed'
+Remove-Item Function:Write-ITNetworkEvent
 Reset-Test
 & $script:NativeRestore ([pscustomobject]@{Name='Ethernet Space';Index=7;Dhcp='Enabled';Addresses=@();Routes=@()}) '192.0.2.2' '192.0.2.254'
 Check ($script:NativeArgs -contains 'name=Ethernet Space' -and $script:NativeArgs -contains 'source=dhcp') 'DHCP rollback targets exact original interface'
 ".Replace("__HELPER__",helper.Replace("[Diagnostics.Stopwatch]::StartNew()","(New-TestClock)"));
         foreach(var engine in new[]{BatInputEngine.SendInput,BatInputEngine.Legacy})foreach(bool stop in new[]{false,true}){
             var modeSteps=new List<AutoStep>{S("重试开始","2","1"),S("随机设置 IPv4","自动有线","192.0.2","192.0.2.254|"+(stop?"结束脚本":"继续流程")),S("重试结束"),S("等待毫秒","1")};
-            string modeScript=AutomationService.MakeScript(modeSteps,engine,0,false).Replace("Assert-Admin"+Environment.NewLine,"# Mocked administrator check"+Environment.NewLine).Replace(helper,"function Invoke-RandomIPv4 { $script:randomCalls++; return '192.0.2.2' }");
+            string auditHelper=(string)typeof(AutomationService).GetField("NetworkAuditHelper",BindingFlags.NonPublic|BindingFlags.Static).GetRawConstantValue();
+            string modeScript=AutomationService.MakeScript(modeSteps,engine,0,false).Replace("Assert-Admin"+Environment.NewLine,"# Mocked administrator check"+Environment.NewLine).Replace(auditHelper,"function Write-ITNetworkAudit {param($phase,$result,$detail)}").Replace(helper,"function Invoke-RandomIPv4 { $script:randomCalls++; return '192.0.2.2' }");
             fixture+="$script:randomCalls=0;$script:followingCalls=0\nfunction Start-Sleep {param($Milliseconds,$Seconds) $script:followingCalls++}\n& ([scriptblock]::Create('"+modeScript.Replace("'","''")+"'))\nCheck ($script:randomCalls -eq 1 -and $script:followingCalls -eq "+(stop?"0":"1")+") 'Success mode executes correct subsequent flow through retry: "+engine+" / "+stop+"'\n";
         }
         int nativeStart=helper.IndexOf("using System;",StringComparison.Ordinal),nativeEnd=helper.IndexOf("'@",nativeStart,StringComparison.Ordinal);string native=helper.Substring(nativeStart,nativeEnd-nativeStart).Replace("[DllImport(\"iphlpapi.dll\", ExactSpelling=true)] private static extern uint SendARP(uint dst,uint src,[Out] byte[] mac,ref uint len);","private static uint SendARP(uint dst,uint src,byte[] mac,ref uint len){for(int i=0;i<6;i++)mac[i]=(byte)(i+1);len=6;return 0;}");
@@ -305,5 +345,5 @@ Write-Output 'PASS random wait fixture'
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();LauncherReview();TimeoutChecks();RandomIpv4();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();LauncherReview();TimeoutChecks();NetworkAudit();RandomIpv4();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

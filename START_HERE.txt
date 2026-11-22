@@ -1,4 +1,13 @@
-【当前版本 V0.5.20】
+【当前版本 V0.5.21】
+结构化日志：软件目录 Logs/operations-v1.tsv，记录时间/时区、主机名、UUID、BIOS序列号、设备标识、各网卡MAC/IP/掩码/DHCP/网关/DNS、账户/权限、版本、会话/操作编号、操作及结果。
+手动 IP/MAC 记录修改前后；网络 BAT 的执行日志在 BAT 旁 Logs/network-operations-v1.tsv，并记录随机换号/失败/恢复。
+硬件信息未提供时明确标记，不保证 UUID/MAC 在所有电脑上唯一；以多个线索联合核对。
+不记录密码、Wi-Fi 密码、自动化输入文字或完整命令输出。纯输入/等待 BAT 不加文件日志，批量软件清理仍仅弹窗。
+旧日志不改写/删除，不回退电脑 AppData/TEMP。Server 保持 v0.5.20-Server 定版，本次只更新常用版和独立 BAT 版。
+云端工具箱 517 项、独立版 133 项及 PowerShell 模拟通过；Windows/硬件接口/杀软实机仍需测试，旧报毒问题未宣告解决。
+详见 README.md 和 tests/Windows验收.md。
+
+【历史版本 V0.5.20】
 Win7 SP1 / Win10 / Win11 日常版；另提供 v0.5.20-Server 冻结包，不随日常版更新。
 需要 .NET Framework 4.8 或更新 4.x；PowerShell 功能请配备 Windows PowerShell 5.1。
 日志自动保存在软件目录 Logs；标准清单/机房清单在 Data；修改 IP 等恢复备份在 Data/Computers/电脑名。

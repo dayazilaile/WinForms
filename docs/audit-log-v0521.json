@@ -1,0 +1,45 @@
+{
+  "format": "UTF-8 BOM TSV",
+  "toolkit_path": "Logs/operations-v1.tsv",
+  "bat_path": "Logs/network-operations-v1.tsv",
+  "columns": [
+    "时间",
+    "主机名",
+    "设备标识",
+    "标识依据",
+    "硬件UUID",
+    "BIOS序列号",
+    "网卡_MAC_IP",
+    "运行账户",
+    "权限",
+    "系统与架构",
+    "软件版本",
+    "会话ID",
+    "操作ID",
+    "上级操作ID",
+    "操作",
+    "阶段",
+    "结果",
+    "耗时毫秒",
+    "详情"
+  ],
+  "identity_priority": [
+    "valid hardware UUID",
+    "valid BIOS serial",
+    "sorted distinct MAC set",
+    "explicit session-only fallback"
+  ],
+  "identity_limitations": [
+    "firmware identifiers may be missing or repeated",
+    "MAC may be randomized or changed",
+    "initial firmware read runs in background; correlate initial fallback rows using session/operation IDs"
+  ],
+  "excluded_content": [
+    "passwords",
+    "Wi-Fi keys",
+    "automation input text",
+    "full command arguments and output"
+  ],
+  "input_only_bat_logs_added": false,
+  "software_cleanup_runtime_logs_added": false
+}

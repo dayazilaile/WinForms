@@ -63,7 +63,8 @@ namespace ITDesktopToolkit
         public static void Start(SoftwareUninstallPlan plan)
         {
             if(plan==null||!plan.CanStart)throw new ArgumentException("没有可执行的卸载计划。");
-            CommandService.NotifyProcess(plan.FileName);Process process=Process.Start(new ProcessStartInfo(plan.FileName,plan.Arguments){UseShellExecute=true});if(process==null)throw new InvalidOperationException("系统未启动卸载程序。");process.Dispose();
+            OperationAudit.Record("启动软件卸载","正在请求",plan.Name);
+            CommandService.NotifyProcess(plan.FileName);Process process=Process.Start(new ProcessStartInfo(plan.FileName,plan.Arguments){UseShellExecute=true});if(process==null)throw new InvalidOperationException("系统未启动卸载程序。");process.Dispose();OperationAudit.Record("启动软件卸载","卸载器已启动，未确认卸载完成",plan.Name);
         }
     }
 }

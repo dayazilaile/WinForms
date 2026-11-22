@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.20 · 离线版";
+            Text = "IT 桌面运维工具箱 V0.5.21 · 离线版";
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);
@@ -228,12 +228,15 @@ namespace ITDesktopToolkit
         }
         private async void DoJob(RichTextBox box, Button button, Func<string> work)
         {
+            using(var audit=OperationAudit.Begin(currentPage+" / "+button.Text))
+            {
             button.Enabled = false;
             box.Text = "正在执行，请不要关闭程序……\r\n";
             SetStatus("正在运行任务……");
             try
             {
                 string output = await Task.Run(work);
+                audit.End(OperationAudit.Outcome(output),"返回内容仅显示在界面，未写入日志。");
                 if (!this.IsDisposed && !box.IsDisposed && box.IsHandleCreated) box.Text = output;
                 if(!this.IsDisposed) SetStatus("任务已结束，请查看实际结果和返回码");
             }
@@ -241,9 +244,10 @@ namespace ITDesktopToolkit
             {
                 if (!this.IsDisposed && !box.IsDisposed && box.IsHandleCreated) box.Text = "任务执行异常：\r\n" + ex;
                 if(!this.IsDisposed) SetStatus("任务失败");
-                Paths.Log("Task failed: " + ex);
+                audit.End("失败",ex.Message);
             }
             finally { if (!button.IsDisposed) button.Enabled = true; }
+            }
         }
 
         private void BuildOverview()
@@ -879,7 +883,7 @@ namespace ITDesktopToolkit
                 "版本、来源和许可见 Database\\SOURCES-v052.md；内置数据只在本地读取，不会自动联网。\r\n" +
                 "保存文本后点击“重载数据库”即可生效，无需编译 EXE。\r\n" +
                 "数据库补充内容仅供参考；系统原始检测值会保留。\r\n" +
-                "日志位置：" + Path.Combine(Paths.BaseDir, "Logs", "toolkit.log");
+                "日志位置：" + OperationAudit.LogPath;
         }
         private void AddRuleForm()
         {

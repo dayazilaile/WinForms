@@ -40,7 +40,7 @@ namespace ITDesktopToolkit
                 foreach (System.Net.IPEndPoint endpoint in System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners())
                     if (endpoint.Port == port) return "目标 UDP 端口已被其它服务监听，未修改。请检查冲突。";
             }
-            File.AppendAllText(Path.Combine(Paths.MachineDir, "rdp_port_changes.tsv"), DateTime.Now.ToString("s") + "\t" + old + "\t" + port + Environment.NewLine, Encoding.UTF8);
+            File.AppendAllText(Path.Combine(Paths.MachineDir, "rdp_port_changes.tsv"), OperationAudit.Stamp("修改远程桌面端口") + DateTimeOffset.Now.ToString("o") + "\t" + old + "\t" + port + Environment.NewLine, Encoding.UTF8);
             using (RegistryKey k = Registry.LocalMachine.OpenSubKey(RdpKey, true))
             {
                 if (k == null) throw new InvalidOperationException("系统没有 RDP-Tcp 配置。可能不支持远程桌面主机。");

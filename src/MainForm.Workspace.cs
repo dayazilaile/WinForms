@@ -19,10 +19,12 @@ namespace ITDesktopToolkit
             public async Task Run(Func<CancellationToken,Task> work)
             {
                 if(Running||!Alive)return;Running=true;cancel=new CancellationTokenSource();var states=new Dictionary<Control,bool>();foreach(Control c in bar.Controls){states[c]=c.Enabled;c.Enabled=false;}stop.Enabled=true;status.Text="正在读取 / 检测…";
-                try{await work(cancel.Token);}
-                catch(OperationCanceledException){if(Alive)status.Text="已停止 · 未完成目标没有检测结论";}
-                catch(Exception ex){Paths.Log("Workspace task failed: "+ex);if(Alive){status.Text="读取 / 检测未完成："+ex.Message;status.AccessibleDescription=ex.Message;}}
+                using(var audit=OperationAudit.Begin(String.IsNullOrEmpty(page.AccessibleName)?"页面读取/检测":page.AccessibleName)){
+                try{await work(cancel.Token);audit.End("已返回，详见界面");}
+                catch(OperationCanceledException){audit.End("已取消","未完成目标无检测结论。");if(Alive)status.Text="已停止 · 未完成目标没有检测结论";}
+                catch(Exception ex){audit.End("失败",ex.Message);if(Alive){status.Text="读取 / 检测未完成："+ex.Message;status.AccessibleDescription=ex.Message;}}
                 finally{Running=false;cancel.Dispose();cancel=null;if(Alive){foreach(var pair in states)if(!pair.Key.IsDisposed)pair.Key.Enabled=pair.Value;stop.Enabled=false;}}
+                }
             }
             public void Dispose(){disposed=true;if(cancel!=null)cancel.Cancel();}
         }
@@ -43,7 +45,7 @@ namespace ITDesktopToolkit
         }
         private Panel Workspace(string title,string description,out FlowLayoutPanel bar,out Label state)
         {
-            Panel root=Page(title,description,out bar);bar.WrapContents=true;bar.AutoSize=true;bar.AutoSizeMode=AutoSizeMode.GrowAndShrink;bar.MinimumSize=new Size(0,72);bar.Padding=new Padding(24,0,16,8);
+            Panel root=Page(title,description,out bar);root.AccessibleName=title;bar.WrapContents=true;bar.AutoSize=true;bar.AutoSizeMode=AutoSizeMode.GrowAndShrink;bar.MinimumSize=new Size(0,72);bar.Padding=new Padding(24,0,16,8);
             var body=(Panel)root.Controls["pageBody"];body.Padding=new Padding(24,0,24,18);
             state=new Label{Dock=DockStyle.Bottom,Height=36,Text="就绪",TextAlign=ContentAlignment.MiddleLeft,ForeColor=Color.FromArgb(100,116,139),AutoEllipsis=true,Padding=new Padding(10,0,0,0),BackColor=Color.White};body.Controls.Add(state);var hint=new ToolTip{AutoPopDelay=20000,InitialDelay=300};Label stateLabel=state;stateLabel.TextChanged+=delegate{if(!stateLabel.IsDisposed)hint.SetToolTip(stateLabel,stateLabel.Text);};root.Disposed+=delegate{hint.Dispose();};return root;
         }

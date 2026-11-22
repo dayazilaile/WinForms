@@ -59,7 +59,7 @@ namespace ITDesktopToolkit
         public static void Save(string path,IEnumerable<SoftwareBaselineEntry> entries)
         {
             string text=Serialize(entries),folder=Path.GetDirectoryName(Path.GetFullPath(path));Directory.CreateDirectory(folder);string temporary=Path.Combine(folder,"software-baseline-"+Guid.NewGuid().ToString("N")+".tmp");
-            try{File.WriteAllText(temporary,text,new UTF8Encoding(true));if(File.Exists(path))File.Replace(temporary,path,null);else File.Move(temporary,path);}finally{if(File.Exists(temporary))File.Delete(temporary);}
+            try{File.WriteAllText(temporary,text,new UTF8Encoding(true));if(File.Exists(path))File.Replace(temporary,path,null);else File.Move(temporary,path);OperationAudit.Record("保存软件标准清单","已保存","文件="+path);}finally{if(File.Exists(temporary))File.Delete(temporary);}
         }
         public static SoftwareBaselineComparison Compare(SoftwareSnapshot snapshot,IEnumerable<SoftwareBaselineEntry> entries)
         {

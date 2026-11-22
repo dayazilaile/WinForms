@@ -19,31 +19,37 @@ namespace ITDesktopToolkit
         {
             try
             {
-                WindowsIdentity user = WindowsIdentity.GetCurrent();
-                WindowsPrincipal p = new WindowsPrincipal(user);
-                return p.IsInRole(WindowsBuiltInRole.Administrator);
+                using(WindowsIdentity user = WindowsIdentity.GetCurrent()){WindowsPrincipal p = new WindowsPrincipal(user);return p.IsInRole(WindowsBuiltInRole.Administrator); }
             }
             catch { return false; }
         }
         public static bool RelaunchAsAdmin()
         {
+            using(var audit=OperationAudit.Begin("管理员模式重启")){
             try
             {
                 ProcessStartInfo i = new ProcessStartInfo(Application.ExecutablePath);
                 i.UseShellExecute = true;
                 i.Verb = "runas";
                 NotifyProcess(i.FileName);Process.Start(i);
-                return true;
+                audit.End("已向系统提交启动请求");return true;
             }
             catch (Exception ex)
             {
+                audit.End("取消或失败",ex.Message);
                 MessageBox.Show("无法以管理员运行：" + ex.Message, "权限提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
+            }
             }
         }
         public static string Run(string fileName, string arguments, int timeoutMinutes)
         { return Run(fileName,arguments,timeoutMinutes,CancellationToken.None); }
         public static string Run(string fileName,string arguments,int timeoutMinutes,CancellationToken cancel)
+        {
+            using(var audit=OperationAudit.Begin("系统命令 / "+System.IO.Path.GetFileName(fileName),"命令参数与输出未记录。"))
+            {try{string output=RunCore(fileName,arguments,timeoutMinutes,cancel);audit.End(OperationAudit.Outcome(output));return output;}catch(OperationCanceledException){audit.End("已取消");throw;}catch(Exception ex){audit.End("失败",ex.Message);throw;}}
+        }
+        private static string RunCore(string fileName,string arguments,int timeoutMinutes,CancellationToken cancel)
         {
             if(timeoutMinutes<1||timeoutMinutes>1440)throw new ArgumentException("命令超时须为 1–1440 分钟。");
             cancel.ThrowIfCancellationRequested();
@@ -96,6 +102,7 @@ namespace ITDesktopToolkit
         }
         public static void OpenTool(string target, string args)
         {
+            using(var audit=OperationAudit.Begin("打开系统工具",target)){
             try
             {
                 WindowsCompatibility.ManagementTarget(ref target,ref args,WindowsCompatibility.Legacy);
@@ -105,9 +112,10 @@ namespace ITDesktopToolkit
                 p.Arguments = args;
                 p.UseShellExecute = true;
                 NotifyProcess(p.FileName);Process.Start(p);
-                Paths.Log("Opened tool: " + target + " " + args);
+                audit.End("已提交启动",target);
             }
-            catch (Exception ex) { MessageBox.Show("无法打开：" + target + "\r\n" + ex.Message, "提示"); }
+            catch (Exception ex) { audit.End("失败",ex.Message);MessageBox.Show("无法打开：" + target + "\r\n" + ex.Message, "提示"); }
+            }
         }
     }
 }
