@@ -744,11 +744,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
         {
             CheckOptions(steps, options);
             string powershell = MakeScript(steps, options.Engine, options.StartupDelaySeconds, options.DiagnosticMode);
-            string b64 = Convert.ToBase64String(Encoding.Unicode.GetBytes(powershell));
-            StringBuilder text = new StringBuilder();
-            text.AppendLine("@echo off");
-            text.AppendLine("setlocal DisableDelayedExpansion");
-            text.AppendLine("set \"IT_TOOLKIT_BAT=%~f0\"");
+            StringBuilder text = BatScriptPackage.Begin();
             if (options.RunAsAdministrator)
             {
                 // Standard ShellExecute RunAs, with visible source rather than an encoded command.
@@ -772,7 +768,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             }
             else
             {
-                text.AppendLine("powershell.exe -NoLogo -NoProfile -STA -Command \"$f=$env:IT_TOOLKIT_BAT; $t=[IO.File]::ReadAllText($f); $m=':__ITTOOLKIT_PAYLOAD_V1__'; $x=$t.Substring($t.LastIndexOf($m)+$m.Length).Trim(); $s=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($x)); & ([ScriptBlock]::Create($s))\"");
+                BatScriptPackage.AppendForeground(text);
                 text.AppendLine("set \"RC=%ERRORLEVEL%\"");
                 text.AppendLine("echo Automation exit code: %RC%");
                 if(options.DeleteOnSuccess)
@@ -799,9 +795,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                 text.AppendLine("pause");
                 text.AppendLine("exit /b 1");
             }
-            text.AppendLine(":__ITTOOLKIT_PAYLOAD_V1__");
-            for (int i=0;i<b64.Length;i+=100) text.AppendLine(b64.Substring(i,Math.Min(100,b64.Length-i)));
-            File.WriteAllText(target,text.ToString(),new UTF8Encoding(false));
+            BatScriptPackage.Write(target,text,powershell,false);
         }
     }
 }

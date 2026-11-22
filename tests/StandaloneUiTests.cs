@@ -20,7 +20,7 @@ class StandaloneUiTests
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.ThreadException+=delegate(object sender,System.Threading.ThreadExceptionEventArgs e){uiErrors++;Console.Error.WriteLine(e.Exception);};
         try{using(var main=new MainForm()){
             main.Show();Application.DoEvents();
-            Check(main.Text.Contains("v0.5.15-BAT")&&Find<TreeView>(main).Length==0&&Find<DataGridView>(main).Length==1,"Standalone opens directly in BAT editor without toolkit navigation");
+            Check(main.Text.Contains("v0.5.18-BAT")&&Find<TreeView>(main).Length==0&&Find<DataGridView>(main).Length==1,"Standalone opens directly in BAT editor without toolkit navigation");
             Check(!Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Database")),"Standalone starts in a clean folder with no Database directory");
                 var actions=Field<System.Collections.Generic.List<AutoStep>>(main,"autoSteps");actions.Add(new AutoStep{Type="运行程序并等待",A="notepad.exe",B="example.txt",C="30"});foreach(Control old in Field<Panel>(main,"content").Controls.Cast<Control>().ToArray())old.Dispose();Call(main,"BuildAutomation");Application.DoEvents();var autoBody=Field<Panel>(main,"content");var actionGrid=Find<DataGridView>(autoBody).Single();
                 Check(Find<CheckBox>(autoBody).Single(c=>c.Text.Contains("自动弹出 UAC")).Checked&&Find<CheckBox>(autoBody).Single(c=>c.Text.Contains("执行到末尾后删除")).Checked&&Find<CheckBox>(autoBody).Single(c=>c.Text.Contains("启用跨机房环境诊断")).Checked&&Find<CheckBox>(autoBody).Any(c=>c.Text=="隐藏运行窗口"),"All existing automation options and their explicit default selections remain available");
