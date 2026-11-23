@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
+    & .\tests\Run-EnvironmentPreparation.ps1
     & .\tests\Run-RuntimeDetection.ps1
     & cmd.exe /d /c 'Build_Only.bat --no-pause'
     if ($LASTEXITCODE -ne 0) { throw 'Application compilation failed' }

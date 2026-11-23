@@ -19,3 +19,8 @@ __pycache__/
 # Portable machine records must not be committed or shipped.
 /Data/
 /Logs/
+
+# Environment helper installers and machine-specific installation logs.
+/环境准备/Logs/
+/环境准备/安装包/*
+!/环境准备/安装包/README.md
