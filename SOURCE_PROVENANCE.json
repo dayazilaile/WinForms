@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.6.0",
-  "base_commit": "60671efa45778f37f6886e91d7d92a3fea7d6eac",
+  "base_tag": "v0.6.1",
+  "base_commit": "cec0ce629b9c470d4e150875822b305717cbac0c",
   "unchanged_sources_sha256": {
     "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
     "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
@@ -14,8 +14,8 @@
     "src/BatScriptPackage.cs": "8c094ead0672f0d7f53bc31484f83180c3484189bb496699b9d83421aabb57a8",
     "src/AutomationRandomIp.cs": "649132947a6edcffacbb4d5a895b740a55d051991d3f8abca17fa966b5a47a6a",
     "src/WindowsCompatibility.cs": "4ac2d68216709a7b1e80c04aaf8a7b4931c66e7a48b68310c2bc626dfa7a52d7",
-    "src/AutomationNetworkAudit.cs": "1a56c7c0512405793160987e1a43657a5faf795a8bc78f64603570bd4a68c91a",
-    "src/ProductInfo.cs": "e12c31044bfe7b5a0130225863b6f97509dc61e62d968843a30d90bfec50069f"
+    "src/AutomationNetworkAudit.cs": "7d39571acb93e3000e79d5fd24b5fbc9b835eaf51ba053dfe973a367a3233038",
+    "src/ProductInfo.cs": "1eca1b24d0818d6e6cd1ed3b645078209ee32ee4bb24d925f5ed4932502a1934"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -23,8 +23,8 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.6.0-BAT",
-  "change": "Fresh extraction after WinForms rebranding: shared product metadata, WinForms namespace, renamed executable, displayed project names, workflow header and 23-patch version policy. Existing runtime/automation behavior and legacy workflow imports retained. Frozen Server tag unchanged.",
+  "standalone_version": "0.6.1-BAT",
+  "change": "Fresh extraction from v0.6.1 shared automation sources. Version metadata updated; default-application management remains in the full toolbox, not in the BAT-only package. Environment preparation helpers included as separate files.",
   "minimum_framework": "Microsoft .NET Framework 4.5",
   "product_name": "WinForms",
   "version_policy": "23 patches per minor; .23 rolls to the next minor .0"

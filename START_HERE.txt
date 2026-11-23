@@ -1,4 +1,8 @@
-WinForms BAT 自动化独立版 V0.6.0-BAT
+WinForms BAT 自动化独立版 V0.6.1-BAT
+运行根目录 WinForms-BAT.exe。完整工具箱的默认应用修复功能不在本独立包中。
+环境准备脚本在“环境准备”文件夹，运行前阅读其中文说明。
+
+WinForms BAT 自动化独立版 V0.6.1-BAT
 运行WinForms-BAT.exe，仍只需一个EXE；旧工作流可导入。
 数字版本与主项目同步，按23次小版本升级后推进中版本；详见release-policy.json。
 最低.NET4.5，生成BAT需PowerShell5.1；详见README.md。

@@ -1,12 +1,24 @@
-# WinForms BAT 自动化独立版 V0.6.0-BAT
+# WinForms BAT 自动化独立版 V0.6.1-BAT
 
-从 [WinForms v0.6.0](https://github.com/dayazilaile/WinForms/tree/v0.6.0) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **WinForms-BAT.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.6.0-BAT`，与项目 v0.6.0 同步。
+从完整工具箱 v0.6.1 重新提取，13 个自动化共用源码逐字节相同。本次同步版本与网络操作日志版本标识，保留两个输入引擎、随机等待/随机 IP、分支/重试及单 BAT 导出行为。
 
-## V0.6.0 WinForms 命名统一
+本包只包含 BAT 自动化编辑器。默认应用分类与系统修复功能请使用完整 WinForms 工具箱。
 
-运行根目录WinForms-BAT.exe，窗口、属性、工作流、BAT启动提示及新网络备份名称使用WinForms，数字版本0.6.0。源码从同版主程序重新提取，共13个原样共用文件，完整C#源码17个文件；不需要原项目的数据库或额外DLL。
+完整解压后运行根目录 **WinForms-BAT.exe**。环境检测与安装引导位于 [环境准备](环境准备/README.md)，微软安装包需另行按说明取得。不要向 GitHub 上传个人 Data/Logs 或安装包。
 
-旧工作流仍可导入，原有自动化/便携日志/运行库检查保留。版本按0.6.0→0.6.1…0.6.23→0.7.0推进，release-policy.json与tools/next_version.py记录相同规则；独立标签追加-BAT。Server定版不更新。
+版本规则保持每 23 次末位升级推进中版本。Server 仍冻结在 v0.5.20-Server。
+
+【以下保留上一版独立包说明，示例路径以当前文件为准】
+
+# WinForms BAT 自动化独立版 V0.6.1-BAT
+
+从 [WinForms v0.6.1](https://github.com/dayazilaile/WinForms/tree/v0.6.1) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **WinForms-BAT.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.6.1-BAT`，与项目 v0.6.1 同步。
+
+## V0.6.1 WinForms 命名统一
+
+运行根目录WinForms-BAT.exe，窗口、属性、工作流、BAT启动提示及新网络备份名称使用WinForms，数字版本0.6.1。源码从同版主程序重新提取，共13个原样共用文件，完整C#源码17个文件；不需要原项目的数据库或额外DLL。
+
+旧工作流仍可导入，原有自动化/便携日志/运行库检查保留。版本按0.6.1→0.6.1…0.6.23→0.7.0推进，release-policy.json与tools/next_version.py记录相同规则；独立标签追加-BAT。Server定版不更新。
 
 云端135项检查通过，Windows/输入/硬件/杀软实机仍需验收。本版不使用整体“离线版/本地离线运行”描述。
 
