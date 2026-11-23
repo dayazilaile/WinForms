@@ -1,0 +1,44 @@
+{
+  "version": "0.6.1",
+  "scope": "Single-computer default application catalogue and picker; no classroom association deployment.",
+  "toolkit": {
+    "checks": {
+      "FeatureTests": 111,
+      "NetworkToolsTests": 34,
+      "WorkspaceTests": 49,
+      "TrialTests": 36,
+      "DesktopTests": 127,
+      "StudentWakeTests": 42,
+      "NavigationUiTests": 180
+    },
+    "total": 579,
+    "reference_profile": "Microsoft .NET Framework 4.5"
+  },
+  "environment_helper": {
+    "simulated_checks": 83,
+    "real_installation_attempted": false
+  },
+  "standalone": {
+    "version": "0.6.1-BAT",
+    "feature_checks": 98,
+    "ui_checks": 33,
+    "metadata_checks": 4,
+    "shared_sources": 13
+  },
+  "validation": [
+    "Common format categories, cached filtering and association refresh",
+    "Candidate picker selection, empty-list fallback and cancellation using simulated installed apps",
+    "Win7 native-picker call replaced by a harmless test double",
+    "Windows 11 supported per-app link encoding and older-Windows fallback",
+    "Application opening and window closure never count as a successful default modification",
+    "No registry policy deployment or UserChoice writes in the new feature",
+    "Startup process observation remains zero"
+  ],
+  "limitations": [
+    "Linux/Mono GUI tests do not validate native Windows association changes.",
+    "No real Windows defaults, logon policies or security product settings changed in tests.",
+    "Windows 10 and earlier Windows 11 still require selection/confirmation in system settings.",
+    "No antivirus engine scan or certificate signing performed."
+  ],
+  "frozen_server_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb"
+}

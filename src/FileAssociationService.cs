@@ -13,7 +13,8 @@ namespace WinForms
             try
             {
                 int length=2048; StringBuilder output=new StringBuilder(length);
-                int result=AssocQueryString(0,4,assoc,null,output,ref length);
+                int flags=!assoc.StartsWith(".",StringComparison.Ordinal)&&Environment.OSVersion.Version>=new Version(6,2)?0x1000:0; // ASSOCF_IS_PROTOCOL, Windows 8+
+                int result=AssocQueryString(flags,4,assoc,null,output,ref length);
                 return result==0 && output.Length>0 ? output.ToString():"未识别（请到默认应用设置核实）";
             }
             catch { return "读取失败 / 不受支持"; }

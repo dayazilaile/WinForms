@@ -566,14 +566,16 @@ namespace WinForms
             repairSplit.Panel2.Controls.Add(box);
             Panel card = ContentCard(repairSplit);
             p.Controls["pageBody"].Controls.Add(card);
-            box.Text = "【系统修复与诊断 · V0.2.2】\r\n\r\n" +
+            box.Text = "【系统修复与诊断 · V" + ProductInfo.Version + "】\r\n\r\n" +
                 "诊断：SFC 验证、DISM 快速检测、Windows 更新及服务状态。\r\n" +
                 "可执行修复：刷新 DNS 缓存、SFC 修复、DISM 修复、Spooler/WIA 服务重启。\r\n" +
+                "默认应用修复：分类查看 Office、压缩包、音乐、视频、图片和协议的当前关联，选择默认程序或进入系统重置。\r\n" +
                 "快捷入口：Windows 更新、系统还原。\r\n\r\n" +
                 "说明：移除了磁盘清理、健康扫描和系统盘只检查入口。\r\n" +
                 "企业电脑可能被组策略限制；不要在远程维护时直接重置网络。\r\n" +
                 "若需增加高风险操作，将先实现配置备份和逐项确认。";
             RepairButton(actions, box, "刷新 DNS 缓存", "ipconfig.exe", "/flushdns", false, false, 2);
+            Action(actions, "默认应用与文件关联修复", delegate { DefaultAppsRepairDialog(); }, false);
             RepairButton(actions, box, "DISM 快速检测", "dism.exe", "/Online /Cleanup-Image /CheckHealth", true, false, 4);
             RepairButton(actions, box, "更新服务状态", "sc.exe", "query wuauserv", false, false, 2);
             RepairButton(actions, box, "BITS 服务状态", "sc.exe", "query bits", false, false, 2);

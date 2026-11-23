@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -306,15 +306,33 @@ Has '网络/Legacy adapter/IPv6' '2001:db8::9'
         Check(OperationAudit.LogPath.StartsWith(Paths.BaseDir)&&!OperationAudit.LogPath.Contains("AppData"),"Structured audit remains in the portable program directory");
 
     }
+    static void DefaultAssociations()
+    {
+        var formats=DefaultAppsService.Formats;
+        Check(formats.Select(x=>x.Extension).Distinct(StringComparer.OrdinalIgnoreCase).Count()==formats.Count,"Association catalogue contains no duplicate formats");
+        Check(new[]{".doc",".docx",".xls",".xlsx",".ppt",".pptx",".zip",".rar",".7z",".mp3",".flac",".mp4",".mkv",".pdf",".jpg","http","https","mailto"}.All(x=>formats.Any(f=>f.Extension==x)),"Office, archives, audio, video, images, PDF and web protocols covered");
+        Check(DefaultAppsService.Find(".DOCX").Extension==".docx","Format selection is canonical and case insensitive");
+        Check(DefaultAppsService.SettingsTarget(new Version(6,1))=="control.exe"&&DefaultAppsService.SettingsTarget(new Version(6,3))=="control.exe"&&DefaultAppsService.SettingsTarget(new Version(10,0))=="ms-settings:defaultapps","Default application entry respects legacy Windows and modern settings");
+        var option=new DefaultApplicationOption{Name="Demo",RegisteredName="Player & 100%",PerUser=true};
+        Check(DefaultAppsService.ApplicationSettingsTarget(new Version(10,0,22631),option)=="ms-settings:defaultapps?registeredAppUser=Player%20%26%20100%25","Supported Win11 app links escape registered names without command interpolation");
+        option.PerUser=false;Check(DefaultAppsService.ApplicationSettingsTarget(new Version(10,0,26100),option).Contains("registeredAppMachine="),"Machine and per-user application registrations use distinct supported links");
+        Check(DefaultAppsService.ApplicationSettingsTarget(new Version(10,0,19045),option)=="ms-settings:defaultapps"&&DefaultAppsService.ApplicationSettingsTarget(new Version(10,0,22000),option)=="ms-settings:defaultapps","Older Windows use the general page instead of assuming unsupported deep links");
+        bool modern=false;try{DefaultAppsService.ChooseLegacy(IntPtr.Zero,".pdf","unused",new Version(10,0));}catch(NotSupportedException){modern=true;}Check(modern,"Modern Windows never invokes the legacy API as a default setter");
+        Check(DefaultAppsService.ReadApplication(".pdf",delegate{return null;}).Contains("未识别")&&DefaultAppsService.ReadApplication(".pdf",delegate{throw new IOException();}).Contains("读取失败"),"Unreadable association is not presented as a default or a hijack");
+        string dir=Path.Combine(Path.GetTempPath(),"association-policy-"+Guid.NewGuid());Directory.CreateDirectory(dir);
+        try{
+            Check(DefaultAppsService.SamplePath(dir,".PDF")==Path.Combine(Path.Combine(dir,"AssociationSamples"),"WinForms-关联样例.pdf"),"Legacy samples stay in the supplied portable data directory");
+        }finally{Directory.Delete(dir,true);}
+    }
     static void BrandingCompatibility()
     {
         var fields=new Dictionary<string,string>{{"系统/名称","Legacy OS"},{"CPU/1/型号","Legacy CPU"}};string report=InspectionService.Serialize(fields);Check(report.StartsWith("# WinForms configuration report")&&InspectionService.Parse(report.Replace(InspectionService.Header,InspectionService.LegacyHeader))["CPU/1/型号"]=="Legacy CPU","New configuration report uses WinForms and still reads the original report header");
         string compact=InspectionService.ExportConfiguration(report);Check(InspectionService.Parse(compact.Replace(InspectionService.CompactHeader,InspectionService.LegacyCompactHeader)).Count>0,"Compact reports exported under the original brand remain readable");
         string standard=SoftwareBaselineService.Serialize(new[]{new SoftwareBaselineEntry{Name="Editor",Publisher="Vendor"}});Check(standard.StartsWith("# WinForms Software Baseline")&&SoftwareBaselineService.Parse(standard.Replace(SoftwareBaselineService.Header,SoftwareBaselineService.LegacyHeader)).Single().Name=="Editor","Renamed software standards preserve original-brand imports");
-        var assembly=typeof(ProductInfo).Assembly;Check(assembly.GetName().Name=="WinForms"&&ProductInfo.Version=="0.6.0"&&((System.Reflection.AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,typeof(System.Reflection.AssemblyProductAttribute))).Product=="WinForms","Window product metadata and renamed executable agree on WinForms 0.6.0");
+        var assembly=typeof(ProductInfo).Assembly;Check(assembly.GetName().Name=="WinForms"&&ProductInfo.Version=="0.6.1"&&((System.Reflection.AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,typeof(System.Reflection.AssemblyProductAttribute))).Product=="WinForms","Window product metadata and renamed executable agree on WinForms 0.6.1");
     }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();BrandingCompatibility();
+        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();BrandingCompatibility();DefaultAssociations();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

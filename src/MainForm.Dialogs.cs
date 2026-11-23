@@ -252,20 +252,7 @@ namespace WinForms
         }
         private void DefaultAppsDialog()
         {
-            using(Form f=NewDialog("默认打开程序与文件关联",740,555))
-            {
-                Label hint=new Label{Left=20,Top=17,Width=690,Height=57,Text="读取系统当前关联的应用名称；Windows 10/11 对默认应用设置有用户确认保护，修改时进入官方设置页面。\r\n.doc/.docx、.xls/.xlsx 是不同关联项，需分别选择。"};
-                DataGridView grid=Grid();grid.Dock=DockStyle.None;grid.SetBounds(20,82,690,359);
-                AddColumn(grid,"ext","扩展名 / 协议",175,false);AddColumn(grid,"app","当前默认应用（查询）",430,true);
-                string[] exts={".doc",".docx",".xls",".xlsx",".ppt",".pptx",".pdf",".txt",".jpg",".jpeg",".png",".bmp","http","https"};
-                Action refresh=delegate {grid.Rows.Clear();foreach(string ext in exts)grid.Rows.Add(ext,FileAssociationService.FriendlyName(ext));};
-                Button reload=FormButton("刷新关联",20,461,160,delegate {refresh();});
-                Button open=FormButton("打开 Windows 默认应用",195,461,240,delegate {CommandService.OpenTool("ms-settings:defaultapps","");});
-                Button dialog=FormButton("打开方式（示例文件）",451,461,250,delegate {
-                    using(OpenFileDialog d=new OpenFileDialog()) if(d.ShowDialog(f)==DialogResult.OK)CommandService.Run("rundll32.exe","shell32.dll,OpenAs_RunDLL \""+d.FileName.Replace("\"","")+"\"",2);
-                });
-                f.Controls.AddRange(new Control[]{hint,grid,reload,open,dialog});refresh();f.ShowDialog(this);
-            }
+            DefaultAppsRepairDialog();
         }
     }
 }

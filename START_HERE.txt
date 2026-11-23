@@ -1,3 +1,13 @@
+WinForms V0.6.1
+系统修复新增“默认应用与文件关联修复”：Office、压缩、音乐、视频、图片、PDF/文本与协议分类表。
+双击格式选择默认程序。Win7/8.1使用原生选择框；Win10/11在工具箱选择候选应用后，到系统确认保存。
+Win11 23H2及以后可直达所选应用页面，较早系统仍可能需要在默认应用总页定位扩展名；不会把一次打开当成永久设置。
+功能针对本机当前账户，返回刷新核对实际关联。不包含机房默认关联策略。
+完整解压后运行Build_And_Run.bat；程序build/WinForms.exe，保留整个build及自己的Data/Logs。
+BAT独立包v0.6.1-BAT只提供自动化编辑器，环境助手在“环境准备”文件夹。Server冻结标签不变。
+真实Windows与安全软件兼容仍需实机验收。详见README及docs/默认应用与文件关联.md。
+
+【以下为历史说明】
 WinForms V0.6.0
 项目名称统一为 WinForms；标题/侧栏/程序属性/报告/新导出文件/构建提示同步更新，移除整体“离线版/本地离线运行”标识。
 完整解压运行 Build_And_Run.bat；编译生成 build/WinForms.exe。移动程序请保留整个 build 文件夹及其中 Database、Scripts、Data、Logs。

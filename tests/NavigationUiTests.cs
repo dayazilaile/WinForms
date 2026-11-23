@@ -31,6 +31,62 @@ class NavigationUiTests
         }
         Check(opened,"Modal closed cleanly: "+method);
     }
+    static void DefaultAssociationUi(MainForm main,TreeView tree)
+    {
+        var oldReader=Field<Func<string,string>>(main,"defaultApplicationReader");var oldSettings=Field<Action<string,string>>(main,"defaultApplicationSettings");var oldChooser=Field<Func<IntPtr,string,string,Version,bool>>(main,"defaultApplicationChooser");var oldWindows=Field<Version>(main,"defaultApplicationWindows");var oldOptions=Field<Func<string,System.Collections.Generic.List<DefaultApplicationOption>>>(main,"defaultApplicationOptions");var oldPicker=Field<Func<IWin32Window,string,System.Collections.Generic.IList<DefaultApplicationOption>,DefaultApplicationChoice>>(main,"defaultApplicationPicker");
+        try{
+            foreach(string mode in new[]{"select","empty","cancel"}){
+                var apps=new System.Collections.Generic.List<DefaultApplicationOption>();if(mode!="empty")apps.Add(new DefaultApplicationOption{Name="样例播放器",RegisteredName="Demo.Player",ProgId="Demo.Audio",PerUser=true});
+                bool opened=false;Exception problem=null;DefaultApplicationChoice choice=null;
+                using(var timer=new Timer{Interval=40}){
+                    timer.Tick+=delegate{var form=Application.OpenForms.Cast<Form>().SingleOrDefault(f=>f.Name=="chooseDefaultApplicationDialog");if(form==null||opened)return;opened=true;
+                        try{var grid=Find<DataGridView>(form).Single();var confirm=Find<Button>(form).Single(b=>b.Name=="confirmDefaultApplicationChoice");Check(grid.ReadOnly&&grid.Rows.Count==apps.Count,"In-tool picker displays only supplied registered format handlers");Check(confirm.Enabled==(apps.Count>0),"Empty candidate list cannot fabricate a default choice");
+                            if(mode=="select"){grid.CurrentCell=grid.Rows[0].Cells[0];Screenshot(form,"default-app-picker-v061.png");confirm.PerformClick();}
+                            else if(mode=="empty")Find<Button>(form).Single(b=>b.Name=="otherDefaultApplicationChoice").PerformClick();else Find<Button>(form).Single(b=>b.Text=="取消").PerformClick();
+                        }catch(Exception ex){problem=ex;form.Close();}
+                    };timer.Start();choice=(DefaultApplicationChoice)Call(main,"ChooseDefaultApplicationDialog",main,".mp3",apps);timer.Stop();
+                }
+                if(problem!=null)throw problem;Check(opened&&(mode=="cancel"?choice==null:choice!=null&&(mode=="empty"?choice.Application==null:choice.Application==apps[0])),"Picker selection, system fallback and cancellation retain distinct results");
+            }
+            foreach(var version in new[]{new Version(10,0,19045),new Version(6,1,7601)}){
+                int reads=0,settings=0,native=0;bool failSettings=false,accept=true,cancelPicker=false;string app="样例播放器",chosen="";
+                main.GetType().GetField("defaultApplicationWindows",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,version);
+                main.GetType().GetField("defaultApplicationReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<string,string>(delegate(string extension){reads++;return app;}));
+                main.GetType().GetField("defaultApplicationSettings",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Action<string,string>(delegate(string target,string args){settings++;if(failSettings)throw new IOException("模拟设置打开失败");Check(target==DefaultAppsService.SettingsTarget(version)&&args==DefaultAppsService.SettingsArguments(version),"Default app settings use the supported OS entry");}));
+                main.GetType().GetField("defaultApplicationChooser",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<IntPtr,string,string,Version,bool>(delegate(IntPtr handle,string extension,string data,Version os){native++;chosen=extension;Check(handle!=IntPtr.Zero&&data==Paths.UserDir&&os==version,"Legacy picker is parented and uses portable sample storage");return accept;}));
+                var option=new DefaultApplicationOption{Name="样例播放器",RegisteredName="Demo & Player",ProgId="Demo.Player",PerUser=true};
+                main.GetType().GetField("defaultApplicationOptions",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<string,System.Collections.Generic.List<DefaultApplicationOption>>(delegate{return new System.Collections.Generic.List<DefaultApplicationOption>{option};}));
+                main.GetType().GetField("defaultApplicationPicker",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<IWin32Window,string,System.Collections.Generic.IList<DefaultApplicationOption>,DefaultApplicationChoice>(delegate(IWin32Window owner,string ext,System.Collections.Generic.IList<DefaultApplicationOption> apps){Check(ext==".mp3"&&apps.Count==1&&owner!=null,"In-tool application picker receives only the selected format's candidates");return cancelPicker?null:new DefaultApplicationChoice{Application=option};}));
+                Navigate(main,tree,"系统修复");Application.DoEvents();var button=Find<Button>(Field<Panel>(main,"content")).Single(b=>b.Text=="默认应用与文件关联修复");
+                bool handled=false;Exception error=null;
+                using(var timer=new Timer{Interval=50}){
+                    timer.Tick+=delegate{var form=Application.OpenForms.Cast<Form>().SingleOrDefault(f=>f.Text=="默认应用与文件关联修复");if(form==null||handled)return;handled=true;
+                        try{
+                            var grid=Find<DataGridView>(form).Single();var category=Find<ComboBox>(form).Single();var search=Find<TextBox>(form).Single();var state=Find<Label>(form).Single(l=>l.Name=="associationStatus");
+                            Check(grid.ReadOnly&&grid.Dock==DockStyle.Fill&&grid.Rows.Count==DefaultAppsService.Formats.Count,"Full-width format catalogue is populated without changing defaults");
+                            Check(reads==DefaultAppsService.Formats.Count&&native==0&&settings==0,"Opening association manager only reads current associations");
+                            category.SelectedItem="Office 文档";Check(grid.Rows.Count>10&&grid.Rows.Cast<DataGridViewRow>().All(r=>Convert.ToString(r.Cells[0].Value)=="Office 文档"),"Office category filters the common document types");
+                            category.SelectedIndex=0;search.Text=".mp3";Check(grid.Rows.Count==1&&Convert.ToString(grid.Rows[0].Cells[1].Value)==".mp3"&&reads==DefaultAppsService.Formats.Count,"Format search uses cached association reads");
+                            grid.CurrentCell=grid.Rows[0].Cells[1];Find<Button>(form).Single(b=>b.Name=="chooseDefaultApplication").PerformClick();
+                            Check(version.Major==10?settings==1&&native==0:native==1&&chosen==".mp3","Selected format uses modern official settings or the legacy native picker");
+                            Check(!state.Text.Contains("修改成功")&&!state.Text.Contains("修复完成"),"A settings launch or closed picker never claims a completed default reset");
+                            if(version.Major==10){int before=settings;cancelPicker=true;Find<Button>(form).Single(b=>b.Name=="chooseDefaultApplication").PerformClick();Check(settings==before&&state.Text.Contains("已取消"),"Cancelling the in-tool picker does not launch settings or alter associations");cancelPicker=false;}
+                            app="新播放器";Find<Button>(form).Single(b=>b.Name=="refreshDefaultAssociations").PerformClick();Check(Convert.ToString(grid.Rows[0].Cells[3].Value)=="新播放器","Refresh displays the actual queried default after system confirmation");
+                            Find<Button>(form).Single(b=>b.Name=="resetDefaultApplications").PerformClick();Check(state.Text.Contains(version.Major==10?"重置所有默认应用":"没有统一重置按钮"),"Reset guidance reflects actual Windows capability");
+                            failSettings=true;Find<Button>(form).Single(b=>b.Name=="openDefaultApplications").PerformClick();Check(state.Text.Contains("模拟设置打开失败"),"Failed settings launches remain visible and are not treated as repair success");
+                            if(version.Major<10){accept=false;Find<Button>(form).Single(b=>b.Name=="chooseDefaultApplication").PerformClick();Check(state.Text.Contains("已取消"),"Cancelling the native picker reports cancellation without a success claim");}
+                            form.Size=form.MinimumSize;Application.DoEvents();Check(grid.ClientSize.Width>700&&grid.ClientSize.Height>150,"Association table remains usable at the minimum dialog size");
+                            if(version.Major==10){search.Clear();Find<Button>(form).Single(b=>b.Name=="refreshDefaultAssociations").PerformClick();Screenshot(form,"default-associations-v061.png");}
+                        }catch(Exception ex){error=ex;}finally{form.Close();}
+                    };timer.Start();button.PerformClick();timer.Stop();
+                }
+                if(error!=null)throw error;Check(handled,"Repair entry opens and closes the shared association manager");
+            }
+        }finally{
+            main.GetType().GetField("defaultApplicationReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldReader);main.GetType().GetField("defaultApplicationSettings",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldSettings);main.GetType().GetField("defaultApplicationChooser",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldChooser);main.GetType().GetField("defaultApplicationWindows",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldWindows);main.GetType().GetField("defaultApplicationOptions",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldOptions);main.GetType().GetField("defaultApplicationPicker",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,oldPicker);
+            Navigate(main,tree,"系统概览");Application.DoEvents();
+        }
+    }
     static void SoftwareBaselineUi(MainForm main,TreeView tree)
     {
         var inventory=new SoftwareSnapshot();var normal=new SoftwareEntry{Name="标准编辑器",Publisher="标准厂商",Version="2.0",Key="normal"};var extraA=new SoftwareEntry{Name="额外程序 A",Publisher="其他厂商",Version="1.0",Key="extra-a",HasUninstaller=true};var extraB=new SoftwareEntry{Name="额外程序 B",Publisher="其他厂商",Version="3.0",Key="extra-b"};inventory.Entries.AddRange(new[]{normal,extraA,extraB});
@@ -80,9 +136,10 @@ class NavigationUiTests
                 var originalLoad=Field<System.Threading.Tasks.Task<DatabaseService>>(main,"databaseLoad");var gate=new System.Threading.Tasks.TaskCompletionSource<DatabaseService>();main.GetType().GetField("databaseLoad",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,gate.Task);
                 main.Show();Application.DoEvents();Check(main.Visible&&!gate.Task.IsCompleted&&Field<string>(main,"currentPage")=="系统概览","Overview renders while database task is still pending");Pump(()=>originalLoad.IsCompleted,30000);gate.SetResult(originalLoad.GetAwaiter().GetResult());Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
                 Pump(()=>Find<Button>(Field<Panel>(main,"content")).Single(b=>b.Text=="刷新系统信息").Enabled,60000);Check(startupProcesses==0,"Toolbox startup, database load and overview never request a child process or cleanup runner");CommandService.ProcessStarting-=observeProcess;
-                Check(main.Text==ProductInfo.WindowTitle&&main.Text=="WinForms V0.6.0"&&!Find<Label>(main).Any(l=>l.Text.Contains("本地离线运行"))&&Find<Label>(main).Any(l=>l.Text.Contains(ProductInfo.Name+"\r\n")&&l.Text.Contains("V"+ProductInfo.Version)),"Main window and sidebar consistently display WinForms 0.6.0");Screenshot(main,"winforms-v060.png");
+                Check(main.Text==ProductInfo.WindowTitle&&main.Text=="WinForms V0.6.1"&&!Find<Label>(main).Any(l=>l.Text.Contains("本地离线运行"))&&Find<Label>(main).Any(l=>l.Text.Contains(ProductInfo.Name+"\r\n")&&l.Text.Contains("V"+ProductInfo.Version)),"Main window and sidebar consistently display WinForms 0.6.1");Screenshot(main,"winforms-v060.png");
                 Check(tree.Nodes.Count==7&&Leaves(tree)==30,"Seven categories / 30 features (including trial), no duplicate system category");
                 Check(Field<string>(main,"currentPage")=="系统概览"&&tree.Nodes[0].IsExpanded,"Every launch opens system overview despite saved prior page");
+                DefaultAssociationUi(main,tree);
                 Click(tree,tree.Nodes[0]);Check(!tree.Nodes[0].IsExpanded,"Category text click collapses");Click(tree,tree.Nodes[1]);Check(tree.Nodes[1].IsExpanded&&tree.Nodes.Cast<TreeNode>().Count(n=>n.IsExpanded)==1,"Accordion expands only one group");
                 var clearSearch=Find<Button>(main).Single(b=>b.Name=="navigationClear");Check(!clearSearch.Visible,"Search clear icon is hidden for empty input");
                 search.Text="DNS";Application.DoEvents();Check(clearSearch.Visible&&clearSearch.Parent.Name=="navigationSearchFrame"&&clearSearch.FlatAppearance.BorderSize==0,"Clear icon stays inside the search field without a separate border");Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");clearSearch.PerformClick();Application.DoEvents();Check(search.Text==""&&!clearSearch.Visible&&Leaves(tree)==30,"Inline clear resets search and restores all navigation entries");

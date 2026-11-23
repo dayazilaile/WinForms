@@ -17,7 +17,7 @@ namespace WinForms
             new NavigationEntry("系统与硬件","启动项管理","开机 自启动"),
             new NavigationEntry("系统与硬件","系统优化","电源 睡眠 休眠"),
             new NavigationEntry("系统与硬件","蓝屏与异常关机","安全 维护 蓝屏 事件 日志 故障"),
-            new NavigationEntry("系统与硬件","系统修复","安全 维护 修复 DISM SFC"),
+            new NavigationEntry("系统与硬件","系统修复","安全 维护 修复 DISM SFC 默认应用 文件关联 Office 压缩包 音乐 视频"),
             new NavigationEntry("系统与硬件","功能开关","安全 维护 防火墙 远程桌面 RDP"),
             new NavigationEntry("系统与硬件","U 盘检查与防护","安全 维护 U盘 USB 写保护 自动播放"),
             new NavigationEntry("网络诊断","网络诊断","连接测试 IP DNS 网关 ping"),
