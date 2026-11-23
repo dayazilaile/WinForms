@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     internal static class Program
     {

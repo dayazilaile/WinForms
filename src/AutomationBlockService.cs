@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class AutoStepRange { public int Start,Count,ElseIndex=-1; }
     public static class AutomationBlockService

@@ -6,5 +6,5 @@ if errorlevel 1 (
  pause
  exit /b 1
 )
-start "" "%~dp0build\BatAutomation.exe"
+start "" "%~dp0build\WinForms-BAT.exe"
 exit /b 0

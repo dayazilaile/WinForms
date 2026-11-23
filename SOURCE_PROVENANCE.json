@@ -1,20 +1,21 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.5.22",
-  "base_commit": "ca3d4ef542b0eb3d47becbefd3692d94d9e61585",
+  "base_tag": "v0.6.0",
+  "base_commit": "60671efa45778f37f6886e91d7d92a3fea7d6eac",
   "unchanged_sources_sha256": {
-    "src/AutomationService.cs": "501b3f3189c5f173d00ec3c7667426e28347e9d49fc2b99027f8d4495f668670",
-    "src/AutomationFlow.cs": "4429b80f7156ead8c8c2ef8ff7d3fd2f0642b6a20854f7dfe96107e98a814a84",
-    "src/AutomationBlockService.cs": "d5cb1434947ce9cf6ab95dc20969080c79cdfa0175a3d0c5ad4b68f4f0e472d6",
-    "src/MainForm.Automation.cs": "c89615845585b963a80a7278e5486db3839a1ff9421bf8da0c1585dec71e031a",
-    "src/MainForm.AutomationBranches.cs": "1d348d59b8f4f4a5e4f2d0c44d925c0f88b670a05365ebf9cd098b4541ba8f1c",
-    "src/MouseCoordinateService.cs": "ab9c5178d54a71e1fc062ad82856ddcf8ed7cb0c260ba7a18f25c98d754727ef",
-    "src/KeyCaptureDialog.cs": "17b48853aed09d4209510ea491c6504e3dafb054027df39d575300cb25527cde",
-    "src/WindowCatalog.cs": "87802439e8a2c4b1facdc559ac62a739c091cea00c4ea8ba4c6ff3bdb645859b",
-    "src/BatScriptPackage.cs": "932690d698c78f8f81c35bb14f692263fbe519ad46341f91f6f14034f092c7fc",
-    "src/AutomationRandomIp.cs": "8c939acf85007565f92a6ed92b573bbc8bff0ec5576e347f6a66b226b7a807f3",
-    "src/WindowsCompatibility.cs": "d4b2e6d125de63d7c233fa7ef845f4d1ebaf9bc320e29363eddf3d4f2694c2f4",
-    "src/AutomationNetworkAudit.cs": "b003a8e291d14f946a57c4e111b656736815360ee998956d8b7ad6a6e309e550"
+    "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
+    "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
+    "src/AutomationBlockService.cs": "4ec88def6cc862e907e3f9c7b875e457d2f64396c09102cf2ec0547287e38100",
+    "src/MainForm.Automation.cs": "89e2f5566328aefd82b97d73e66891bf5646dc71f685cd601aea8e2828000689",
+    "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367",
+    "src/MouseCoordinateService.cs": "ab65f33ae6084b47b3abeae84be99796b9d58edc7a7ea094c855cde0e230d835",
+    "src/KeyCaptureDialog.cs": "425852ae5759e02698f03bf7efe33079b74d1f2b2e68479c4853e5f85b05655c",
+    "src/WindowCatalog.cs": "af1b48e140f3cb8d26fefab7929a0e21644e371e45f93cc40a237b81d5da9012",
+    "src/BatScriptPackage.cs": "8c094ead0672f0d7f53bc31484f83180c3484189bb496699b9d83421aabb57a8",
+    "src/AutomationRandomIp.cs": "649132947a6edcffacbb4d5a895b740a55d051991d3f8abca17fa966b5a47a6a",
+    "src/WindowsCompatibility.cs": "4ac2d68216709a7b1e80c04aaf8a7b4931c66e7a48b68310c2bc626dfa7a52d7",
+    "src/AutomationNetworkAudit.cs": "1a56c7c0512405793160987e1a43657a5faf795a8bc78f64603570bd4a68c91a",
+    "src/ProductInfo.cs": "e12c31044bfe7b5a0130225863b6f97509dc61e62d968843a30d90bfec50069f"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -22,7 +23,9 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.5.22-BAT",
-  "change": "Fresh extraction: verified .NET Framework 4.5 baseline, dual registry-view runtime detection and direct diagnostics. Existing automation/network audit behavior retained. Server frozen tag unchanged.",
-  "minimum_framework": "Microsoft .NET Framework 4.5"
+  "standalone_version": "0.6.0-BAT",
+  "change": "Fresh extraction after WinForms rebranding: shared product metadata, WinForms namespace, renamed executable, displayed project names, workflow header and 23-patch version policy. Existing runtime/automation behavior and legacy workflow imports retained. Frozen Server tag unchanged.",
+  "minimum_framework": "Microsoft .NET Framework 4.5",
+  "product_name": "WinForms",
+  "version_policy": "23 patches per minor; .23 rolls to the next minor .0"
 }

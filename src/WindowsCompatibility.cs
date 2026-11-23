@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using Microsoft.Win32;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     internal static class WindowsCompatibility
     {

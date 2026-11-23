@@ -18,8 +18,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: BatAutomation-v0.5.22-BAT-Windows
+          name: WinForms-BAT-v0.6.0-Windows
           path: |
-            build/BatAutomation-v0.5.22-BAT-Windows.zip
+            build/WinForms-BAT-v0.6.0-Windows.zip
             build/*.png
           if-no-files-found: ignore

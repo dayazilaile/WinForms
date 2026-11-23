@@ -1,0 +1,8 @@
+{
+  "product_name": "WinForms",
+  "current_version": "0.6.0",
+  "max_patch": 23,
+  "rule": "Each minor starts at patch 0; publish patches 1 through 23, then increment the minor and reset patch to 0.",
+  "standalone_tag_suffix": "-BAT",
+  "frozen_server_tag": "v0.5.20-Server"
+}

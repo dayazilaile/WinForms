@@ -10,13 +10,13 @@ export PYTHONPATH="/workspace/cloud-setup/metadata${PYTHONPATH:+:$PYTHONPATH}"
 python3 "$repo/tools/build_framework.py" --project "$repo" --references "${NETFRAMEWORK_REFS:-/workspace/cloud-setup/netfx45}" --standalone
 
 for name in StandaloneTests StandaloneUiTests; do
- "${mono[@]}" "$MONO_PATH/mcs.exe" -langversion:5 -out:"$repo/build/$name.exe" -r:"$repo/build/BatAutomation.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/$name.cs"
+ "${mono[@]}" "$MONO_PATH/mcs.exe" -langversion:5 -out:"$repo/build/$name.exe" -r:"$repo/build/WinForms-BAT.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/$name.cs"
 done
 "${mono[@]}" "$repo/build/StandaloneTests.exe"
 if [ -n "${DISPLAY:-}" ]; then
  clean=$(mktemp -d /tmp/bat-standalone-ui-XXXXXX)
  trap 'rm -rf "$clean"' EXIT
- cp "$repo/build/BatAutomation.exe" "$repo/build/StandaloneUiTests.exe" "$clean/"
+ cp "$repo/build/WinForms-BAT.exe" "$repo/build/StandaloneUiTests.exe" "$clean/"
  (cd "$clean"
   "${mono[@]}" ./StandaloneUiTests.exe
  )

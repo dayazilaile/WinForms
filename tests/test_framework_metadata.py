@@ -17,7 +17,7 @@ MONO = Path(os.environ.get('MONO_ROOT', '/workspace/cloud-setup/mono'))
 
 class WindowsMetadataTests(unittest.TestCase):
     def test_published_binary_resolves_all_framework_type_owners(self):
-        report = verify(ROOT/'BatAutomation.exe', REFS)
+        report = verify(ROOT/'WinForms-BAT.exe', REFS)
         self.assertEqual(report['stack_owners'], ['System'])
 
     def test_rejects_the_original_mono_stack_owner_mismatch(self):
@@ -33,13 +33,13 @@ class WindowsMetadataTests(unittest.TestCase):
 
     def test_build_report_matches_the_shipped_executable(self):
         report = json.loads((ROOT/'BUILD_INFO.json').read_text())
-        self.assertEqual(report['sha256'], hashlib.sha256((ROOT/'BatAutomation.exe').read_bytes()).hexdigest())
+        self.assertEqual(report['sha256'], hashlib.sha256((ROOT/'WinForms-BAT.exe').read_bytes()).hexdigest())
         self.assertEqual(report['stack_owners'], ['System'])
         self.assertEqual(report['reference_profile'], 'Microsoft .NET Framework 4.5')
 
     def test_automation_sources_match_the_unchanged_toolkit_origin(self):
         origin = json.loads((ROOT/'SOURCE_PROVENANCE.json').read_text())
-        self.assertEqual(origin['base_tag'], 'v0.5.22')
+        self.assertEqual(origin['base_tag'], 'v0.6.0')
         for name, expected in origin['unchanged_sources_sha256'].items():
             self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(), expected, name)
 

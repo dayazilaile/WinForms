@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Captures a single key or chord only while this dialog's capture field has focus.
     // No global keyboard hook, key logging or background monitoring is installed.

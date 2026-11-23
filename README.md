@@ -1,6 +1,14 @@
-# BAT 自动化独立版 v0.5.22-BAT
+# WinForms BAT 自动化独立版 V0.6.0-BAT
 
-从 [IT 桌面运维工具箱 v0.5.22](https://github.com/dayazilaile/WinForms/tree/v0.5.22) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.22-BAT`，与工具箱 v0.5.22 同步。
+从 [WinForms v0.6.0](https://github.com/dayazilaile/WinForms/tree/v0.6.0) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **WinForms-BAT.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.6.0-BAT`，与项目 v0.6.0 同步。
+
+## V0.6.0 WinForms 命名统一
+
+运行根目录WinForms-BAT.exe，窗口、属性、工作流、BAT启动提示及新网络备份名称使用WinForms，数字版本0.6.0。源码从同版主程序重新提取，共13个原样共用文件，完整C#源码17个文件；不需要原项目的数据库或额外DLL。
+
+旧工作流仍可导入，原有自动化/便携日志/运行库检查保留。版本按0.6.0→0.6.1…0.6.23→0.7.0推进，release-policy.json与tools/next_version.py记录相同规则；独立标签追加-BAT。Server定版不更新。
+
+云端135项检查通过，Windows/输入/硬件/杀软实机仍需验收。本版不使用整体“离线版/本地离线运行”描述。
 
 ## V0.5.22 编译与运行库检测修正
 
@@ -49,7 +57,7 @@ Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Wi
 
 ## V0.5.18 共享封装回归
 
-工具箱的清理脚本与 BAT 自动化改为共用 BatScriptPackage；独立版同步重新提取同一自动化代码与该模块。96 组原有自动化导出的完整 BAT 与改动前逐字节一致，保留所有设置和默认值。独立版不包含软件清理功能，因此无需 Scripts 模板文件，运行仍只需 BatAutomation.exe。
+工具箱的清理脚本与 BAT 自动化改为共用 BatScriptPackage；独立版同步重新提取同一自动化代码与该模块。96 组原有自动化导出的完整 BAT 与改动前逐字节一致，保留所有设置和默认值。独立版不包含软件清理功能，因此无需 Scripts 模板文件，运行仍只需 WinForms-BAT.exe。
 
 该重构不能代替火绒实测，也不保证所有安全产品无提示；主程序告警审查限于工具箱，不能把源代码/功能通过当作杀毒检测结论。
 
@@ -110,12 +118,12 @@ Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Wi
 
 ## 下载后怎么用
 
-1. 完整解压本包，双击根目录 **BatAutomation.exe**。适用 Windows 7 SP1 / Windows 10 / Windows 11；最低 .NET Framework 4.5，建议 4.8，生成 BAT 另需 Windows PowerShell 5.1。
+1. 完整解压本包，双击根目录 **WinForms-BAT.exe**。适用 Windows 7 SP1 / Windows 10 / Windows 11；最低 .NET Framework 4.5，建议 4.8，生成 BAT 另需 Windows PowerShell 5.1。
 2. 点击 **添加动作**，选择类型并填写参数；用 ☰ 拖动排序，或通过 **复制动作 / Ctrl+D** 复用。
 3. 点击 **保存流程** 保存可继续编辑的 `.workflow.txt`；**打开流程** 可以读取原工具箱保存的流程。打开流程不会执行其中动作。
 4. 选择生成方式、启动延时等选项，再点 **生成 BAT**。生成的 BAT 可独立运行，目标电脑无需安装本程序。
 
-根目录附预编译 EXE；若要从源码重新编译，运行 **Build_And_Run.bat**，编译后启动 `build\BatAutomation.exe`。仅编译可运行 `Build_Only.bat`。移动编译后的程序只需复制 EXE，无需 Database 文件夹。
+根目录附预编译 EXE；若要从源码重新编译，运行 **Build_And_Run.bat**，编译后启动 `build\WinForms-BAT.exe`。仅编译可运行 `Build_Only.bat`。移动编译后的程序只需复制 EXE，无需 Database 文件夹。
 
 预编译 EXE 使用 C# 5 和微软 .NET Framework 4.5 引用程序集，云端已检查成品类型引用并完成模拟界面测试。GitHub Actions 会直接运行包内发布 EXE 的测试，再编译并测试 Windows csc 版本；应以实际任务结果为准。当前云端仍不能代替 Windows 实机、输入权限和高 DPI 验收。
 
@@ -153,9 +161,9 @@ Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Wi
 
 ## 编译、测试与来源
 
-- 完整源码位于 `src/`，共 16 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.20。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
+- 完整源码位于 `src/`，共 17 个文件；自动化引擎、条件编辑、坐标、键盘与窗口选择模块直接沿用 v0.5.20。精确来源及 SHA-256 见 [SOURCE_PROVENANCE.json](SOURCE_PROVENANCE.json)。独立入口、窗口外壳及两个纯辅助方法位于适配文件中。
 - Windows 编译：`Build_Only.bat --no-pause`；验收：`powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1`。
-- 当前云环境通过 **133 项检查（引擎/流程 96 + 独立界面 33 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
+- 当前云环境通过 **135 项检查（引擎/流程 98 + 独立界面 33 + 成品引用兼容性回归 4）**：工作流兼容、两种 BAT 导出、条件分支、嵌套/重试/深拷贝、模拟鼠标回放，以及在只放 EXE 和测试程序的空目录里打开独立界面。
 - 新增范围校验、含上下限、相等边界、运行时脚本、重试内抽取、保存与界面编辑测试；Windows 随机用例拦截等待并验证反复抽取，不实际休眠。
 - 测试没有执行用户程序、真实 Ping、输入、鼠标移动或修改系统设置；UI 中的鼠标接口由模拟替代。Windows 测试另外检查生成 PowerShell 的语法与仅访问测试文件的成功/失败重试场景，云端不能代替其执行结果。
 - 兼容性回归会检查发布 EXE/构建记录一致性及源码来源，并用 Mono 错误引用生成反例，确认可以阻止本次同类错误。开发者跨编译入口为 `tools/build_framework.py`，先安装 `tools/requirements-build.txt`，使用 `--references` 指定微软引用程序集目录；缺失时可用 `--download-references` 下载固定哈希的官方包，引用 DLL 不随运行 EXE 分发。`tests/test_framework_metadata.py` 检查实际发布文件。

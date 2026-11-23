@@ -1,7 +1,7 @@
 using System.Reflection;
-[assembly:AssemblyTitle("BAT 自动化独立版")]
-[assembly:AssemblyDescription("基于 IT 桌面运维工具箱 v0.5.22 的独立 BAT 编辑器")]
-[assembly:AssemblyProduct("BAT Automation Standalone")]
-[assembly:AssemblyVersion("0.5.22.0")]
-[assembly:AssemblyFileVersion("0.5.22.0")]
-[assembly:AssemblyInformationalVersion("0.5.22-BAT")]
+[assembly:AssemblyTitle("WinForms BAT 自动化独立版")]
+[assembly:AssemblyDescription("WinForms 独立 BAT 编辑器 V"+WinForms.ProductInfo.Version)]
+[assembly:AssemblyProduct(WinForms.ProductInfo.Name)]
+[assembly:AssemblyVersion(WinForms.ProductInfo.AssemblyVersion)]
+[assembly:AssemblyFileVersion(WinForms.ProductInfo.AssemblyVersion)]
+[assembly:AssemblyInformationalVersion(WinForms.ProductInfo.Version+"-BAT")]

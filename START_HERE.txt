@@ -1,4 +1,4 @@
-BAT自动化独立版 v0.5.22-BAT
-最低.NET Framework 4.5，4.8推荐不强制。完整解压保留Check_Runtime.bat。
-运行Build_And_Run.bat；仍有环境提示时运行Diagnose_Runtime.bat查看实际检测。
-生成BAT另需PowerShell5.1，微软该组件本身要求.NET4.5.2；Win7需SP1。
+WinForms BAT 自动化独立版 V0.6.0-BAT
+运行WinForms-BAT.exe，仍只需一个EXE；旧工作流可导入。
+数字版本与主项目同步，按23次小版本升级后推进中版本；详见release-policy.json。
+最低.NET4.5，生成BAT需PowerShell5.1；详见README.md。

@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed partial class MainForm : Form
     {
@@ -10,7 +10,7 @@ namespace ITDesktopToolkit
         private readonly Panel content=new Panel{Dock=DockStyle.Fill};
         public MainForm()
         {
-            Text="BAT 自动化独立版 v0.5.22-BAT";Width=1220;Height=790;MinimumSize=new Size(1000,670);StartPosition=FormStartPosition.CenterScreen;Font=Ui;BackColor=Canvas;AutoScaleMode=AutoScaleMode.Dpi;
+            Text=ProductInfo.Name+" BAT 自动化独立版 V"+ProductInfo.Version+"-BAT";Width=1220;Height=790;MinimumSize=new Size(1000,670);StartPosition=FormStartPosition.CenterScreen;Font=Ui;BackColor=Canvas;AutoScaleMode=AutoScaleMode.Dpi;
             Controls.Add(content);BuildAutomation();
         }
         private bool ConfirmAction(string title,string message)

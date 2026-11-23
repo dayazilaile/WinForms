@@ -56,7 +56,7 @@ def main():
     for name in required:
         if not (refs / (name + '.dll')).is_file():
             parser.error('Missing Microsoft reference ' + name + '; use --download-references')
-    output = (args.output or project / 'build' / ('BatAutomation.exe' if args.standalone else 'ITDesktopToolkit.exe')).resolve()
+    output = (args.output or project / 'build' / ('WinForms-BAT.exe' if args.standalone else 'WinForms.exe')).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, MONO_PATH=str(mono / 'usr/lib/mono/4.5'), MONO_CFG_DIR=str(mono / 'etc'), MONO_GAC_PREFIX=str(mono / 'usr'))
     command = [str(mono / 'usr/bin/mono-sgen'), '--config', str(mono / 'etc/mono/config'),
