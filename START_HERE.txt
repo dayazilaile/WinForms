@@ -1,4 +1,13 @@
-【当前版本 V0.5.21】
+【当前版本 V0.5.22】
+修正编译前环境检查：最低需要 .NET Framework 4.5，4.8 推荐但不强制。
+检测读取32位、64位及原生视图，显示实际Release/版本；“未读取到”和“版本过低”分别说明。
+完整解压，保留新增 Check_Runtime.bat；双击 Build_And_Run.bat 编译运行。
+仍不通过时，双击 Diagnose_Runtime.bat，把完整只读输出交给开发者。它不安装组件、不改系统、不写诊断日志。
+确实没有4.5以上运行库时仍需安装微软官方组件；Win7需SP1。生成BAT另要求PowerShell5.1，其自身依赖.NET4.5.2。
+已按微软.NET4.5接口完整编译并通过云端521项工具箱、133项独立版检查，Windows实机仍需验收。
+Server保持v0.5.20-Server定版，本次不改定版包。详见README.md。
+
+【历史版本 V0.5.21】
 结构化日志：软件目录 Logs/operations-v1.tsv，记录时间/时区、主机名、UUID、BIOS序列号、设备标识、各网卡MAC/IP/掩码/DHCP/网关/DNS、账户/权限、版本、会话/操作编号、操作及结果。
 手动 IP/MAC 记录修改前后；网络 BAT 的执行日志在 BAT 旁 Logs/network-operations-v1.tsv，并记录随机换号/失败/恢复。
 硬件信息未提供时明确标记，不保证 UUID/MAC 在所有电脑上唯一；以多个线索联合核对。

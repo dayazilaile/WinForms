@@ -11,9 +11,9 @@ import urllib.request
 import zipfile
 from verify_windows_refs import verify
 
-PACKAGE_URL = ('https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net48/'
-               '1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg')
-PACKAGE_SHA256 = '8a7e348538e7eb91351696911689f49e3d4f63f8bab517432bbe159b8b1104a2'
+PACKAGE_URL = ('https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net45/'
+               '1.0.3/microsoft.netframework.referenceassemblies.net45.1.0.3.nupkg')
+PACKAGE_SHA256 = '23a9f94ea3e2cb88cd8341af75b811c6fb5cb82516fc696e95ed4620279128e3'
 
 
 def download_references(destination):
@@ -23,8 +23,8 @@ def download_references(destination):
         raise ValueError('Microsoft reference package hash mismatch')
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
         for name in archive.namelist():
-            if name.startswith('build/.NETFramework/v4.8/') and name.endswith('.dll'):
-                relative = Path(name).relative_to('build/.NETFramework/v4.8')
+            if name.startswith('build/.NETFramework/v4.5/') and name.endswith('.dll'):
+                relative = Path(name).relative_to('build/.NETFramework/v4.5')
                 if '..' in relative.parts:
                     raise ValueError('Invalid reference archive path')
                 target = destination / relative
@@ -73,7 +73,11 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(template, target)
     result = verify(output, refs)
-    result['reference_package_url'], result['reference_package_sha256'] = PACKAGE_URL, PACKAGE_SHA256
+    if result['reference_profile'].endswith('4.5'):
+        result['reference_package_url'], result['reference_package_sha256'] = PACKAGE_URL, PACKAGE_SHA256
+    else:
+        result['reference_package_url']='https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net48/1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg'
+        result['reference_package_sha256']='8a7e348538e7eb91351696911689f49e3d4f63f8bab517432bbe159b8b1104a2'
     result['reference_assembly_sha256'] = {name: hashlib.sha256((refs/(name+'.dll')).read_bytes()).hexdigest() for name in required}
     import json
     (output.parent / (output.stem + '.build.json')).write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')

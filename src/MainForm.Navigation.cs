@@ -12,7 +12,7 @@ namespace ITDesktopToolkit
         private string expandedNavigationGroup="系统与硬件";
         private void BuildNavigation(Panel sidebar)
         {
-            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.21 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
+            var logo=new Label{Dock=DockStyle.Top,Height=80,Text="  IT 桌面运维工具箱\r\n  V0.5.22 · 本地离线运行",ForeColor=Color.White,Font=new Font("DengXian",13F,FontStyle.Bold),TextAlign=ContentAlignment.MiddleLeft};
             var searchPanel=new Panel{Dock=DockStyle.Top,Height=76,Padding=new Padding(10,28,10,10)};
             var caption=new Label{Text="搜索功能（如 DNS / 打印机）",Left=12,Top=5,AutoSize=true,ForeColor=Color.LightSteelBlue};searchPanel.Controls.Add(caption);
             var searchFrame=new Panel{Dock=DockStyle.Fill,BackColor=Color.White,Padding=new Padding(8,6,4,6),Name="navigationSearchFrame"};

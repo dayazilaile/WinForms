@@ -21,7 +21,17 @@ namespace ITDesktopToolkit
         internal const string Header="时间\t主机名\t设备标识\t标识依据\t硬件UUID\tBIOS序列号\t网卡_MAC_IP\t运行账户\t权限\t系统与架构\t软件版本\t会话ID\t操作ID\t上级操作ID\t操作\t阶段\t结果\t耗时毫秒\t详情";
         internal static readonly string SessionId=Guid.NewGuid().ToString("N");
         private static readonly object fileLock=new object();
-        private static readonly AsyncLocal<AuditOperation> current=new AsyncLocal<AuditOperation>();
+        // Logical call context flows through .NET 4.5 Tasks without the .NET 4.6 AsyncLocal dependency.
+        private sealed class AuditContext
+        {
+            private const string Slot="ITDesktopToolkit.OperationAudit.Current.v1";
+            internal string Value
+            {
+                get{return System.Runtime.Remoting.Messaging.CallContext.LogicalGetData(Slot) as string;}
+                set{if(String.IsNullOrEmpty(value))System.Runtime.Remoting.Messaging.CallContext.FreeNamedDataSlot(Slot);else System.Runtime.Remoting.Messaging.CallContext.LogicalSetData(Slot,value);}
+            }
+        }
+        private static readonly AuditContext current=new AuditContext();
         private static readonly Lazy<System.Threading.Tasks.Task<string[]>> hardware=new Lazy<System.Threading.Tasks.Task<string[]>>(delegate{return System.Threading.Tasks.Task.Run(new Func<string[]>(ReadHardware));},true);
         internal static string LogPath {get{return Path.Combine(Paths.BaseDir,"Logs","operations-v1.tsv");}}
         private static string[] ReadHardware()
@@ -86,9 +96,9 @@ namespace ITDesktopToolkit
             catch(Exception ex){Paths.LastLogError="软件目录日志不可写："+ex.Message;return false;}
         }
         internal static void Record(string operation,string result,string detail)
-        {var scope=current.Value;Write(scope==null?Guid.NewGuid().ToString("N"):scope.Id,scope==null?"":scope.ParentId,operation,"记录",result,0,detail);}
+        {string token=current.Value??"";string[] parts=token.Split('|');Write(token.Length==0?Guid.NewGuid().ToString("N"):parts[0],parts.Length<2?"":parts[1],operation,"记录",result,0,detail);}
         internal static AuditOperation Begin(string operation,string detail="")
-        {var scope=new AuditOperation(operation,current.Value);current.Value=scope;scope.StartWritten=Write(scope.Id,scope.ParentId,operation,"开始","执行中",0,detail);return scope;}
+        {var scope=new AuditOperation(operation,current.Value);current.Value=scope.Id+"|"+scope.ParentId;scope.StartWritten=Write(scope.Id,scope.ParentId,operation,"开始","执行中",0,detail);return scope;}
         internal static string Outcome(string output)
         {
             if((output??"").Contains("【配置结果】成功"))return "配置已核验";
@@ -98,10 +108,10 @@ namespace ITDesktopToolkit
         internal sealed class AuditOperation:IDisposable
         {
             internal readonly string Id=Guid.NewGuid().ToString("N"),ParentId;internal bool StartWritten;
-            private readonly string name;private readonly AuditOperation parent;private readonly System.Diagnostics.Stopwatch clock=System.Diagnostics.Stopwatch.StartNew();private bool complete,disposed;
-            internal AuditOperation(string name,AuditOperation parent){this.name=name;this.parent=parent;ParentId=parent==null?"":parent.Id;}
+            private readonly string name;private readonly string parent;private readonly System.Diagnostics.Stopwatch clock=System.Diagnostics.Stopwatch.StartNew();private bool complete,disposed;
+            internal AuditOperation(string name,string parent){this.name=name;this.parent=parent;ParentId=String.IsNullOrEmpty(parent)?"":parent.Split('|')[0];}
             internal void End(string result,string detail=""){if(complete)return;complete=true;Write(Id,ParentId,name,"结束",result,clock.ElapsedMilliseconds,detail);}
-            public void Dispose(){if(disposed)return;disposed=true;if(!complete)End("异常或未完成","操作没有正常返回；不据此认定成功。");if(current.Value==this)current.Value=parent;}
+            public void Dispose(){if(disposed)return;disposed=true;if(!complete)End("异常或未完成","操作没有正常返回；不据此认定成功。");if(current.Value==Id+"|"+ParentId)current.Value=parent;}
         }
     }
 }

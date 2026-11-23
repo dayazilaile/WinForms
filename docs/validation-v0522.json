@@ -1,0 +1,38 @@
+{
+  "version": "0.5.22",
+  "minimum_framework": "Microsoft .NET Framework 4.5",
+  "minimum_release": 378389,
+  "recommended_framework": "4.8",
+  "references_net45_package_sha256": "23a9f94ea3e2cb88cd8341af75b811c6fb5cb82516fc696e95ed4620279128e3",
+  "full_source_compiled_net45": true,
+  "full_source_compiled_net48": true,
+  "original_net45_compile_failed_on": "AsyncLocal (removed and replaced with immutable logical context string)",
+  "toolkit_checks": {
+    "features": 109,
+    "network": 34,
+    "workspace": 49,
+    "trial": 36,
+    "desktop": 113,
+    "student_wake": 41,
+    "ui": 139,
+    "total": 521
+  },
+  "standalone_checks": {
+    "features": 96,
+    "ui": 33,
+    "metadata": 4,
+    "total": 133
+  },
+  "parallel_async_audit_context_tested": true,
+  "batch_views": [
+    "64",
+    "32",
+    "native fallback"
+  ],
+  "windows_batch_scenarios_added": 7,
+  "windows_batch_scenarios_executed_in_cloud": false,
+  "windows_fixture_syntax_parsed": true,
+  "native_windows_runtime_tested": false,
+  "user_actual_runtime_release_received": false,
+  "server_tag_unchanged": "v0.5.20-Server"
+}
