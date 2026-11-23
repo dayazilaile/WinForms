@@ -4,7 +4,7 @@ using System.Management;
 using System.Text;
 using System.Threading;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class HardwareService
     {

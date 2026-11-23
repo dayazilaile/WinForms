@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed partial class MainForm : Form
     {
@@ -31,7 +31,7 @@ namespace ITDesktopToolkit
 
         public MainForm()
         {
-            Text = "IT 桌面运维工具箱 V0.5.22 · 离线版";
+            Text = ProductInfo.WindowTitle;
             Width = 1220;
             Height = 790;
             MinimumSize = new Size(1000, 670);

@@ -22,20 +22,20 @@ for folder in Licenses Sources; do
   done
 done
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/FeatureTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/FeatureTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/FeatureTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/FeatureTests.cs"
 "${mono[@]}" "$repo/build/FeatureTests.exe"
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NetworkToolsTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll -r:System.Xml.dll "$repo/tests/NetworkToolsTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NetworkToolsTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll -r:System.Xml.dll "$repo/tests/NetworkToolsTests.cs"
 "${mono[@]}" "$repo/build/NetworkToolsTests.exe"
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/WorkspaceTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/WorkspaceTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/WorkspaceTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/WorkspaceTests.cs"
 "${mono[@]}" "$repo/build/WorkspaceTests.exe"
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/TrialTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/TrialTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/TrialTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/TrialTests.cs"
 "${mono[@]}" "$repo/build/TrialTests.exe"
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/DesktopTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/DesktopTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/DesktopTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/DesktopTests.cs"
 "${mono[@]}" "$repo/build/DesktopTests.exe"
 
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/StudentWakeTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll "$repo/tests/StudentWakeTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/StudentWakeTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/StudentWakeTests.cs"
 "${mono[@]}" "$repo/build/StudentWakeTests.exe"

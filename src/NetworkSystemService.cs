@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class NetworkSystemService
     {

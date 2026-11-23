@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ITDesktopToolkit;
+using WinForms;
 class StudentWakeTests
 {
     static int passed;
@@ -70,5 +70,9 @@ class StudentWakeTests
         Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],conflicts,"机房"),"Duplicate selected MACs cannot silently overwrite scanned devices");Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],new[]{new StudentScanRow{IPv4="192.0.2.5",Name="未知"}},"机房"),"Unresolved scan rows cannot be persisted");
         string encoded="command\n返回代码：0\nITSTUDENT|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("192.0.2.3"))+"|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("02-00-00-00-00-03"));Check(StudentDiscoveryService.ParseCache(encoded,network)["192.0.2.3"]=="02:00:00:00:00:03","Structured neighbor cache maps normalized MACs to on-link addresses");
     }
-    static int Main(){try{Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static void LegacyBranding()
+    {
+        string text=StudentRoster.Serialize(new[]{new StudentMachine{Room="Room",Name="PC1",IPv4="192.0.2.9",Mac="02:00:00:00:00:09"}});Check(text.StartsWith("# WinForms students")&&StudentRoster.Parse(text.Replace(StudentRoster.Header,StudentRoster.LegacyHeader)).Single().Name=="PC1","WinForms roster export keeps original-brand student lists importable");
+    }
+    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

@@ -1,0 +1,41 @@
+{
+  "version": "0.6.0",
+  "product_name": "WinForms",
+  "main_executable": "WinForms.exe",
+  "standalone_executable": "WinForms-BAT.exe",
+  "global_offline_branding_removed": true,
+  "toolkit_checks": {
+    "features": 111,
+    "network": 34,
+    "workspace": 49,
+    "trial": 36,
+    "desktop": 117,
+    "student_wake": 42,
+    "ui": 140,
+    "total": 529
+  },
+  "standalone_checks": {
+    "features": 98,
+    "ui": 33,
+    "metadata": 4,
+    "total": 135
+  },
+  "shared_sources": 13,
+  "legacy_imports_tested": [
+    "original configuration v1",
+    "original compact configuration v2",
+    "original software baseline",
+    "original student roster",
+    "original workflow"
+  ],
+  "version_policy": {
+    "max_patch": 23,
+    "next_from_0_6_0": "0.6.1",
+    "next_from_0_6_23": "0.7.0"
+  },
+  "native_windows_tested": false,
+  "antivirus_tested": false,
+  "frozen_server_tag": "v0.5.20-Server",
+  "frozen_server_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb",
+  "server_changed": false
+}

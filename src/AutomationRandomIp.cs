@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class RandomIpv4Options
     {

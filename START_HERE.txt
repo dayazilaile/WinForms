@@ -1,4 +1,16 @@
-【当前版本 V0.5.22】
+WinForms V0.6.0
+项目名称统一为 WinForms；标题/侧栏/程序属性/报告/新导出文件/构建提示同步更新，移除整体“离线版/本地离线运行”标识。
+完整解压运行 Build_And_Run.bat；编译生成 build/WinForms.exe。移动程序请保留整个 build 文件夹及其中 Database、Scripts、Data、Logs。
+独立版：WinForms-BAT.exe / v0.6.0-BAT，仍只需一个 EXE 打开编辑器。
+最低.NET Framework4.5，推荐4.8；Win7需SP1，生成BAT另需PowerShell5.1。可用Diagnose_Runtime.bat只读检查。
+新导出使用WinForms名称，旧清单、报告和流程可继续导入。旧标签和旧文件不自动删除或改写。
+版本规则：0.6.0 → 0.6.1 … 0.6.23 → 0.7.0；每23次小版本升级后推进中版本，详见release-policy.json。
+Server保持v0.5.20-Server定版，不随普通版改名或更新。
+云端529项工具箱/135项独立版检查通过；Windows/硬件/杀软仍需实机验收。
+
+【以下为历史版本说明，以当前 README 为准】
+
+【历史版本 V0.5.22】
 修正编译前环境检查：最低需要 .NET Framework 4.5，4.8 推荐但不强制。
 检测读取32位、64位及原生视图，显示实际Release/版本；“未读取到”和“版本过低”分别说明。
 完整解压，保留新增 Check_Runtime.bat；双击 Build_And_Run.bat 编译运行。
@@ -310,7 +322,7 @@ BAT 自动化增加「删除桌面指定文件」动作；支持当前用户桌�
 【V0.3.0 完整源码整合版】
 请先看《版本更新记录_累计.txt》，再双击 Build_And_Run.bat。
 
-IT 桌面运维工具箱 V0.4.0 · 完整源码版
+WinForms V0.4.0 · 完整源码版
 ========================================
 
 一、第一次编译

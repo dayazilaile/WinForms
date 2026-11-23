@@ -10,7 +10,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     internal sealed class AuditIdentity
     {
@@ -24,7 +24,7 @@ namespace ITDesktopToolkit
         // Logical call context flows through .NET 4.5 Tasks without the .NET 4.6 AsyncLocal dependency.
         private sealed class AuditContext
         {
-            private const string Slot="ITDesktopToolkit.OperationAudit.Current.v1";
+            private const string Slot="WinForms.OperationAudit.Current.v1";
             internal string Value
             {
                 get{return System.Runtime.Remoting.Messaging.CallContext.LogicalGetData(Slot) as string;}

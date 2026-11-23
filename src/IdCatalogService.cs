@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // 可选的 pci.ids / usb.ids 离线查找；不请求网络、不改写用户的本地数据库。
     // ID 识别的是总线注册厂商/设备系列，不意味着板卡零售品牌或笔记本整机品牌。

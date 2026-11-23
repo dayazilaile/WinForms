@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
-using ITDesktopToolkit;
+using WinForms;
 class NavigationUiTests
 {
     static int passed;static int uiErrors;
@@ -80,6 +80,7 @@ class NavigationUiTests
                 var originalLoad=Field<System.Threading.Tasks.Task<DatabaseService>>(main,"databaseLoad");var gate=new System.Threading.Tasks.TaskCompletionSource<DatabaseService>();main.GetType().GetField("databaseLoad",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,gate.Task);
                 main.Show();Application.DoEvents();Check(main.Visible&&!gate.Task.IsCompleted&&Field<string>(main,"currentPage")=="系统概览","Overview renders while database task is still pending");Pump(()=>originalLoad.IsCompleted,30000);gate.SetResult(originalLoad.GetAwaiter().GetResult());Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
                 Pump(()=>Find<Button>(Field<Panel>(main,"content")).Single(b=>b.Text=="刷新系统信息").Enabled,60000);Check(startupProcesses==0,"Toolbox startup, database load and overview never request a child process or cleanup runner");CommandService.ProcessStarting-=observeProcess;
+                Check(main.Text==ProductInfo.WindowTitle&&main.Text=="WinForms V0.6.0"&&!Find<Label>(main).Any(l=>l.Text.Contains("本地离线运行"))&&Find<Label>(main).Any(l=>l.Text.Contains(ProductInfo.Name+"\r\n")&&l.Text.Contains("V"+ProductInfo.Version)),"Main window and sidebar consistently display WinForms 0.6.0");Screenshot(main,"winforms-v060.png");
                 Check(tree.Nodes.Count==7&&Leaves(tree)==30,"Seven categories / 30 features (including trial), no duplicate system category");
                 Check(Field<string>(main,"currentPage")=="系统概览"&&tree.Nodes[0].IsExpanded,"Every launch opens system overview despite saved prior page");
                 Click(tree,tree.Nodes[0]);Check(!tree.Nodes[0].IsExpanded,"Category text click collapses");Click(tree,tree.Nodes[1]);Check(tree.Nodes[1].IsExpanded&&tree.Nodes.Cast<TreeNode>().Count(n=>n.IsExpanded)==1,"Accordion expands only one group");

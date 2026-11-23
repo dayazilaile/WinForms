@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class StartupItem
     {

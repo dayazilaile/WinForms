@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // 专供硬件清单 / 网络报告使用。先排除虚拟设备，再按名称和适配器类型判断。
     // 只把能辨别为有线或无线的物理网卡写入清单，不根据 Microsoft 的回环接口推断硬件。

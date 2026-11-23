@@ -5,7 +5,7 @@ using System.Management;
 using System.Text;
 using System.Windows.Forms;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Read-only monitor inventory. EDID is device-reported data, not a retail SKU lookup.
     // Never correlate multiple displays by WMI iteration order; it is not guaranteed.

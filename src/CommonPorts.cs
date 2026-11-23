@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class CommonPorts
     {

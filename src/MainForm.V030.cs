@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed partial class MainForm
     {

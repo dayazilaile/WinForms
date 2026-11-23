@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Text Services Framework (TSF): enumerates installed/enabled IME profiles,
     // including third-party IMEs which may not appear in Get-WinUserLanguageList.

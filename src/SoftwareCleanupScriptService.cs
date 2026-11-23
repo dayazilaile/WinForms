@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class SoftwareCleanupScriptService
     {

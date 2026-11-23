@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ITDesktopToolkit;
+using WinForms;
 class WorkspaceTests
 {
     static int passed;

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using ITDesktopToolkit;
+using WinForms;
 class DesktopTests
 {
     static int passed;
@@ -306,8 +306,15 @@ Has '网络/Legacy adapter/IPv6' '2001:db8::9'
         Check(OperationAudit.LogPath.StartsWith(Paths.BaseDir)&&!OperationAudit.LogPath.Contains("AppData"),"Structured audit remains in the portable program directory");
 
     }
+    static void BrandingCompatibility()
+    {
+        var fields=new Dictionary<string,string>{{"系统/名称","Legacy OS"},{"CPU/1/型号","Legacy CPU"}};string report=InspectionService.Serialize(fields);Check(report.StartsWith("# WinForms configuration report")&&InspectionService.Parse(report.Replace(InspectionService.Header,InspectionService.LegacyHeader))["CPU/1/型号"]=="Legacy CPU","New configuration report uses WinForms and still reads the original report header");
+        string compact=InspectionService.ExportConfiguration(report);Check(InspectionService.Parse(compact.Replace(InspectionService.CompactHeader,InspectionService.LegacyCompactHeader)).Count>0,"Compact reports exported under the original brand remain readable");
+        string standard=SoftwareBaselineService.Serialize(new[]{new SoftwareBaselineEntry{Name="Editor",Publisher="Vendor"}});Check(standard.StartsWith("# WinForms Software Baseline")&&SoftwareBaselineService.Parse(standard.Replace(SoftwareBaselineService.Header,SoftwareBaselineService.LegacyHeader)).Single().Name=="Editor","Renamed software standards preserve original-brand imports");
+        var assembly=typeof(ProductInfo).Assembly;Check(assembly.GetName().Name=="WinForms"&&ProductInfo.Version=="0.6.0"&&((System.Reflection.AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,typeof(System.Reflection.AssemblyProductAttribute))).Product=="WinForms","Window product metadata and renamed executable agree on WinForms 0.6.0");
+    }
     static int Main(){try{UsbCapabilities();
-        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();
+        Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();BrandingCompatibility();
         Check(RouteInventoryService.MaskPrefix("255.255.255.0")==24&&RouteInventoryService.MaskPrefix("255.255.240.0")==20,"Dotted masks convert to exact prefix lengths");
         Check(RouteInventoryService.MaskPrefix("0.0.0.0")==0&&RouteInventoryService.MaskPrefix("255.255.255.255")==32,"Prefix conversion covers zero and host masks");
         Check(RouteInventoryService.MaskPrefix("255.0.255.0")==null&&RouteInventoryService.PrefixText(null)=="未知","Invalid or absent masks are not replaced by invented prefixes");

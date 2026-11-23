@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class StartupIconService
     {

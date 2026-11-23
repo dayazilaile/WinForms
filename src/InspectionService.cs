@@ -4,13 +4,14 @@ using System.IO;
 using System.Text;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Reports contain keys and values, never executable content. No Win32_Product queries.
     public static class InspectionService
     {
-        public const string Header = "# ITDesktopToolkit configuration report v1";
-        public const string CompactHeader = "# ITDesktopToolkit configuration report v2";
+        public const string Header = "# WinForms configuration report v1";
+        public const string CompactHeader = "# WinForms configuration report v2";
+        internal const string LegacyHeader="# ITDesktopToolkit configuration report v1",LegacyCompactHeader="# ITDesktopToolkit configuration report v2";
         private static string Encode(string s) { return Convert.ToBase64String(Encoding.UTF8.GetBytes(s ?? "")); }
         public static string Serialize(IDictionary<string,string> values)
         {
@@ -24,8 +25,8 @@ namespace ITDesktopToolkit
             var result = new Dictionary<string,string>(StringComparer.Ordinal);
             using (StringReader r = new StringReader(text.TrimStart('\uFEFF')))
             {
-                string header=r.ReadLine();bool compact=header==CompactHeader;
-                if(header!=Header&&!compact)throw new FormatException("请选择工具箱导出的配置对比报告。");
+                string header=r.ReadLine();bool compact=header==CompactHeader||header==LegacyCompactHeader;
+                if(header!=Header&&header!=LegacyHeader&&!compact)throw new FormatException("请选择工具箱导出的配置对比报告。");
                 string line;
                 while ((line = r.ReadLine()) != null)
                 {

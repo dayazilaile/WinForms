@@ -8,31 +8,31 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Application compilation failed' }
     $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     if (-not (Test-Path -LiteralPath $compiler)) { $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
-    & $compiler /nologo /codepage:65001 /out:build\FeatureTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\FeatureTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\FeatureTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\FeatureTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed' }
     & .\build\FeatureTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Feature tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\NetworkToolsTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Xml.dll tests\NetworkToolsTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\NetworkToolsTests.exe /reference:build\WinForms.exe /reference:System.Core.dll /reference:System.Xml.dll tests\NetworkToolsTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Network tools test compilation failed' }
     & .\build\NetworkToolsTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Network tools tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\WorkspaceTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\WorkspaceTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\WorkspaceTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\WorkspaceTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Workspace test compilation failed' }
     & .\build\WorkspaceTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\TrialTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\TrialTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\TrialTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\TrialTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Trial test compilation failed' }
     & .\build\TrialTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Trial tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\DesktopTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\DesktopTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\DesktopTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\DesktopTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Desktop test compilation failed' }
     & .\build\DesktopTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Desktop tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\StudentWakeTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll tests\StudentWakeTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\StudentWakeTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\StudentWakeTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Student wake test compilation failed' }
     & .\build\StudentWakeTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Student wake tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\ITDesktopToolkit.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\WinForms.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }

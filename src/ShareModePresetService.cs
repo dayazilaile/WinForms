@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     /// <summary>Win10/11 SMB quick presets, not a promise that remote share ACLs are automatically fixed.</summary>
     public static class ShareModePresetService

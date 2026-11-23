@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class PowerService
     {

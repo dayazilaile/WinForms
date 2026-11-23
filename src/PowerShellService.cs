@@ -4,7 +4,7 @@ using System.Threading;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class PowerShellService
     {

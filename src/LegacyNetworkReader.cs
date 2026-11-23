@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Windows 7 / Server 2008 R2: read-only WMI routes and IPv4 IP Helper ARP table.
     internal static class LegacyNetworkReader

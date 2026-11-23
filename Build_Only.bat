@@ -36,10 +36,10 @@ if not exist "Scripts\SoftwareCleanup.ps1" (
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== IT Desktop Toolkit V0.5.22 =====
+echo ===== WinForms V0.6.0 =====
 echo Compiler: "%CSC%"
 pushd "src"
-"%CSC%" /nologo /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\ITDesktopToolkit.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
+"%CSC%" /nologo /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\WinForms.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
 set "RESULT=%ERRORLEVEL%"
 popd
 if not "%RESULT%"=="0" (
@@ -49,7 +49,7 @@ if not "%RESULT%"=="0" (
  if /I not "%~1"=="--no-pause" pause
  exit /b %RESULT%
 )
-if not exist "build\ITDesktopToolkit.exe" (
+if not exist "build\WinForms.exe" (
  echo [ERROR] Compiler returned success but output EXE is missing.
  if /I not "%~1"=="--no-pause" pause
  exit /b 3
@@ -78,7 +78,7 @@ if not exist "build\Database\Licenses" mkdir "build\Database\Licenses"
 if not exist "build\Database\Sources" mkdir "build\Database\Sources"
 for %%F in ("Database\Licenses\*") do if not exist "build\Database\Licenses\%%~nxF" copy /Y "%%~fF" "build\Database\Licenses\%%~nxF" >nul
 for %%F in ("Database\Sources\*") do if not exist "build\Database\Sources\%%~nxF" copy /Y "%%~fF" "build\Database\Sources\%%~nxF" >nul
-echo [SUCCESS] build\ITDesktopToolkit.exe
+echo [SUCCESS] build\WinForms.exe
  echo [NOTE] Keep the complete build folder including Database when moving to other computers.
 if /I not "%~1"=="--no-pause" pause
 exit /b 0

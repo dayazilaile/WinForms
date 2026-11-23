@@ -4,7 +4,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class NetworkService
     {

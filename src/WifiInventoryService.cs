@@ -6,7 +6,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class WifiAdapterRow
     {

@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // 系统安全状态是多来源信息。某项接口不存在不能被推断为“已关闭”。
     // 不安装、删除或修补 Defender / Windows Security / Security Center 组件。

@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Read the CURRENT active plan from powrprof.dll, without parsing language-dependent
     // Chinese/English powercfg.exe text. Values returned by the API are seconds.

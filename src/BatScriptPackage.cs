@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Both exporters use the same standalone BAT header, visible launcher and payload format.
     internal static class BatScriptPackage

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     /// <summary>
     /// Authenticated / legacy guest compatibility are separate for SMB CLIENT and SMB SERVER.

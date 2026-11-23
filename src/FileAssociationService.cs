@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class FileAssociationService
     {

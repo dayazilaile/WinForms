@@ -6,7 +6,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class UsbDriveAccess
     {

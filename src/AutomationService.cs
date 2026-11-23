@@ -5,7 +5,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class AutoStep
     {
@@ -88,7 +88,7 @@ namespace ITDesktopToolkit
         public static void Save(string path, List<AutoStep> steps, AutoWorkflowSettings options)
         {
             CheckOptions(steps, options);
-            StringBuilder b = new StringBuilder("# ITToolbox Workflow V3 | UTF-8 | fields Base64\r\n");
+            StringBuilder b = new StringBuilder("# WinForms Workflow V3 | UTF-8 | fields Base64\r\n");
             b.AppendLine("# EXPORT_ENGINE=" + (options.Engine == BatInputEngine.Legacy ? "Legacy" : "SendInput"));
             b.AppendLine("# HIDE_CONSOLE=" + (options.HideConsole ? "1" : "0"));
             b.AppendLine("# RUN_AS_ADMIN=" + (options.RunAsAdministrator ? "1" : "0"));
@@ -531,7 +531,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             {
                 b.AppendLine(@"function Assert-Admin { $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $p=New-Object Security.Principal.WindowsPrincipal($id); if(-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw '网络配置需要管理员权限，请右键以管理员身份运行 BAT。'} }");
                 b.AppendLine(@"function Target-Nic([string]$name) { if($name -ne '自动有线' -and $name -ne '自动无线') { $n=Get-NetAdapter -Name $name -ErrorAction Stop; if($n.Status -eq 'Disabled'){throw '目标网卡已禁用'}; return $n.Name }; $all=@(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object {$_.Status -ne 'Disabled'}); $list=@($all|Where-Object { $wifi=($_.NdisPhysicalMedium -eq 9) -or ($_.InterfaceDescription -match 'Wireless|Wi-Fi|WLAN|802\.11'); if($name -eq '自动无线'){$wifi}else{-not $wifi} }); if($list.Count -ne 1){throw ('自动筛选网卡结果为 '+$list.Count+' 个，未执行修改。请改填明确的网卡名称。')}; return $list[0].Name }");
-                b.AppendLine(@"function Backup-Net { $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT); if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录，未修改网络配置'}; $folder=Join-Path $root 'Logs'; [void][IO.Directory]::CreateDirectory($folder); $file=Join-Path $folder ('ITToolkit_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); $dump=& netsh.exe interface ipv4 dump; if($LASTEXITCODE -ne 0){throw '读取原网络配置失败，未修改网络配置'}; $who=Get-ITNetworkIdentity; @('# 时间='+[DateTimeOffset]::Now.ToString('o'),'# 主机名='+$who.HostName,'# 设备标识='+$who.Device,'# 硬件UUID='+$who.Uuid,'# BIOS序列号='+$who.Serial,'# '+$who.Facts,'# 操作='+$script:itNetworkLogOperation)+@($dump) | Out-File -LiteralPath $file -Encoding Unicode -ErrorAction Stop; Write-Host ('旧IPv4配置备份：'+$file) }");
+                b.AppendLine(@"function Backup-Net { $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT); if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录，未修改网络配置'}; $folder=Join-Path $root 'Logs'; [void][IO.Directory]::CreateDirectory($folder); $file=Join-Path $folder ('WinForms_IPV4_Before_'+$env:COMPUTERNAME+'_'+(Get-Date -Format yyyyMMdd_HHmmss_fff)+'.txt'); $dump=& netsh.exe interface ipv4 dump; if($LASTEXITCODE -ne 0){throw '读取原网络配置失败，未修改网络配置'}; $who=Get-ITNetworkIdentity; @('# 时间='+[DateTimeOffset]::Now.ToString('o'),'# 主机名='+$who.HostName,'# 设备标识='+$who.Device,'# 硬件UUID='+$who.Uuid,'# BIOS序列号='+$who.Serial,'# '+$who.Facts,'# 操作='+$script:itNetworkLogOperation)+@($dump) | Out-File -LiteralPath $file -Encoding Unicode -ErrorAction Stop; Write-Host ('旧IPv4配置备份：'+$file) }");
                 b.AppendLine("Assert-Admin");
                 b.AppendLine("foreach($itRequired in @('Get-NetAdapter','Get-NetIPInterface','Get-NetIPAddress','Get-NetIPConfiguration','Get-NetRoute','Get-NetNeighbor')){if(-not (Get-Command $itRequired -ErrorAction SilentlyContinue)){throw ('当前系统缺少 '+$itRequired+'；该网络自动化动作需要 Windows 8 / Server 2012 或更新系统。Win7/2008 R2 可使用工具箱的手动 IPv4 配置。')}}");
             }
@@ -587,7 +587,7 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             if (engine == BatInputEngine.Legacy && steps.Exists(delegate(AutoStep x) { return x != null && x.Type == "输入文字"; }))
                 b.AppendLine(LegacyTextHelper);
             b.AppendLine("Write-Host " + P(engine == BatInputEngine.Legacy ? "传统兼容模式：mouse_event + keybd_event；文字使用剪贴板粘贴（避免中文输入法拦截）" : "新版模式：SendInput + Unicode 键盘输入"));
-            b.AppendLine("Write-Host " + P("IT Toolkit: 启动前等待 " + startupDelaySeconds + " 秒。可在可见控制台按 Ctrl+C 中止。"));
+            b.AppendLine("Write-Host " + P("WinForms: 启动前等待 " + startupDelaySeconds + " 秒。可在可见控制台按 Ctrl+C 中止。"));
             if (startupDelaySeconds > 0) b.AppendLine("Start-Sleep -Seconds " + startupDelaySeconds);
             var flowStack=new Stack<FlowBlock>();
             for (int i=0;i<steps.Count;i++)

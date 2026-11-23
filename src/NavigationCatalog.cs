@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class NavigationEntry
     {

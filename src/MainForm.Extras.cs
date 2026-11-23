@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed partial class MainForm
     {

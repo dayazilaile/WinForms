@@ -8,7 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class StudentMachine
     {
@@ -17,7 +17,8 @@ namespace ITDesktopToolkit
     public static class StudentRoster
     {
         public const int Maximum=500;
-        public const string Header="# ITDesktopToolkit students v1";
+        public const string Header="# WinForms students v1";
+        internal const string LegacyHeader="# ITDesktopToolkit students v1";
         public static StudentMachine Validate(StudentMachine item)
         {
             if(item==null)throw new ArgumentException("学生机记录不能为空。");string[] fields={item.Room,item.Name,item.IPv4,item.Mac,item.Note};
@@ -39,7 +40,7 @@ namespace ITDesktopToolkit
         public static List<StudentMachine> Parse(string text)
         {
             if(text==null||text.Length>4*1024*1024)throw new FormatException("学生机清单不能超过 4 MiB。");var items=new List<StudentMachine>();
-            foreach(string row in text.TrimStart('\uFEFF').Replace("\r","").Split('\n')){string comment=row.TrimEnd('\t',' ');if(String.IsNullOrWhiteSpace(row)||(comment==Header||comment=="# 机房\t名称\tIPv4（可空）\tMAC\t备注（可空）"||(comment.StartsWith("#",StringComparison.Ordinal)&&comment.IndexOf('\t')<0)))continue;string[] fields=row.Split('\t');if(fields.Length<4||fields.Length>5)throw new FormatException("每行应为：机房<Tab>名称<Tab>IPv4<Tab>MAC<Tab>备注（可空）。");items.Add(new StudentMachine{Room=fields[0],Name=fields[1],IPv4=fields[2],Mac=fields[3],Note=fields.Length==5?fields[4]:""});if(items.Count>Maximum)throw new FormatException("清单最多 "+Maximum+" 行。");}
+            foreach(string row in text.TrimStart('\uFEFF').Replace("\r","").Split('\n')){string comment=row.TrimEnd('\t',' ');if(String.IsNullOrWhiteSpace(row)||(comment==Header||comment==LegacyHeader||comment=="# 机房\t名称\tIPv4（可空）\tMAC\t备注（可空）"||(comment.StartsWith("#",StringComparison.Ordinal)&&comment.IndexOf('\t')<0)))continue;string[] fields=row.Split('\t');if(fields.Length<4||fields.Length>5)throw new FormatException("每行应为：机房<Tab>名称<Tab>IPv4<Tab>MAC<Tab>备注（可空）。");items.Add(new StudentMachine{Room=fields[0],Name=fields[1],IPv4=fields[2],Mac=fields[3],Note=fields.Length==5?fields[4]:""});if(items.Count>Maximum)throw new FormatException("清单最多 "+Maximum+" 行。");}
             return Checked(items);
         }
         public static List<StudentMachine> Merge(IEnumerable<StudentMachine> current,IEnumerable<StudentMachine> incoming)

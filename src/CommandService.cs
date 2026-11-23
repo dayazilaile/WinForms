@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class CommandService
     {

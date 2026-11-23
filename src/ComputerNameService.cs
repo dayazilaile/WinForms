@@ -3,7 +3,7 @@ using System.Management;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class ComputerNameService
     {

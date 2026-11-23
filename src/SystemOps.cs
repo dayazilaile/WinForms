@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using Microsoft.Win32;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class SystemOps
     {
@@ -57,9 +57,9 @@ namespace ITDesktopToolkit
             string script = "$ErrorActionPreference='Stop'; $p=" + port + "; " +
                 "$name='ITToolkit-RDP-'+$p; " +
                 "if(-not(Get-NetFirewallRule -Name ($name+'-TCP') -ErrorAction SilentlyContinue)){" +
-                "New-NetFirewallRule -Name ($name+'-TCP') -DisplayName ('IT Toolkit RDP TCP '+$p) -Direction Inbound -Protocol TCP -LocalPort $p -Action Allow -Profile Private,Domain -ErrorAction Stop | Out-Null};" +
+                "New-NetFirewallRule -Name ($name+'-TCP') -DisplayName ('WinForms RDP TCP '+$p) -Direction Inbound -Protocol TCP -LocalPort $p -Action Allow -Profile Private,Domain -ErrorAction Stop | Out-Null};" +
                 "if(-not(Get-NetFirewallRule -Name ($name+'-UDP') -ErrorAction SilentlyContinue)){" +
-                "New-NetFirewallRule -Name ($name+'-UDP') -DisplayName ('IT Toolkit RDP UDP '+$p) -Direction Inbound -Protocol UDP -LocalPort $p -Action Allow -Profile Private,Domain -ErrorAction Stop | Out-Null};" +
+                "New-NetFirewallRule -Name ($name+'-UDP') -DisplayName ('WinForms RDP UDP '+$p) -Direction Inbound -Protocol UDP -LocalPort $p -Action Allow -Profile Private,Domain -ErrorAction Stop | Out-Null};" +
                 "Get-NetFirewallRule -Name ($name+'-*') -ErrorAction Stop | Select-Object DisplayName,Enabled,Profile,Direction,Action | Format-Table -AutoSize | Out-String";
             return PowerShellService.RunScript(script,2);
         }

@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     internal static class MouseCoordinateService
     {

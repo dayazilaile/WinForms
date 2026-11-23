@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Resolve bundled Windows commands without searching the current directory or PATH.
     internal static class SystemCommandPath

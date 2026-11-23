@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class NetworkSharingOptionsService
     {

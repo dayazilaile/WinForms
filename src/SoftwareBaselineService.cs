@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed class SoftwareBaselineEntry
     {
@@ -16,7 +16,8 @@ namespace ITDesktopToolkit
     }
     public static class SoftwareBaselineService
     {
-        public const string Header="# ITDesktopToolkit Software Baseline V1";
+        public const string Header="# WinForms Software Baseline V1";
+        internal const string LegacyHeader="# ITDesktopToolkit Software Baseline V1";
         public const int Maximum=10000;
         public static string DefaultPath { get { return Path.Combine(Paths.UserDir,"software-baseline-v1.tsv"); } }
         private static string Field(string value,bool required)
@@ -49,7 +50,7 @@ namespace ITDesktopToolkit
         {
             if(text==null||Encoding.UTF8.GetByteCount(text)>4*1024*1024)throw new FormatException("标准清单不能超过 4 MiB。");
             string[] lines=text.TrimStart('\uFEFF').Replace("\r\n","\n").Split('\n');
-            if(lines.Length<2||lines[0]!=Header||lines[1]!="软件名称\t发布者")throw new FormatException("不是软件标准清单，请使用“标准清单 → 导出标准清单”生成的文件。原关键词/最低版本清单请从“版本检查”导入。");
+            if(lines.Length<2||(lines[0]!=Header&&lines[0]!=LegacyHeader)||lines[1]!="软件名称\t发布者")throw new FormatException("不是软件标准清单，请使用“标准清单 → 导出标准清单”生成的文件。原关键词/最低版本清单请从“版本检查”导入。");
             var rows=new List<SoftwareBaselineEntry>();for(int i=2;i<lines.Length;i++){if(String.IsNullOrWhiteSpace(lines[i]))continue;string[] cells=lines[i].Split('\t');if(cells.Length!=2)throw new FormatException("标准清单第 "+(i+1)+" 行应为：软件完整名称<Tab>发布者（可空）。");rows.Add(new SoftwareBaselineEntry{Name=cells[0],Publisher=cells[1]});if(rows.Count>Maximum)throw new FormatException("标准清单最多 "+Maximum+" 行。");}return Checked(rows);
         }
         public static List<SoftwareBaselineEntry> Load(string path)

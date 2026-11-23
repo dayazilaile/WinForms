@@ -11,5 +11,5 @@ export XDG_CACHE_HOME="$setup/ui-cache"
 mkdir -p "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
 : "${DISPLAY:?Start a virtual display or select the existing display first}"
 mono=("$setup/mono/usr/bin/mono-sgen" --config "$setup/mono/etc/mono/config")
-"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NavigationUiTests.exe" -r:"$repo/build/ITDesktopToolkit.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/NavigationUiTests.cs"
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/NavigationUiTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/NavigationUiTests.cs"
 "${mono[@]}" "$repo/build/NavigationUiTests.exe"

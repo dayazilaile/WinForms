@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using ITDesktopToolkit;
+using WinForms;
 class FeatureTests
 {
     static int passed;
@@ -118,6 +118,10 @@ Write-Output 'PASS bounded checks fixture'
         File.WriteAllText(Path.Combine(folder,"condition-error-fixture.ps1"),error,new System.Text.UTF8Encoding(true));
         string falseCondition=AutomationService.MakeScript(AutomationBlockService.Compose(S("如果文件存在",Path.Combine(folder,"absent-"+Guid.NewGuid())),new List<AutoStep>{S("检查文件存在",Path.Combine(folder,"must-not-run-"+Guid.NewGuid()))},new List<AutoStep>{S("等待毫秒","1")},true),BatInputEngine.SendInput,0,false);
         File.WriteAllText(Path.Combine(folder,"false-condition-fixture.ps1"),falseCondition,new System.Text.UTF8Encoding(true));
+    }
+    static void WorkflowBranding()
+    {
+        string path=Path.GetTempFileName();try{AutomationService.Save(path,new List<AutoStep>{S("等待毫秒","1")});string text=File.ReadAllText(path);Check(text.StartsWith("# WinForms Workflow V3"),"Workflow export displays the WinForms project name");File.WriteAllText(path,text.Replace("# WinForms Workflow V3","# ITToolbox Workflow V3"));Check(AutomationService.Load(path).Single().Type=="等待毫秒","Original workflow headers remain loadable after branding");}finally{File.Delete(path);}
     }
     static void NetworkAudit()
     {
@@ -345,5 +349,5 @@ Write-Output 'PASS random wait fixture'
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
         try{int port=((IPEndPoint)listener.LocalEndpoint).Port;Check((await PrinterDiagnosticsService.TestPort("127.0.0.1",port)).Contains("TCP 可连接"),"Printer TCP diagnostic connects to loopback listener without print data");}finally{listener.Stop();}
     }
-    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();LauncherReview();TimeoutChecks();NetworkAudit();RandomIpv4();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{ConditionBlocks();MouseBridge();Reports();Flow();LauncherReview();TimeoutChecks();WorkflowBranding();NetworkAudit();RandomIpv4();RandomWait();Usb();Network().GetAwaiter().GetResult();Console.WriteLine("TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

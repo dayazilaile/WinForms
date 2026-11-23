@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     // Windows 11 guest share helper. All changes require an explicit UI confirmation.
     // The public share action is deliberately scoped to one existing, non-system folder.
@@ -114,7 +114,7 @@ namespace ITDesktopToolkit
                    if($existing.Description -ne 'ITToolkit Win11 Mutual Guest Share'){throw '规则名被其他应用占用，未修改防火墙'};
                    Set-NetFirewallRule -Name $rule -Enabled True -Profile Private -ErrorAction Stop;
                  } else {
-                   New-NetFirewallRule -Name $rule -DisplayName 'IT工具箱：专用网络 SMB 445 入站' -Description 'ITToolkit Win11 Mutual Guest Share' -Enabled True -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445 -RemoteAddress LocalSubnet -Profile Private -ErrorAction Stop | Out-Null;
+                   New-NetFirewallRule -Name $rule -DisplayName 'WinForms：专用网络 SMB 445 入站' -Description 'ITToolkit Win11 Mutual Guest Share' -Enabled True -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445 -RemoteAddress LocalSubnet -Profile Private -ErrorAction Stop | Out-Null;
                  };
                  '已设置：只允许专用网络，同一子网来源访问本机 TCP 445；不开放公用网络。';
                } catch { Write-Output ('[操作失败] '+$_.Exception.Message); exit 1 }";

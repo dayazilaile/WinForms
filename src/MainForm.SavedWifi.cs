@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public sealed partial class MainForm
     {

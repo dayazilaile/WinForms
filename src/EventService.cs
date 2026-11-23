@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ITDesktopToolkit
+namespace WinForms
 {
     public static class EventService
     {
@@ -204,7 +204,7 @@ namespace ITDesktopToolkit
         public static string BuildReport(FaultScanResult result)
         {
             StringBuilder b = new StringBuilder();
-            b.AppendLine("IT 桌面运维工具箱 · 故障检测报告");
+            b.AppendLine(ProductInfo.Name+" · 故障检测报告");
             b.AppendLine("导出时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             b.AppendLine("计算机名称：" + Environment.MachineName);
             b.AppendLine("检测范围：最近 " + result.Days + " 天（每个日志最多检查 60000 条、提取 600 条相关事件）");
