@@ -7,7 +7,7 @@ export LD_LIBRARY_PATH="$setup/mono/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 mono=("$setup/mono/usr/bin/mono-sgen" --config "$setup/mono/etc/mono/config")
 mkdir -p "$repo/build"
 export PYTHONPATH="/workspace/cloud-setup/metadata${PYTHONPATH:+:$PYTHONPATH}"
-python3 "$repo/tools/build_framework.py" --project "$repo" --references "${NETFRAMEWORK_REFS:-/workspace/cloud-setup/netfx48}" --standalone
+python3 "$repo/tools/build_framework.py" --project "$repo" --references "${NETFRAMEWORK_REFS:-/workspace/cloud-setup/netfx45}" --standalone
 
 for name in StandaloneTests StandaloneUiTests; do
  "${mono[@]}" "$MONO_PATH/mcs.exe" -langversion:5 -out:"$repo/build/$name.exe" -r:"$repo/build/BatAutomation.exe" -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll "$repo/tests/$name.cs"

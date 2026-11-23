@@ -11,7 +11,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT/'tools'))
 from verify_windows_refs import verify
-REFS = Path(os.environ.get('NETFRAMEWORK_REFS', '/workspace/cloud-setup/netfx48'))
+REFS = Path(os.environ.get('NETFRAMEWORK_REFS', '/workspace/cloud-setup/netfx45'))
 MONO = Path(os.environ.get('MONO_ROOT', '/workspace/cloud-setup/mono'))
 
 
@@ -35,11 +35,11 @@ class WindowsMetadataTests(unittest.TestCase):
         report = json.loads((ROOT/'BUILD_INFO.json').read_text())
         self.assertEqual(report['sha256'], hashlib.sha256((ROOT/'BatAutomation.exe').read_bytes()).hexdigest())
         self.assertEqual(report['stack_owners'], ['System'])
-        self.assertEqual(report['reference_profile'], 'Microsoft .NET Framework 4.8')
+        self.assertEqual(report['reference_profile'], 'Microsoft .NET Framework 4.5')
 
     def test_automation_sources_match_the_unchanged_toolkit_origin(self):
         origin = json.loads((ROOT/'SOURCE_PROVENANCE.json').read_text())
-        self.assertEqual(origin['base_tag'], 'v0.5.21')
+        self.assertEqual(origin['base_tag'], 'v0.5.22')
         for name, expected in origin['unchanged_sources_sha256'].items():
             self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(), expected, name)
 

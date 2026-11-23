@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.5.21",
-  "base_commit": "d4f7037d239c33551c39a72aab9a4cef3e146526",
+  "base_tag": "v0.5.22",
+  "base_commit": "ca3d4ef542b0eb3d47becbefd3692d94d9e61585",
   "unchanged_sources_sha256": {
     "src/AutomationService.cs": "501b3f3189c5f173d00ec3c7667426e28347e9d49fc2b99027f8d4495f668670",
     "src/AutomationFlow.cs": "4429b80f7156ead8c8c2ef8ff7d3fd2f0642b6a20854f7dfe96107e98a814a84",
@@ -13,8 +13,8 @@
     "src/WindowCatalog.cs": "87802439e8a2c4b1facdc559ac62a739c091cea00c4ea8ba4c6ff3bdb645859b",
     "src/BatScriptPackage.cs": "932690d698c78f8f81c35bb14f692263fbe519ad46341f91f6f14034f092c7fc",
     "src/AutomationRandomIp.cs": "8c939acf85007565f92a6ed92b573bbc8bff0ec5576e347f6a66b226b7a807f3",
-    "src/WindowsCompatibility.cs": "3e9f80d4b7d4b1310a38cfd69ce91d59598d6dcc03f44f293021815e0484ad50",
-    "src/AutomationNetworkAudit.cs": "a19376ab8db983f8aad49f7b60f21d57f5a179f8f40d85407c5273a0fb9e9b61"
+    "src/WindowsCompatibility.cs": "d4b2e6d125de63d7c233fa7ef845f4d1ebaf9bc320e29363eddf3d4f2694c2f4",
+    "src/AutomationNetworkAudit.cs": "b003a8e291d14f946a57c4e111b656736815360ee998956d8b7ad6a6e309e550"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -22,6 +22,7 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.5.21-BAT",
-  "change": "Fresh extraction: structured network-operation audit in BAT/Logs with machine UUID/serial, MAC/IP snapshots, correlated operation IDs, before/after/failure and random IPv4 attempts. Basic input and popup-only cleanup behavior retained. Server v0.5.20-Server remains frozen."
+  "standalone_version": "0.5.22-BAT",
+  "change": "Fresh extraction: verified .NET Framework 4.5 baseline, dual registry-view runtime detection and direct diagnostics. Existing automation/network audit behavior retained. Server frozen tag unchanged.",
+  "minimum_framework": "Microsoft .NET Framework 4.5"
 }

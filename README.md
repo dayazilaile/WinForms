@@ -1,6 +1,14 @@
-# BAT 自动化独立版 v0.5.21-BAT
+# BAT 自动化独立版 v0.5.22-BAT
 
-从 [IT 桌面运维工具箱 v0.5.21](https://github.com/dayazilaile/WinForms/tree/v0.5.21) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.21-BAT`，与工具箱 v0.5.21 同步。
+从 [IT 桌面运维工具箱 v0.5.22](https://github.com/dayazilaile/WinForms/tree/v0.5.22) 提取的独立 Windows 程序。打开直接进入 BAT 编辑器，运行只需 **BatAutomation.exe**，不依赖原工具箱、数据库目录或额外 DLL。发布使用独立 tag `v0.5.22-BAT`，与工具箱 v0.5.22 同步。
+
+## V0.5.22 编译与运行库检测修正
+
+程序最低.NET Framework 4.5，4.8仅推荐；已按微软4.5引用程序集编译并核对成品类型归属。Check_Runtime.bat读取双视图及原生回退，显示实际Release与版本。读取失败不会直接写成“已知版本低”。
+
+完整解压后运行Build_And_Run.bat；仍有提示时运行Diagnose_Runtime.bat查看只读输出。确实缺少最低运行库时需装官方组件。Win7仍需SP1，生成BAT仍需PowerShell5.1（该组件自身需要.NET4.5.2）。
+
+133项云端检查通过；Windows批处理七场景已接入tests/Run-Windows.ps1，尚未在本Linux云端执行，旧Windows/CLR实测仍需验收。Server冻结包不变。
 
 ## V0.5.21 网络操作身份日志
 
@@ -98,18 +106,18 @@ Win7 SP1/10/11 需要 .NET Framework 4.8 或更新的 4.x，生成 BAT 需要 Wi
 
 ## 沿用独立版框架兼容性修复
 
-继续使用微软 .NET Framework 4.8 引用程序集和最终 EXE 类型归属检查，保留 v0.5.11-BAT 对旧包 Stack<T> 类型加载失败的修复。构建记录见 [BUILD_INFO.json](BUILD_INFO.json)。Windows 验收会直接测试包内 EXE，然后再测试重新编译的 EXE。
+当前使用微软 .NET Framework 4.5 引用程序集和最终 EXE 类型归属检查，保留 v0.5.11-BAT 对旧包 Stack<T> 类型加载失败的修复。构建记录见 [BUILD_INFO.json](BUILD_INFO.json)。Windows 验收会直接测试包内 EXE，然后再测试重新编译的 EXE。
 
 ## 下载后怎么用
 
-1. 完整解压本包，双击根目录 **BatAutomation.exe**。适用 Windows 10 / Windows 11，建议使用 .NET Framework 4.8 与系统 Windows PowerShell。
+1. 完整解压本包，双击根目录 **BatAutomation.exe**。适用 Windows 7 SP1 / Windows 10 / Windows 11；最低 .NET Framework 4.5，建议 4.8，生成 BAT 另需 Windows PowerShell 5.1。
 2. 点击 **添加动作**，选择类型并填写参数；用 ☰ 拖动排序，或通过 **复制动作 / Ctrl+D** 复用。
 3. 点击 **保存流程** 保存可继续编辑的 `.workflow.txt`；**打开流程** 可以读取原工具箱保存的流程。打开流程不会执行其中动作。
 4. 选择生成方式、启动延时等选项，再点 **生成 BAT**。生成的 BAT 可独立运行，目标电脑无需安装本程序。
 
 根目录附预编译 EXE；若要从源码重新编译，运行 **Build_And_Run.bat**，编译后启动 `build\BatAutomation.exe`。仅编译可运行 `Build_Only.bat`。移动编译后的程序只需复制 EXE，无需 Database 文件夹。
 
-预编译 EXE 使用 C# 5 和微软 .NET Framework 4.8 引用程序集，云端已检查成品类型引用并完成模拟界面测试。GitHub Actions 会直接运行包内发布 EXE 的测试，再编译并测试 Windows csc 版本；应以实际任务结果为准。当前云端仍不能代替 Windows 实机、输入权限和高 DPI 验收。
+预编译 EXE 使用 C# 5 和微软 .NET Framework 4.5 引用程序集，云端已检查成品类型引用并完成模拟界面测试。GitHub Actions 会直接运行包内发布 EXE 的测试，再编译并测试 Windows csc 版本；应以实际任务结果为准。当前云端仍不能代替 Windows 实机、输入权限和高 DPI 验收。
 
 ## 保留的功能
 

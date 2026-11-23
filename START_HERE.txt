@@ -1,3 +1,4 @@
-BAT 自动化独立版 v0.5.21-BAT
-网络动作日志在BAT旁Logs/network-operations-v1.tsv，补全主机/UUID/序列号/各网卡MAC/IP及操作结果；详情见README。
-纯输入/等待仍不加文件日志。需要.NET 4.8，生成BAT需要Windows PowerShell 5.1。
+BAT自动化独立版 v0.5.22-BAT
+最低.NET Framework 4.5，4.8推荐不强制。完整解压保留Check_Runtime.bat。
+运行Build_And_Run.bat；仍有环境提示时运行Diagnose_Runtime.bat查看实际检测。
+生成BAT另需PowerShell5.1，微软该组件本身要求.NET4.5.2；Win7需SP1。

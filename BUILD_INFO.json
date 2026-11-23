@@ -1,7 +1,7 @@
 {
   "assembly": "BatAutomation.exe",
-  "sha256": "f6a7ebe425384c73f046ebe6aaac5cdf2a507788d01d55c0bd6b82641f2f0784",
-  "reference_profile": "Microsoft .NET Framework 4.8",
+  "sha256": "02df39b2a93108ce2351ff10f6f3d3789082879415e19b9eb63d0b6a6f1a39d7",
+  "reference_profile": "Microsoft .NET Framework 4.5",
   "framework_assemblies": [
     "System",
     "System.Drawing",
@@ -12,13 +12,13 @@
     "System"
   ],
   "type_reference_check": "passed",
-  "reference_package_url": "https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net48/1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg",
-  "reference_package_sha256": "8a7e348538e7eb91351696911689f49e3d4f63f8bab517432bbe159b8b1104a2",
+  "reference_package_url": "https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net45/1.0.3/microsoft.netframework.referenceassemblies.net45.1.0.3.nupkg",
+  "reference_package_sha256": "23a9f94ea3e2cb88cd8341af75b811c6fb5cb82516fc696e95ed4620279128e3",
   "reference_assembly_sha256": {
-    "mscorlib": "6b35530467b914b0b195146ca1d1485ddd219afaad6461103f16f54e952f75a9",
-    "System": "2fe343569f794f2ca92ee14a41875571a9f21bf92637b8f8ee86306534209cca",
-    "System.Core": "94a1fc97eb0d36f13acd209bb7207da504c8be10caf7e5096b2c46e671dc6fe2",
-    "System.Drawing": "65a42d3e5bd4508e3c75133cd1967301a84b5dae6698f300cd831ff79c54b611",
-    "System.Windows.Forms": "0b0bc1f2ebfefe0cf827b2e2a0caa3fb8c772d84df26ab8e40abe98e0f2eb300"
+    "mscorlib": "1c627a1181fde179d9796ce2475dab52841ca8148224e92d60271da46cff0ccb",
+    "System": "8186c61afa8e04ca6d1ac79d4f5407779b76c42728603e85f2aef9d1d6d49d91",
+    "System.Core": "945ed694b31770c40e3471884714ffde19bf4031e6d9c95645c267422034ed67",
+    "System.Drawing": "257e1dd4790791a9a669271e692993c1ee4f5b59b5c191363b00c7728f851f56",
+    "System.Windows.Forms": "0811e1e938d66a35c1f03c3e8a08ab53b822d18f67ed0ae64a868294a23872c2"
   }
 }
