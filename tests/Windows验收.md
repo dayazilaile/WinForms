@@ -1,11 +1,11 @@
 # v0.5.19-BAT Windows 验收
 
-## V0.6.1 WinForms 命名与旧数据验收
+## V0.6.2 WinForms 命名与旧数据验收
 
-1. 完整解压运行Build_And_Run.bat，只应生成并启动build/WinForms.exe；窗口与侧栏显示WinForms V0.6.1，不显示整体“离线版/本地离线运行”。程序属性产品名为WinForms。
+1. 完整解压运行Build_And_Run.bat，只应生成并启动build/WinForms.exe；窗口与侧栏显示WinForms V0.6.2，不显示整体“离线版/本地离线运行”。程序属性产品名为WinForms。
 2. 核对故障报告、BAT运行提示、网络备份文件前缀、配置/软件标准/学生名单/工作流导出使用新名称。旧文件头的报告、标准与名单继续导入，原Data/Logs保留，不因改名重建用户内容。
-3. 运行单EXE独立包WinForms-BAT.exe，标题WinForms BAT自动化独立版V0.6.1-BAT；两个引擎、单BAT、条件/重试/日志/运行库检查保持。
-4. release-policy.json记录0.6.1与patch上限23；python tools/next_version.py 0.6.22输出0.6.23，输入0.6.23输出0.7.0。Server旧标签不改写。
+3. 运行单EXE独立包WinForms-BAT.exe，标题WinForms BAT自动化独立版V0.6.2-BAT；两个引擎、单BAT、条件/重试/日志/运行库检查保持。
+4. release-policy.json记录0.6.2与patch上限23；python tools/next_version.py 0.6.22输出0.6.23，输入0.6.23输出0.7.0。Server旧标签不改写。
 5. 云端截图验证的是窗口/布局，不是Windows设备接口或杀软认证；历史审查证据保留旧文件名，不当作当前可执行文件路径。
 
 ## V0.5.22 运行库检测与最低接口（实机待执行）
