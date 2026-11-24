@@ -107,10 +107,10 @@ namespace WinForms
         }
         internal sealed class AuditOperation:IDisposable
         {
-            internal readonly string Id=Guid.NewGuid().ToString("N"),ParentId;internal bool StartWritten;
+            internal readonly string Id=Guid.NewGuid().ToString("N"),ParentId;internal bool StartWritten,EndWritten;
             private readonly string name;private readonly string parent;private readonly System.Diagnostics.Stopwatch clock=System.Diagnostics.Stopwatch.StartNew();private bool complete,disposed;
             internal AuditOperation(string name,string parent){this.name=name;this.parent=parent;ParentId=String.IsNullOrEmpty(parent)?"":parent.Split('|')[0];}
-            internal void End(string result,string detail=""){if(complete)return;complete=true;Write(Id,ParentId,name,"结束",result,clock.ElapsedMilliseconds,detail);}
+            internal void End(string result,string detail=""){if(complete)return;complete=true;EndWritten=Write(Id,ParentId,name,"结束",result,clock.ElapsedMilliseconds,detail);}
             public void Dispose(){if(disposed)return;disposed=true;if(!complete)End("异常或未完成","操作没有正常返回；不据此认定成功。");if(current.Value==Id+"|"+ParentId)current.Value=parent;}
         }
     }

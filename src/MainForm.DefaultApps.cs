@@ -10,8 +10,9 @@ namespace WinForms
         private Func<string,string> defaultApplicationReader=FileAssociationService.FriendlyName;
         private Action<string,string> defaultApplicationSettings=CommandService.OpenTool;
         private Func<IntPtr,string,string,Version,bool> defaultApplicationChooser=DefaultAppsService.ChooseLegacy;
+        private Action<IntPtr,string,string> defaultApplicationOpenWith=DefaultAppsService.OpenNativePicker;
         private Func<string,List<DefaultApplicationOption>> defaultApplicationOptions=DefaultAppsService.RegisteredApplications;
-        private Func<IWin32Window,string,IList<DefaultApplicationOption>,DefaultApplicationChoice> defaultApplicationPicker;
+        private Func<IWin32Window,string,IList<DefaultApplicationOption>,DefaultApplicationChoice> defaultApplicationPicker=null;
         private Version defaultApplicationWindows=Environment.OSVersion.Version;
         private void DefaultAppsRepairDialog()
         {
@@ -45,27 +46,33 @@ namespace WinForms
                         state.Text="已请求打开系统默认应用。选中扩展名/协议完成确认后，返回这里点击刷新核对；此时尚不能确认已修改。";}
                     catch(Exception ex){state.Text="默认应用设置未打开："+ex.Message;}
                 };
-                Action choose=delegate{
+                Action chooseByApplication=delegate{
                     if(grid.CurrentRow==null){state.Text="请先选择格式或协议。";return;}var format=(DefaultAppFormat)grid.CurrentRow.Tag;
-                    if(!DefaultAppsService.SupportsNativeSelection(defaultApplicationWindows)){
+                    {
                         try{var options=defaultApplicationOptions(format.Extension);var choice=defaultApplicationPicker==null?ChooseDefaultApplicationDialog(form,format.Extension,options):defaultApplicationPicker(form,format.Extension,options);
                             if(choice==null){state.Text="已取消选择，未打开设置或修改默认程序。";return;}
                             defaultApplicationSettings(DefaultAppsService.ApplicationSettingsTarget(defaultApplicationWindows,choice.Application),DefaultAppsService.SettingsArguments(defaultApplicationWindows));
                             state.Text="已请求打开系统确认入口；格式："+format.Extension+(choice.Application==null?"":"；所选应用："+choice.Application.Name)+"。\r\n请在 Windows 中确认默认程序，再返回刷新。当前尚未确认关联已变更。";
                         }catch(Exception ex){state.Text="无法选择默认程序："+ex.Message;}return;
                     }
-                    try{bool accepted;using(var audit=OperationAudit.Begin("选择默认程序",format.Extension)){
-                        accepted=defaultApplicationChooser(form.Handle,format.Extension,Paths.UserDir,defaultApplicationWindows);audit.End(accepted?"选择窗口已关闭":"已取消","请按刷新结果核对实际关联");}
-                        refresh();state.Text=accepted?"系统选择窗口已关闭。当前显示实际查询结果，请核对；关闭窗口不代表关联已变更。":"已取消选择，未请求后续修改。";}
-                    catch(Exception ex){state.Text="无法选择默认程序："+ex.Message+"。可使用系统默认应用入口。";}
+                };
+                Action choose=delegate{
+                    if(grid.CurrentRow==null){state.Text="请先选择格式或协议。";return;}var format=(DefaultAppFormat)grid.CurrentRow.Tag;
+                    if(format.Protocol&&!DefaultAppsService.SupportsNativeSelection(defaultApplicationWindows)){chooseByApplication();return;}
+                    try{using(var audit=OperationAudit.Begin("打开原生默认程序选择",format.Extension)){
+                        if(DefaultAppsService.SupportsNativeSelection(defaultApplicationWindows)){
+                            bool accepted=defaultApplicationChooser(form.Handle,format.Extension,Paths.UserDir,defaultApplicationWindows);refresh();state.Text=accepted?"系统选择窗口已关闭，请核对查询结果；关闭窗口不代表关联已变更。":"已取消选择。";audit.End(accepted?"选择窗口已关闭":"已取消");
+                        }else{defaultApplicationOpenWith(form.Handle,format.Extension,Paths.UserDir);state.Text="已请求 Windows 原生打开方式。请选择“始终使用/始终”，仅打开一次不会保存默认程序；Windows 可能同时打开空样例。\r\n完成后返回刷新核对。若弹窗不支持保存，请使用按应用查找或系统默认应用入口。";audit.End("已提交原生选择请求","尚未确认默认关联已变更。");}
+                    }}catch(Exception ex){state.Text="原生打开方式未完成："+ex.Message+"。可改用按应用查找或系统默认应用入口。";}
                 };
                 Action reset=delegate{openSettings();state.Text+=DefaultAppsService.SupportsNativeSelection(defaultApplicationWindows)?"\r\n请在默认程序中选择已安装的系统应用并设置默认值；没有统一重置按钮。":"\r\n在默认应用页面找到“重置”（重置所有默认应用），阅读系统提示后确认。会影响个人自定义关联；完成后返回刷新。";};
                 Button select=FormButton("选择默认程序",0,0,155,delegate{choose();});select.Name="chooseDefaultApplication";
+                Button byApplication=FormButton("按应用查找",0,0,130,delegate{chooseByApplication();});byApplication.Name="chooseDefaultByApplication";
                 Button reload=FormButton("刷新关联",0,0,110,delegate{refresh();});reload.Name="refreshDefaultAssociations";
                 Button defaults=FormButton("恢复系统默认（指导）",0,0,195,delegate{reset();});defaults.Name="resetDefaultApplications";
                 Button settings=FormButton("系统默认应用",0,0,145,delegate{openSettings();});settings.Name="openDefaultApplications";
-                foreach(var button in new[]{select,reload,defaults,settings})button.Margin=new Padding(0,4,8,0);
-                buttons.Controls.AddRange(new Control[]{select,reload,defaults,settings});
+                foreach(var button in new[]{select,byApplication,reload,defaults,settings})button.Margin=new Padding(0,4,8,0);
+                buttons.Controls.AddRange(new Control[]{select,byApplication,reload,defaults,settings});
                 category.SelectedIndexChanged+=delegate{render();};search.TextChanged+=delegate{render();};grid.CellDoubleClick+=delegate(object sender,DataGridViewCellEventArgs e){if(e.RowIndex>=0)choose();};
                 layout.Controls.Add(hint,0,0);layout.Controls.Add(filter,0,1);layout.Controls.Add(grid,0,2);layout.Controls.Add(buttons,0,3);layout.Controls.Add(state,0,4);
                 form.Controls.Add(layout);refresh();form.ShowDialog(this);

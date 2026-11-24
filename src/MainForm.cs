@@ -31,6 +31,7 @@ namespace WinForms
 
         public MainForm()
         {
+            FormClosing+=PreventStudentPowerClose;
             Text = ProductInfo.WindowTitle;
             Width = 1220;
             Height = 790;

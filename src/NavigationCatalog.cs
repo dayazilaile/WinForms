@@ -32,7 +32,7 @@ namespace WinForms
             new NavigationEntry("无线与设备","摄像头发现","摄像头 ONVIF WS-Discovery IPC"),
             new NavigationEntry("共享与打印","共享文件夹","SMB NTFS 账号 Guest 权限"),
             new NavigationEntry("共享与打印","打印机与服务","打印机 队列 Spooler 驱动"),
-            new NavigationEntry("学生机管理","学生机与网络唤醒","学生机 机房 WOL Wake-on-LAN 远程 开机 MAC 清单"),
+            new NavigationEntry("学生机管理","学生机与网络唤醒","学生机 机房 WOL Wake-on-LAN 远程 开机 MAC 清单 关机 重启 电源 取消"),
             new NavigationEntry("自动化与工具","BAT 自动化","BAT 脚本 工作流 鼠标 键盘"),
             new NavigationEntry("自动化与工具","电脑配置对比","差异 对比 报告"),
             new NavigationEntry("自动化与工具","Windows 管理入口","控制面板 工具"),

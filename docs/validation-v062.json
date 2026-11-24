@@ -1,0 +1,42 @@
+{
+  "version": "0.6.2",
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 34,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 68,
+    "NavigationUiTests": 197
+  },
+  "toolkit_total": 627,
+  "environment_helper_simulated_checks": 83,
+  "standalone": {
+    "version": "0.6.2-BAT",
+    "features": 98,
+    "ui": 33,
+    "metadata": 4,
+    "identical_shared_sources": 13
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5",
+  "verified": [
+    "Read-only default format catalogue plus a mocked native Shell openas request; no default-change claim on submission",
+    "Portable empty sample creation, reuse and refusal to open modified samples",
+    "Native structure size expectations for Shell execution and privilege buffers",
+    "Student power target validation: missing IP, self, loopback, multicast, broadcast, duplicate and off-subnet targets",
+    "Mocked ARP mismatch/failure blocks remote power requests",
+    "Mocked shutdown, reboot and abort; access-denial and RPC error explanations",
+    "Pre-cancel, cancel-before-dispatch and late accepted result after cancellation",
+    "UI selected/room scope, no all-rooms power action, target confirmation and cancellation",
+    "Normal close deferred during in-flight request; stale close warning cleared on completion",
+    "Startup process observation unchanged; no real power APIs called during tests"
+  ],
+  "limitations": [
+    "Native Windows Shell openas behavior and availability of Always must be checked on real Windows versions.",
+    "No real Windows default applications were modified.",
+    "No real student machine was shut down, rebooted, or sent an abort request.",
+    "Windows remote rights, RPC/firewall access and security-product compatibility are untested here.",
+    "ARP/cache matches reduce stale-IP risk but are not cryptographic identity proof."
+  ],
+  "frozen_server_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb"
+}

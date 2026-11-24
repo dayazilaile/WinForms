@@ -35,7 +35,7 @@ function Write-ITNetworkAudit([string]$phase,[string]$result,[string]$detail) {
   $root=[IO.Path]::GetDirectoryName($env:IT_TOOLKIT_BAT);if([string]::IsNullOrEmpty($root)){throw '无法确定 BAT 所在目录'}
   $folder=Join-Path $root 'Logs';[void][IO.Directory]::CreateDirectory($folder);$file=Join-Path $folder 'network-operations-v1.tsv'
   $id=Get-ITNetworkIdentity;$elapsed=if($null -ne $script:itNetworkClock){[long]$script:itNetworkClock.ElapsedMilliseconds}else{0}
-  $cells=@([DateTimeOffset]::Now.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz'),$id.HostName,$id.Device,$id.Source,$id.Uuid,$id.Serial,$id.Facts,$id.Account,$id.Permission,$id.System,'0.6.1',$script:itNetworkAuditSession,$script:itNetworkLogId,'',$script:itNetworkLogOperation,$phase,$result,$elapsed,$detail)
+  $cells=@([DateTimeOffset]::Now.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz'),$id.HostName,$id.Device,$id.Source,$id.Uuid,$id.Serial,$id.Facts,$id.Account,$id.Permission,$id.System,'0.6.2',$script:itNetworkAuditSession,$script:itNetworkLogId,'',$script:itNetworkLogOperation,$phase,$result,$elapsed,$detail)
   $header='时间','主机名','设备标识','标识依据','硬件UUID','BIOS序列号','网卡_MAC_IP','运行账户','权限','系统与架构','软件版本','会话ID','操作ID','上级操作ID','操作','阶段','结果','耗时毫秒','详情'
   $stream=New-Object IO.FileStream($file,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::Write,[IO.FileShare]::Read)
   try{$empty=$stream.Length -eq 0;[void]$stream.Seek(0,[IO.SeekOrigin]::End);$writer=New-Object IO.StreamWriter($stream,(New-Object Text.UTF8Encoding($true)));try{if($empty){$writer.WriteLine(($header -join ""`t""))};$writer.WriteLine((@($cells|ForEach-Object {Convert-ITAuditCell $_}) -join ""`t""))}finally{$writer.Dispose()}}finally{$stream.Dispose()}

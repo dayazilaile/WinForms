@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using System.ComponentModel;
 
 namespace WinForms
 {
@@ -82,7 +83,7 @@ namespace WinForms
         public static string Guidance(Version version)
         {
             if(SupportsNativeSelection(version))return "双击格式可打开系统原生选择框，勾选始终使用后确认。恢复时在控制面板的默认程序中逐项指定；旧系统没有统一重置全部默认应用按钮。";
-            return "Win10/11：双击格式，在本工具选择已登记的应用，再到系统确认保存。新版 Win11 可直达所选应用页面，旧版本进入默认应用总页。此工具不直接写入受保护的默认关联。";
+            return "双击文件格式尝试打开 Windows 原生“打开方式”，请选择“始终使用”保存；系统可能同时打开空样例。未显示该选项时可用“按应用查找”或系统入口。网页/邮件协议使用默认应用设置，刷新后核对实际关联。";
         }
         public static string ReadApplication(string extension,Func<string,string> reader)
         {
@@ -94,6 +95,34 @@ namespace WinForms
         {
             var format=Find(extension);if(format.Protocol)throw new ArgumentException("协议不使用样例文件。");
             return Path.Combine(Path.Combine(dataDirectory,"AssociationSamples"),"WinForms-关联样例"+format.Extension);
+        }
+        internal static string PrepareOpenWithSample(string directory,string extension)
+        {
+            string path=SamplePath(directory,extension);Directory.CreateDirectory(Path.GetDirectoryName(path));
+            if(!File.Exists(path))using(new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read)){}
+            if(new FileInfo(path).Length!=0)throw new IOException("关联样例已被修改，停止打开；请使用系统默认应用入口，避免打开未知内容。");return path;
+        }
+        [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]
+        private struct ShellExecuteInfo
+        {
+            public int Size;public uint Mask;public IntPtr Owner;
+            [MarshalAs(UnmanagedType.LPWStr)]public string Verb;
+            [MarshalAs(UnmanagedType.LPWStr)]public string File;
+            [MarshalAs(UnmanagedType.LPWStr)]public string Parameters;
+            [MarshalAs(UnmanagedType.LPWStr)]public string Directory;
+            public int Show;public IntPtr Instance,IdList;
+            [MarshalAs(UnmanagedType.LPWStr)]public string Class;
+            public IntPtr ClassKey;public uint HotKey;public IntPtr Icon,Process;
+        }
+        [DllImport("shell32.dll",EntryPoint="ShellExecuteExW",CharSet=CharSet.Unicode,SetLastError=true)]
+        [return:MarshalAs(UnmanagedType.Bool)]private static extern bool ShellExecuteEx(ref ShellExecuteInfo info);
+        public static void OpenNativePicker(IntPtr owner,string extension,string directory)
+        {
+            string file=PrepareOpenWithSample(directory,extension);
+            // Invoke the registered Shell verb rather than deprecated SHOpenWithDialog defaults flags.
+            // No executable path/command string, UserChoice write, or default-change claim is involved.
+            var info=new ShellExecuteInfo{Size=Marshal.SizeOf(typeof(ShellExecuteInfo)),Mask=0x10C,Owner=owner,Verb="openas",File=file,Show=1};
+            if(!ShellExecuteEx(ref info)){int error=Marshal.GetLastWin32Error();throw new Win32Exception(error==0?31:error);}
         }
         [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]
         private struct OpenAsInfo

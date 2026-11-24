@@ -322,6 +322,11 @@ Has '网络/Legacy adapter/IPv6' '2001:db8::9'
         string dir=Path.Combine(Path.GetTempPath(),"association-policy-"+Guid.NewGuid());Directory.CreateDirectory(dir);
         try{
             Check(DefaultAppsService.SamplePath(dir,".PDF")==Path.Combine(Path.Combine(dir,"AssociationSamples"),"WinForms-关联样例.pdf"),"Legacy samples stay in the supplied portable data directory");
+            string sample=DefaultAppsService.PrepareOpenWithSample(dir,".PDF");Check(File.Exists(sample)&&new FileInfo(sample).Length==0,"Native open-with creates a harmless empty portable sample");
+            Check(DefaultAppsService.PrepareOpenWithSample(dir,".pdf")==sample,"Native open-with reuses only a still-empty known sample");
+            File.WriteAllText(sample,"user content");bool protectedSample=false;try{DefaultAppsService.PrepareOpenWithSample(dir,".pdf");}catch(IOException){protectedSample=true;}Check(protectedSample&&File.ReadAllText(sample)=="user content","Modified sample is neither opened nor overwritten");
+            bool noProtocol=false;try{DefaultAppsService.PrepareOpenWithSample(dir,"https");}catch(ArgumentException){noProtocol=true;}Check(noProtocol,"Protocols cannot be fabricated as files or launched to dummy network URLs");
+            var native=typeof(DefaultAppsService).GetNestedType("ShellExecuteInfo",System.Reflection.BindingFlags.NonPublic);Check(System.Runtime.InteropServices.Marshal.SizeOf(native)==(IntPtr.Size==8?112:60),"Shell invocation uses the exact native structure size on both architectures");
         }finally{Directory.Delete(dir,true);}
     }
     static void BrandingCompatibility()
@@ -329,7 +334,7 @@ Has '网络/Legacy adapter/IPv6' '2001:db8::9'
         var fields=new Dictionary<string,string>{{"系统/名称","Legacy OS"},{"CPU/1/型号","Legacy CPU"}};string report=InspectionService.Serialize(fields);Check(report.StartsWith("# WinForms configuration report")&&InspectionService.Parse(report.Replace(InspectionService.Header,InspectionService.LegacyHeader))["CPU/1/型号"]=="Legacy CPU","New configuration report uses WinForms and still reads the original report header");
         string compact=InspectionService.ExportConfiguration(report);Check(InspectionService.Parse(compact.Replace(InspectionService.CompactHeader,InspectionService.LegacyCompactHeader)).Count>0,"Compact reports exported under the original brand remain readable");
         string standard=SoftwareBaselineService.Serialize(new[]{new SoftwareBaselineEntry{Name="Editor",Publisher="Vendor"}});Check(standard.StartsWith("# WinForms Software Baseline")&&SoftwareBaselineService.Parse(standard.Replace(SoftwareBaselineService.Header,SoftwareBaselineService.LegacyHeader)).Single().Name=="Editor","Renamed software standards preserve original-brand imports");
-        var assembly=typeof(ProductInfo).Assembly;Check(assembly.GetName().Name=="WinForms"&&ProductInfo.Version=="0.6.1"&&((System.Reflection.AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,typeof(System.Reflection.AssemblyProductAttribute))).Product=="WinForms","Window product metadata and renamed executable agree on WinForms 0.6.1");
+        var assembly=typeof(ProductInfo).Assembly;Check(assembly.GetName().Name=="WinForms"&&ProductInfo.Version=="0.6.2"&&((System.Reflection.AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,typeof(System.Reflection.AssemblyProductAttribute))).Product=="WinForms","Window product metadata and renamed executable agree on WinForms 0.6.2");
     }
     static int Main(){try{UsbCapabilities();
         Reports();Software();Baseline();CleanupScripts();TemplateIntegrity();Uninstall();Compatibility();AuditLog();BrandingCompatibility();DefaultAssociations();

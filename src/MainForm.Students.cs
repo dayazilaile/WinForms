@@ -39,10 +39,11 @@ namespace WinForms
         }
         private void BuildStudentWorkspace()
         {
-            FlowLayoutPanel bar;Label state;Panel root=Workspace("学生机管理与网络唤醒","Wake-on-LAN · 先扫描并保存机房，之后按机房唤醒；也可手工录入 MAC",out bar,out state);
+            FlowLayoutPanel bar;Label state;Panel root=Workspace("学生机管理与网络唤醒","局域网唤醒与远程关机/重启 · 保存 IP/MAC 后操作；远程电源需要 Windows 管理权限",out bar,out state);
             ComboBox room=StudentChoice(bar,"机房",150);TextBox search=WorkspaceInput(bar,"搜索名称 / IP / MAC","",200);ComboBox network=StudentChoice(bar,"本机网卡 → 广播地址",360);
             Button reload=WorkspaceButton(bar,"刷新本机网卡",false),scan=WorkspaceButton(bar,"扫描网段并保存",true),add=WorkspaceButton(bar,"添加学生机",true),edit=WorkspaceButton(bar,"编辑学生机",false),remove=WorkspaceButton(bar,"删除记录",false),import=WorkspaceButton(bar,"导入 TSV",false),export=WorkspaceButton(bar,"导出 CSV",false),template=WorkspaceButton(bar,"导出模板",false),wake=WorkspaceButton(bar,"唤醒选中",true),wakeRoom=WorkspaceButton(bar,"唤醒该机房",false),stop=WorkspaceButton(bar,"停止",false);
-            DataGridView grid=Table(new[]{"机房","名称","IPv4","MAC","唤醒结果","备注"});grid.Name="studentMachinesGrid";SetColumnWidths(grid,new[]{90,125,130,155,260,220});root.Controls["pageBody"].Controls.Add(grid);grid.BringToFront();
+            Button power=WorkspaceButton(bar,"远程电源 ▾",false);power.Name="studentRemotePower";var powerMenu=new ContextMenuStrip();power.ContextMenuStrip=powerMenu;power.Click+=delegate{powerMenu.Show(power,new Point(0,power.Height));};root.Disposed+=delegate{powerMenu.Dispose();};
+            DataGridView grid=Table(new[]{"机房","名称","IPv4","MAC","操作结果","备注"});grid.Name="studentMachinesGrid";SetColumnWidths(grid,new[]{90,125,130,155,260,220});root.Controls["pageBody"].Controls.Add(grid);grid.BringToFront();
             var session=new PageSession(root,bar,stop,state);var results=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);bool changingRooms=false;
             Action render=delegate {
                 if(!session.Alive)return;grid.SuspendLayout();try{grid.Rows.Clear();if(studentMachines==null)return;var chosen=room.SelectedItem as StudentRoomChoice;string query=search.Text.Trim();var rows=new List<DataGridViewRow>();
@@ -81,6 +82,28 @@ namespace WinForms
                 try{await session.Run(async delegate(CancellationToken token){await wakeSender(targets,source,9,token,receive);if(session.Alive)state.Text="本次已处理 "+progress.Count+" 台 · 请查看每行发送结果，未确认学生机实际开机";});}finally{if(session.Alive)grid.Enabled=true;}
             };
             wake.Click+=async delegate{await run(false);};wakeRoom.Click+=async delegate{await run(true);};updateRooms();
+            Func<StudentPowerAction,bool,Task> runPower=async delegate(StudentPowerAction action,bool wholeRoom){
+                if(session.Running||!session.Alive)return;var targets=new List<StudentMachine>();var chosen=room.SelectedItem as StudentRoomChoice;
+                if(studentMachines==null){state.Text="请先成功读取学生机清单。";return;}
+                if(wholeRoom){if(chosen==null||chosen.All){state.Text="请先选择具体机房；远程电源不会对全部机房一键执行。";return;}foreach(var item in studentMachines)if(String.Equals(item.Room,chosen.Name,StringComparison.OrdinalIgnoreCase))targets.Add(item);}
+                else foreach(DataGridViewRow row in grid.SelectedRows)if(row.Tag is StudentMachine)targets.Add((StudentMachine)row.Tag);
+                var source=network.SelectedItem as WakeNetwork;int seconds=action==StudentPowerAction.Abort?0:60;StudentPowerPlan plan;
+                try{plan=StudentPowerService.Prepare(targets,source,action,seconds,studentPowerLocalAddresses());}catch(Exception ex){state.Text="未发送："+ex.Message;return;}
+                if(!(studentPowerConfirmation==null?ConfirmStudentPower(plan):studentPowerConfirmation(plan))){state.Text="已取消，未发送远程电源请求。";return;}
+                if(!session.Alive)return;studentPowerOutstanding++;grid.Enabled=false;string previous=session.CancellationMessage;session.CancellationMessage="已停止后续远程请求；正在处理的请求可能仍返回，已接受请求需另行取消。";
+                foreach(var item in plan.Targets)results[item.Mac]="本次尚未发送";render();
+                try{await session.Run(async delegate(CancellationToken token){state.Text="正在核对并发送远程"+plan.Title+"请求；停止不会撤销已接受的请求。";
+                    var batch=await studentPowerSender(plan.Targets,source,action,seconds,token,delegate(StudentPowerResult result){if(!session.Alive)return;results[result.Machine.Mac]=result.Summary;foreach(DataGridViewRow row in grid.Rows)if(((StudentMachine)row.Tag).Mac==result.Machine.Mac)row.Cells[4].Value=result.Summary;});
+                    if(session.Alive)state.Text=(batch.Stopped?"已停止后续发送":"本次请求已返回")+" · 处理 "+batch.Completed+"/"+batch.Total+" 台，目标接受 "+batch.Accepted+" 台；未确认实际完成，已接受请求需另行取消。";
+                });}finally{studentPowerOutstanding--;session.CancellationMessage=previous;if(session.Alive)grid.Enabled=true;if(studentPowerOutstanding==0&&!status.IsDisposed&&status.Text.StartsWith("远程电源请求仍在处理",StringComparison.Ordinal))SetStatus("远程电源请求已返回，请查看操作结果；未确认实际完成。");}
+            };
+            foreach(bool whole in new[]{false,true}){
+                bool roomScope=whole;string scope=whole?"该机房":"选中";
+                foreach(StudentPowerAction action in new[]{StudentPowerAction.Shutdown,StudentPowerAction.Restart,StudentPowerAction.Abort}){
+                    StudentPowerAction operation=action;string label=action==StudentPowerAction.Abort?"取消"+scope+"待执行关机/重启":(action==StudentPowerAction.Shutdown?"关机":"重启")+scope+"（60秒）";
+                    var item=new ToolStripMenuItem(label){Name="studentPower"+action+(whole?"Room":"Selected")};item.Click+=async delegate{await runPower(operation,roomScope);};powerMenu.Items.Add(item);
+                }if(!whole)powerMenu.Items.Add(new ToolStripSeparator());
+            }
             root.BeginInvoke(new Action(delegate{if(session.Alive)reload.PerformClick();}));
         }
         private StudentMachine EditStudentMachine(StudentMachine original,string room)

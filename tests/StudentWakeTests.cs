@@ -70,9 +70,33 @@ class StudentWakeTests
         Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],conflicts,"机房"),"Duplicate selected MACs cannot silently overwrite scanned devices");Reject(()=>StudentDiscoveryService.MergeDiscovered(new StudentMachine[0],new[]{new StudentScanRow{IPv4="192.0.2.5",Name="未知"}},"机房"),"Unresolved scan rows cannot be persisted");
         string encoded="command\n返回代码：0\nITSTUDENT|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("192.0.2.3"))+"|"+Convert.ToBase64String(Encoding.UTF8.GetBytes("02-00-00-00-00-03"));Check(StudentDiscoveryService.ParseCache(encoded,network)["192.0.2.3"]=="02:00:00:00:00:03","Structured neighbor cache maps normalized MACs to on-link addresses");
     }
+    static async Task Power()
+    {
+        var net=WakeNetwork.Create("test","192.0.2.1","255.255.255.0");var local=new[]{"192.0.2.1","192.0.2.99"};StudentMachine one=Machine(),two=Machine("02:00:00:00:00:02","192.0.2.11");
+        Reject(()=>StudentPowerService.Prepare(new[]{Machine(ip:"")},net,StudentPowerAction.Shutdown,60,local),"Remote shutdown requires a current IP, not only a MAC");
+        foreach(string ip in new[]{"127.0.0.1","192.0.2.1","192.0.2.99","192.0.2.0","192.0.2.255","198.51.100.10","224.0.0.1"})Reject(()=>StudentPowerService.Prepare(new[]{Machine(ip:ip)},net,StudentPowerAction.Restart,60,local),"Remote power rejects local, special, subnet and off-link targets: "+ip);
+        Reject(()=>StudentPowerService.Prepare(new[]{one,Machine("02:00:00:00:00:02",one.IPv4)},net,StudentPowerAction.Shutdown,60,local),"Duplicate IPs cannot address another student through an alias");
+        Reject(()=>StudentPowerService.Prepare(new[]{one,Machine(one.Mac,"192.0.2.12")},net,StudentPowerAction.Shutdown,60,local),"Duplicate MAC records rejected before remote shutdown");
+        Reject(()=>StudentPowerService.Prepare(new[]{one},net,StudentPowerAction.Shutdown,0,local),"Immediate shutdown is not a supported default");
+        Reject(()=>StudentPowerService.Prepare(new[]{one},net,(StudentPowerAction)99,60,local),"Unknown remote power actions cannot dispatch");
+        Reject(()=>StudentPowerService.Prepare(new StudentMachine[0],net,StudentPowerAction.Shutdown,60,local),"Empty power target selection is rejected");
+        var plan=StudentPowerService.Prepare(new[]{one,two},net,StudentPowerAction.Restart,60,local);one.Name="after plan";Check(plan.Targets[0].Name!="after plan"&&plan.Seconds==60,"Power plan snapshots identities and countdown before confirmation");
+        int probes=0,requests=0;var results=new List<StudentPowerResult>();Func<string,WakeNetwork,CancellationToken,Task<string>> arp=delegate(string ip,WakeNetwork n,CancellationToken t){probes++;return Task.FromResult(ip==two.IPv4?two.Mac:one.Mac);};
+        var batch=await StudentPowerService.RunCore(plan,net,CancellationToken.None,arp,delegate(StudentMachine machine,StudentPowerAction action,int seconds){requests++;Check(action==StudentPowerAction.Restart&&seconds==60,"Remote transport receives only the reviewed operation and delay");return requests==1?0:5;},results.Add);
+        Check(batch.Completed==2&&batch.Accepted==1&&results[0].Summary.Contains("未确认")&&results[1].Summary.Contains("权限不足"),"Accepted power request is distinguished from physical completion and access denial");
+        probes=0;requests=0;results.Clear();batch=await StudentPowerService.RunCore(plan,net,CancellationToken.None,delegate{return Task.FromResult("02:00:00:00:00:EE");},delegate{requests++;return 0;},results.Add);
+        Check(requests==0&&batch.Accepted==0&&results.All(r=>r.Summary.Contains("MAC 与记录不符")),"Stale IP to MAC mismatch never submits a power request");
+        results.Clear();batch=await StudentPowerService.RunCore(plan,net,CancellationToken.None,delegate{throw new IOException("模拟 ARP 不可用");},delegate{requests++;return 0;},results.Add);Check(requests==0&&batch.Completed==2&&results.All(r=>!r.Accepted),"Failed identity checks are reported without remote RPC");
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();probes=0;try{await StudentPowerService.RunCore(plan,net,cancel.Token,arp,delegate{requests++;return 0;},results.Add);}catch(OperationCanceledException){}Check(probes==0&&requests==0,"Pre-cancelled power operation does not even probe a target");}
+        using(var cancel=new CancellationTokenSource()){batch=await StudentPowerService.RunCore(plan,net,cancel.Token,delegate{cancel.Cancel();return Task.FromResult(one.Mac);},delegate{requests++;return 0;},results.Add);Check(batch.Stopped&&requests==0&&batch.Completed==0,"Cancellation after identity check stops before submission");}
+        results.Clear();using(var cancel=new CancellationTokenSource()){batch=await StudentPowerService.RunCore(plan,net,cancel.Token,arp,delegate{requests++;cancel.Cancel();return 0;},results.Add);Check(batch.Stopped&&batch.Accepted==1&&batch.Completed==1&&results.Count==1&&results[0].Accepted,"Cancellation during an in-flight RPC still reports its late accepted result");}
+        var abort=StudentPowerService.Prepare(new[]{two},net,StudentPowerAction.Abort,0,local);results.Clear();batch=await StudentPowerService.RunCore(abort,net,CancellationToken.None,arp,delegate(StudentMachine m,StudentPowerAction action,int seconds){Check(action==StudentPowerAction.Abort&&seconds==0,"Abort uses the cancellation API path, not another shutdown");return 0;},results.Add);Check(batch.Accepted==1&&results[0].Summary.Contains("取消请求"),"Abort acceptance does not claim the student is on or off");
+        Check(StudentPowerService.ErrorText(1722).Contains("RPC")&&StudentPowerService.ErrorText(1116).Contains("没有可取消"),"Remote service and no-pending-request errors provide useful causes");
+        var native=typeof(StudentPowerService).GetNestedType("TokenPrivileges",System.Reflection.BindingFlags.NonPublic);Check(System.Runtime.InteropServices.Marshal.SizeOf(native)==16,"Privilege structure keeps the native DWORD/LUID layout on x86 and x64");
+    }
     static void LegacyBranding()
     {
         string text=StudentRoster.Serialize(new[]{new StudentMachine{Room="Room",Name="PC1",IPv4="192.0.2.9",Mac="02:00:00:00:00:09"}});Check(text.StartsWith("# WinForms students")&&StudentRoster.Parse(text.Replace(StudentRoster.Header,StudentRoster.LegacyHeader)).Single().Name=="PC1","WinForms roster export keeps original-brand student lists importable");
     }
-    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Power().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

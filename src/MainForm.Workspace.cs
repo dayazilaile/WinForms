@@ -14,6 +14,7 @@ namespace WinForms
         {
             private readonly Control page;private readonly FlowLayoutPanel bar;private readonly Button stop;private readonly Label status;
             private CancellationTokenSource cancel;private bool disposed;public bool Running{get;private set;}
+            public string CancellationMessage="已停止 · 未完成目标没有检测结论";
             public bool Alive{get{return !disposed&&!page.IsDisposed;}}
             public PageSession(Control page,FlowLayoutPanel bar,Button stop,Label status){this.page=page;this.bar=bar;this.stop=stop;this.status=status;stop.Enabled=false;stop.Click+=delegate{if(cancel!=null)cancel.Cancel();};page.Disposed+=delegate{Dispose();};}
             public async Task Run(Func<CancellationToken,Task> work)
@@ -21,7 +22,7 @@ namespace WinForms
                 if(Running||!Alive)return;Running=true;cancel=new CancellationTokenSource();var states=new Dictionary<Control,bool>();foreach(Control c in bar.Controls){states[c]=c.Enabled;c.Enabled=false;}stop.Enabled=true;status.Text="正在读取 / 检测…";
                 using(var audit=OperationAudit.Begin(String.IsNullOrEmpty(page.AccessibleName)?"页面读取/检测":page.AccessibleName)){
                 try{await work(cancel.Token);audit.End("已返回，详见界面");}
-                catch(OperationCanceledException){audit.End("已取消","未完成目标无检测结论。");if(Alive)status.Text="已停止 · 未完成目标没有检测结论";}
+                catch(OperationCanceledException){audit.End("已取消",CancellationMessage);if(Alive)status.Text=CancellationMessage;}
                 catch(Exception ex){audit.End("失败",ex.Message);if(Alive){status.Text="读取 / 检测未完成："+ex.Message;status.AccessibleDescription=ex.Message;}}
                 finally{Running=false;cancel.Dispose();cancel=null;if(Alive){foreach(var pair in states)if(!pair.Key.IsDisposed)pair.Key.Enabled=pair.Value;stop.Enabled=false;}}
                 }
