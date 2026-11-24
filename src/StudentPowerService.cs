@@ -79,11 +79,11 @@ namespace WinForms
         }
         public static string ErrorText(int code)
         {
-            string hint=code==5||code==1314?"目标拒绝访问/权限不足：当前 Windows 账户需具备目标机远程关机权限":code==1722||code==53?"目标不可达或 RPC 服务/防火墙未允许远程管理":code==1190||code==1115?"目标已有待执行或正在进行的关机":code==1116?"目标没有可取消的关机请求":"远程请求失败";
-            return hint+"（错误 "+code+"："+new Win32Exception(code).Message+"）";
+            string hint=code==5||code==1314?"权限不足：当前 Windows 账户需具备目标机远程关机权限":code==53?"找不到网络路径：请检查目标 SMB/远程管理通道；能扫描出 MAC 不代表通道已就绪":code==1722?"RPC 服务不可用：检查目标服务、网络隔离与相应防火墙规则":code==1190||code==1115?"目标已有待执行或正在进行的关机":code==1116?"目标没有可取消的关机请求":"远程请求失败";
+            return "错误 "+code+"："+hint+"（"+new Win32Exception(code).Message+"）";
         }
         [DllImport("iphlpapi.dll",ExactSpelling=true)]private static extern uint SendARP(uint destination,uint source,[Out]byte[] mac,ref uint length);
-        private static Task<string> ResolveMac(string ip,WakeNetwork network,CancellationToken token)
+        internal static Task<string> ResolveMac(string ip,WakeNetwork network,CancellationToken token)
         {return Task.Run(delegate{token.ThrowIfCancellationRequested();byte[] mac=new byte[6];uint length=6;uint code=SendARP(BitConverter.ToUInt32(IPAddress.Parse(ip).GetAddressBytes(),0),BitConverter.ToUInt32(network.Source.GetAddressBytes(),0),mac,ref length);token.ThrowIfCancellationRequested();if(code!=0||length!=6)throw new InvalidOperationException("无法核对目标 MAC，未发送（ARP 错误 "+code+"）。");return StudentWakeService.NormalizeMac(BitConverter.ToString(mac));});}
         [DllImport("advapi32.dll",EntryPoint="InitiateSystemShutdownExW",CharSet=CharSet.Unicode,SetLastError=true,ExactSpelling=true)]
         [return:MarshalAs(UnmanagedType.Bool)]private static extern bool InitiateSystemShutdownEx(string machine,string message,uint seconds,[MarshalAs(UnmanagedType.Bool)]bool force,[MarshalAs(UnmanagedType.Bool)]bool reboot,uint reason);

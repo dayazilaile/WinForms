@@ -23,6 +23,7 @@ namespace WinForms
             searchFrame.Controls.Add(navigationSearch);searchFrame.Controls.Add(clear);searchPanel.Controls.Add(searchFrame);searchFrame.BringToFront();
             navigationTree=new TreeView{Dock=DockStyle.Fill,BackColor=Navy,ForeColor=Color.White,BorderStyle=BorderStyle.None,ShowLines=false,ShowRootLines=false,ShowPlusMinus=false,FullRowSelect=true,HideSelection=false,Indent=18,ItemHeight=38,AccessibleName="功能分类与二级菜单"};
             navigationTree.DrawMode=TreeViewDrawMode.OwnerDrawAll;
+            navigationTree.ShowNodeToolTips=true;
             navigationTree.DrawNode+=delegate(object sender,DrawTreeNodeEventArgs e){
                 bool active=e.Node.Tag is string&&(string)e.Node.Tag==currentPage;
                 Rectangle row=new Rectangle(8,e.Bounds.Top+2,Math.Max(0,navigationTree.ClientSize.Width-16),navigationTree.ItemHeight-4);
@@ -64,7 +65,7 @@ namespace WinForms
                 foreach(var entry in NavigationCatalog.Search(navigationSearch.Text))
                 {
                     if(entry.Group!=groupName){groupName=entry.Group;group=new TreeNode(groupName);navigationTree.Nodes.Add(group);}
-                    group.Nodes.Add(new TreeNode(entry.Key){Tag=entry.Key});
+                    group.Nodes.Add(new TreeNode(entry.DisplayName){Tag=entry.Key,ToolTipText=(entry.Since.Length>0?"加入版本：v"+entry.Since+"\r\n":"")+entry.Note});
                 }
                 foreach(TreeNode n in navigationTree.Nodes)if(n.Text==expandedNavigationGroup||navigationSearch.Text.Trim().Length>0)n.Expand();
                 if(navigationTree.Nodes.Count==0)navigationTree.Nodes.Add(new TreeNode("没有匹配的功能"));
@@ -74,7 +75,8 @@ namespace WinForms
         }
         private void SelectNavigationPage(string key)
         {
-            foreach(TreeNode group in navigationTree.Nodes)foreach(TreeNode child in group.Nodes)if((string)child.Tag==key){rebuildingNavigation=true;if(group.IsExpanded)navigationTree.SelectedNode=child;rebuildingNavigation=false;ShowPage(key);if(group.IsExpanded)child.EnsureVisible();return;}
+            if(navigationSearch.Text.Length>0)navigationSearch.Clear();
+            foreach(TreeNode group in navigationTree.Nodes)foreach(TreeNode child in group.Nodes)if((string)child.Tag==key){rebuildingNavigation=true;foreach(TreeNode other in navigationTree.Nodes)if(other!=group)other.Collapse();group.Expand();navigationTree.SelectedNode=child;expandedNavigationGroup=group.Text;rebuildingNavigation=false;ShowPage(key);child.EnsureVisible();return;}
             ShowPage("系统概览");
         }
     }

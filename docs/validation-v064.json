@@ -1,0 +1,60 @@
+{
+  "version": "0.6.4",
+  "issue": "Student remote power returned network path not found; cleanup BAT export was hard to find; new features needed a separate trial group.",
+  "changes": [
+    "Separate native network-path 53, RPC 1722 and permission failures, keeping codes visible before clipped text.",
+    "Read-only selected-target MAC plus TCP135/445 diagnostics, full details and portable local CMD inspection export.",
+    "Trial overview/version metadata and existing cleanup generator shortcut without automatic uninstall."
+  ],
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 37,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 79,
+    "NavigationUiTests": 216
+  },
+  "toolkit_total": 660,
+  "standalone": {
+    "version": "0.6.4-BAT",
+    "feature": 98,
+    "ui": 33,
+    "metadata": 4,
+    "shared_sources": 13
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5",
+  "unchanged_sources_sha256": {
+    "src/DefaultAppsService.cs": "78bcb9b861de2acb15bd365751874db5a0073568984993ebb0f6cb789cc4406f",
+    "src/MainForm.DefaultApps.cs": "dda356e35475ce4ecd0a677a9a3a9ab63dadbad88eafb4ae0b45eb6e86481960",
+    "src/SoftwareCleanupScriptService.cs": "7f8a9aeb8950dbd2b58a6aa9ba455a686486230554dd5f4bdc1fae1bc8955de1",
+    "src/MainForm.SoftwareBaseline.cs": "093fcac26b7f4f692ff770c2ee53210c13988d7412d739fd4dca9d72399aba92",
+    "Scripts/SoftwareCleanup.ps1": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+    "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
+    "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
+    "src/AutomationBlockService.cs": "4ec88def6cc862e907e3f9c7b875e457d2f64396c09102cf2ec0547287e38100",
+    "src/MainForm.Automation.cs": "89e2f5566328aefd82b97d73e66891bf5646dc71f685cd601aea8e2828000689",
+    "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367",
+    "src/StudentWakeService.cs": "566692b1f1ac5460f79d0def81ab7bfbc07667de5d4428d996ecdd9a28b95845"
+  },
+  "verified": [
+    "Full toolkit compiled against official Windows framework references; only pre-existing unused-variable warning.",
+    "Existing native shutdown/abort dispatch unchanged; all power tests use injected ARP/RPC rather than real targets.",
+    "Diagnostics identity mismatch and ARP failure skip TCP; cancellation between connections prevents a false completed result.",
+    "Actual loopback TCP open/refused checks without RPC or credentials.",
+    "UI full error53 target identity, filtering tooltip persistence, cancellation and deferred close.",
+    "Trial navigation clears active searches and preserves stable page keys despite version badges.",
+    "Cleanup guide rejects absent/bad standards, safely imports valid rules, and reuses original confirm/automatic export dialog.",
+    "No child process requested by toolbox startup or overview.",
+    "Diagnostic export is plain ASCII CMD, script-local Logs, read-only service/firewall/right collection; export itself never executes."
+  ],
+  "not_verified_in_cloud": [
+    "Windows native remote power, actual endpoint services/firewall/credentials and physical machine shutdown.",
+    "Native CMD execution of the exported local diagnostic BAT.",
+    "Cross-subnet wake forwarding or relay: current client remains same-subnet only.",
+    "Antivirus verdicts and Windows UI behavior."
+  ],
+  "environment_helpers": "Byte-identical to v0.6.3; unchanged, not retested for this UI/diagnostics release.",
+  "frozen_server_tag": "v0.5.20-Server",
+  "screenshots": "Synthetic test identities; not evidence of real machine shutdown."
+}

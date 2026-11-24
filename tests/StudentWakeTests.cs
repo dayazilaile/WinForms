@@ -94,9 +94,33 @@ class StudentWakeTests
         Check(StudentPowerService.ErrorText(1722).Contains("RPC")&&StudentPowerService.ErrorText(1116).Contains("没有可取消"),"Remote service and no-pending-request errors provide useful causes");
         var native=typeof(StudentPowerService).GetNestedType("TokenPrivileges",System.Reflection.BindingFlags.NonPublic);Check(System.Runtime.InteropServices.Marshal.SizeOf(native)==16,"Privilege structure keeps the native DWORD/LUID layout on x86 and x64");
     }
+    static async Task PowerDiagnostics()
+    {
+        var net=WakeNetwork.Create("test","192.0.2.1","255.255.255.0");var machine=Machine();var plan=StudentPowerService.Prepare(new[]{machine},net,StudentPowerAction.Shutdown,60,new[]{net.Source.ToString()});
+        var ports=new List<int>();var rows=new List<StudentPowerDiagnostic>();
+        Func<string,WakeNetwork,CancellationToken,Task<string>> arp=delegate{return Task.FromResult(machine.Mac);};
+        Func<string,int,CancellationToken,Task<string>> connect=delegate(string ip,int port,CancellationToken token){ports.Add(port);return Task.FromResult(port==135?"可连接（仅TCP）":"超时/未响应");};
+        await StudentPowerDiagnostics.InspectCore(plan,net,CancellationToken.None,arp,connect,rows.Add);
+        Check(ports.SequenceEqual(new[]{135,445})&&rows.Count==1&&rows[0].Smb.Contains("超时"),"Read-only power diagnostics probes only bounded RPC/SMB ports and preserves separate outcomes");
+        Check(rows[0].Details.Contains(machine.Mac)&&rows[0].Details.Contains(machine.IPv4)&&rows[0].Details.Contains("没有验证远程账户权限")&&rows[0].Summary.Contains("错误53"),"Diagnostic details identify the target without claiming remote permission or completed power action");
+        ports.Clear();rows.Clear();await StudentPowerDiagnostics.InspectCore(plan,net,CancellationToken.None,delegate{return Task.FromResult("02:00:00:00:00:EE");},connect,rows.Add);
+        Check(ports.Count==0&&rows.Single().Note.Contains("MAC 与记录不符"),"Stale MAC identity skips all diagnostic port connections");
+        rows.Clear();await StudentPowerDiagnostics.InspectCore(plan,net,CancellationToken.None,delegate{throw new IOException("模拟解析失败");},connect,rows.Add);
+        Check(ports.Count==0&&rows.Single().Note.Contains("模拟解析失败"),"Failed ARP is reported as incomplete without connecting to an unverified identity");
+        using(var cancel=new CancellationTokenSource()){rows.Clear();ports.Clear();bool stopped=false;try{await StudentPowerDiagnostics.InspectCore(plan,net,cancel.Token,arp,delegate(string ip,int port,CancellationToken token){ports.Add(port);cancel.Cancel();return Task.FromResult("可连接");},rows.Add);}catch(OperationCanceledException){stopped=true;}Check(stopped&&ports.SequenceEqual(new[]{135})&&rows.Count==0,"Cancellation between diagnostic ports prevents the next connection and a false completed result");}
+        var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();int open=((IPEndPoint)listener.LocalEndpoint).Port;
+        try{Check((await StudentPowerDiagnostics.Connect("127.0.0.1",open,CancellationToken.None)).Contains("仅TCP"),"Diagnostic transport verifies a real loopback TCP connection without RPC or credentials");}finally{listener.Stop();}
+        Check((await StudentPowerDiagnostics.Connect("127.0.0.1",open,CancellationToken.None)).Contains("不可连接"),"Refused diagnostic connection remains a port failure");
+        Check(StudentPowerService.ErrorText(53).StartsWith("错误 53：找不到网络路径")&&!StudentPowerService.ErrorText(53).Contains("RPC 服务不可用")&&StudentPowerService.ErrorText(1722).StartsWith("错误 1722："),"Network-path error 53 and RPC error 1722 stay distinct with code before clipped text");
+        string script=StudentPowerDiagnostics.LocalCheckScript();
+        Check(script.All(c=>c<128)&&script.Contains("%~dp0Logs")&&script.Contains("ipconfig.exe")&&script.Contains("hostname.exe")&&script.Contains("%DATE% %TIME%"),"Local diagnostic script is plain ASCII CMD with device/time identity and script-directory logs");
+        Check(script.Contains("sc.exe\" query")&&script.Contains("advfirewall show currentprofile")&&script.Contains("/areas USER_RIGHTS")&&!new[]{"shutdown.exe"," /configure ","sc.exe\" start","advfirewall set","powershell","Bypass","%TEMP%","%APPDATA%"}.Any(x=>script.IndexOf(x,StringComparison.OrdinalIgnoreCase)>=0),"Local script only reads services/firewall/rights and never executes power, policy repair or PowerShell");
+        string dir=Path.Combine(Path.GetTempPath(),"power-check-"+Guid.NewGuid());Directory.CreateDirectory(dir);string path=Path.Combine(dir,"check.bat");
+        try{File.WriteAllText(path,"old");StudentPowerDiagnostics.ExportLocalCheck(path);Check(File.ReadAllText(path)==script&&Directory.GetFiles(dir).Length==1,"Diagnostic export atomically replaces only its selected BAT and does not execute it");}finally{Directory.Delete(dir,true);}
+    }
     static void LegacyBranding()
     {
         string text=StudentRoster.Serialize(new[]{new StudentMachine{Room="Room",Name="PC1",IPv4="192.0.2.9",Mac="02:00:00:00:00:09"}});Check(text.StartsWith("# WinForms students")&&StudentRoster.Parse(text.Replace(StudentRoster.Header,StudentRoster.LegacyHeader)).Single().Name=="PC1","WinForms roster export keeps original-brand student lists importable");
     }
-    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Power().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Power().GetAwaiter().GetResult();PowerDiagnostics().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

@@ -28,6 +28,7 @@ namespace WinForms
             viewField.Controls.Add(new Label{Text="显示范围",Dock=DockStyle.Top,Height=22,ForeColor=Color.FromArgb(100,116,139)});
             var view=new ComboBox{Name="softwareView",AccessibleName="软件显示范围",Dock=DockStyle.Bottom,DropDownStyle=ComboBoxStyle.DropDownList};view.Items.AddRange(new object[]{"全部软件","多出软件","缺少软件"});view.SelectedIndex=0;viewField.Controls.Add(view);bar.Controls.Add(viewField);
             Button refresh=WorkspaceButton(bar,"刷新软件清单",true),stop=WorkspaceButton(bar,"停止",false),export=WorkspaceButton(bar,"导出列表 CSV",false),standard=WorkspaceButton(bar,"标准清单 ▾",false);
+            Button cleanupBat=WorkspaceButton(bar,"导出清理 BAT",false);cleanupBat.Name="exportSoftwareCleanupBat";
             var grid=Table(new[]{"对照结果","软件名称","版本","发布者","安装范围","登记区","安装位置"});grid.Name="softwareGrid";grid.MultiSelect=false;SetColumnWidths(grid,new[]{120,280,120,200,100,120,260});grid.Columns[1].MinimumWidth=250;
             var details=ReadBox();details.Name="softwareChecks";details.Dock=DockStyle.Bottom;details.Height=100;
             var body=root.Controls["pageBody"];body.Controls.Add(grid);body.Controls.Add(details);grid.BringToFront();
@@ -63,6 +64,7 @@ namespace WinForms
             import.Click+=delegate{try{string text=softwareBaselineImportReader==null?ReadToolFile(this):softwareBaselineImportReader();if(text!=null)saveBaseline(SoftwareBaselineService.Parse(text));}catch(Exception ex){MessageBox.Show(this,ex.Message,"导入标准清单失败");}};
             exportStandard.Click+=delegate{if(baseline==null)return;string text=SoftwareBaselineService.Serialize(baseline);if(softwareBaselineExporter!=null)softwareBaselineExporter(text);else ExportToolReport(this,text,"软件标准清单.txt");};
             cleanup.Click+=delegate{if(baseline!=null)ExportSoftwareCleanup(baseline);};
+            cleanupBat.Click+=delegate{if(baseline!=null)ExportSoftwareCleanup(baseline);else SelectNavigationPage("软件清单清理BAT");};
             standardMenu.Items.Add(new ToolStripSeparator());var versionCheck=new ToolStripMenuItem("版本检查");standardMenu.Items.Add(versionCheck);
             versionCheck.DropDownItems.Add("导入关键词 / 最低版本清单").Click+=delegate{try{string text=ReadToolFile(this);if(text!=null){InspectionService.CheckRequirements(new Dictionary<string,string>(),text);requirements=text;render();}}catch(Exception ex){MessageBox.Show(this,ex.Message);}};
             versionCheck.DropDownItems.Add("导出版本检查模板").Click+=delegate{ExportToolReport(this,"# 软件名称关键词<Tab>最低版本（可空）\r\nGoogle Chrome\t120.0\r\nMicrosoft Visual C++\r\n","软件检查清单.txt");};

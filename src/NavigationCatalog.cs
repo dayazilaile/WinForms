@@ -5,8 +5,11 @@ namespace WinForms
 {
     public sealed class NavigationEntry
     {
-        public readonly string Group, Key, Keywords;
-        public NavigationEntry(string group,string key,string keywords){Group=group;Key=key;Keywords=keywords;}
+        public readonly string Group, Key, Keywords,Since,Note;
+        public NavigationEntry(string group,string key,string keywords):this(group,key,keywords,"",""){}
+        public NavigationEntry(string group,string key,string keywords,string since,string note){Group=group;Key=key;Keywords=keywords;Since=since;Note=note;}
+        public bool Trial {get{return Group=="新增 · 待试用";}}
+        public string DisplayName {get{return Trial?Key+(Since.Length>0?"  [v"+Since+"]":"  [历史]"):Key;}}
     }
     public static class NavigationCatalog
     {
@@ -37,6 +40,10 @@ namespace WinForms
             new NavigationEntry("自动化与工具","电脑配置对比","差异 对比 报告"),
             new NavigationEntry("自动化与工具","Windows 管理入口","控制面板 工具"),
             new NavigationEntry("自动化与工具","离线数据库","故障码 数据库 查询"),
+            new NavigationEntry("新增 · 待试用","新增功能总览","新增 试用 版本 入口 总览", "0.6.4","集中查看试用入口、加入版本与用途。"),
+            new NavigationEntry("新增 · 待试用","学生机远程电源","远程 关机 重启 学生机 电源 试用", "0.6.2","v0.6.4 移入试用区；需要目标机允许远程管理，尚未确认实机可用。"),
+            new NavigationEntry("新增 · 待试用","远程电源诊断","远程 RPC SMB 53 1722 135 445 关机 排查", "0.6.4","只读检查选中目标的 MAC 与通道，导出学生机本地只读检查脚本。"),
+            new NavigationEntry("新增 · 待试用","软件清单清理BAT","软件 清单 标准 卸载 清理 BAT 脚本", "0.6.4","已有批量清理能力的新入口；先建立/导入保留标准，再选择模式生成单 BAT。"),
             new NavigationEntry("新增 · 待试用","DNS记录查询","新增 试用 DNS A AAAA MX TXT SRV PTR"),
             new NavigationEntry("新增 · 待试用","ICMP路由跟踪","新增 试用 tracert traceroute 跳数 路径 Ping"),
             new NavigationEntry("新增 · 待试用","本机连接与监听","新增 试用 TCP UDP 本机连接 监听 进程 PID"),
@@ -49,7 +56,7 @@ namespace WinForms
             var matches=new List<NavigationEntry>();
             foreach(var e in entries)
             {
-                string text=e.Group+" "+e.Key+" "+e.Keywords;bool match=true;
+                string text=e.Group+" "+e.Key+" "+e.Keywords+" "+e.Since;bool match=true;
                 foreach(string term in terms)if(text.IndexOf(term,StringComparison.OrdinalIgnoreCase)<0){match=false;break;}
                 if(match)matches.Add(e);
             }

@@ -18,10 +18,13 @@ class NetworkToolsTests
     static void Reject(Action action,string name){try{action();}catch(ArgumentException){Check(true,name);return;}throw new Exception("Should reject: "+name);}
     static void Catalog()
     {
-        var entries=NavigationCatalog.All;Check(entries.Length==30&&entries.Select(e=>e.Key).Distinct().Count()==30,"30 unique reachable navigation entries");
+        var entries=NavigationCatalog.All;Check(entries.Length==34&&entries.Select(e=>e.Key).Distinct().Count()==34,"34 unique reachable navigation entries");
         Check(entries.Select(e=>e.Group).Distinct().Count()==7,"Seven navigation groups (including trial)");
         Check(NavigationCatalog.Search("wifi").Count==2&&NavigationCatalog.Search("  WiFi  分析 ").Single().Key=="Wi-Fi分析","Case-insensitive multi-term WiFi aliases");
         Check(NavigationCatalog.Search("DNS").Any(e=>e.Key=="网络诊断")&&NavigationCatalog.Search("NOT_FOUND_QUERY").Count==0,"Search DNS alias and empty results");
+        Check(new[]{"新增功能总览","学生机远程电源","远程电源诊断","软件清单清理BAT"}.All(k=>NavigationCatalog.Find(k).Trial),"New and unconfirmed power entries stay in trial group");
+        Check(NavigationCatalog.Find("软件清单清理BAT").Note.Contains("新入口")&&NavigationCatalog.Find("学生机远程电源").Since=="0.6.2"&&NavigationCatalog.Search("0.6.4").Count==3,"Trial metadata separates original capability version from new shortcuts");
+        Check(NavigationCatalog.Find("DNS记录查询").DisplayName.Contains("历史")&&NavigationCatalog.Find("软件清单清理BAT").DisplayName.Contains("v0.6.4"),"Trial badges preserve unknown historical versions honestly");
         entries[0]=null;Check(NavigationCatalog.All[0]!=null,"Catalog caller cannot replace internal entries");
         Check(NetworkDiscoveryService.ParsePorts("80,443,80,8000-8002").SequenceEqual(new[]{80,443,8000,8001,8002}),"Port ranges sorted and deduplicated");
         Reject(()=>NetworkDiscoveryService.ParsePorts("0"),"Port zero");Reject(()=>NetworkDiscoveryService.ParsePorts("65536"),"Port overflow");Reject(()=>NetworkDiscoveryService.ParsePorts("100-50"),"Reversed port range");Reject(()=>NetworkDiscoveryService.ParsePorts("1-1025"),"Scan size cap");

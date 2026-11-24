@@ -14,6 +14,12 @@ namespace WinForms
         {if(studentPowerOutstanding>0&&args.CloseReason==CloseReason.UserClosing){args.Cancel=true;status.Text="远程电源请求仍在处理；请停止后续发送并等待当前请求返回，再关闭工具箱。";}}
         private Func<IEnumerable<string>> studentPowerLocalAddresses=StudentPowerService.LocalAddresses;
         private Func<StudentPowerPlan,bool> studentPowerConfirmation=null;
+        private Func<StudentPowerPlan,WakeNetwork,CancellationToken,Action<StudentPowerDiagnostic>,Task> studentPowerInspector=StudentPowerDiagnostics.Inspect;
+        private Action<string> studentLocalCheckExporter=null;
+        private void ShowStudentPowerDetails(string text)
+        {
+            using(var form=NewDialog("学生机操作结果详情",860,590)){var box=ReadBox();box.Text=text;form.Controls.Add(box);form.ShowDialog(this);}
+        }
         private Func<IEnumerable<StudentMachine>,WakeNetwork,StudentPowerAction,int,CancellationToken,Action<StudentPowerResult>,Task<StudentPowerBatch>> studentPowerSender=StudentPowerService.Run;
         private bool ConfirmStudentPower(StudentPowerPlan plan)
         {
