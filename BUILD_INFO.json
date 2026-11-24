@@ -1,6 +1,6 @@
 {
   "assembly": "WinForms-BAT.exe",
-  "sha256": "f31b5ba938bd2229935730ece0cd856b8aa45a39e7f020d55f90460e6484ff41",
+  "sha256": "0528186502753c2563cbc7ca06fe89c2d637e2d0d44dbb1afa1808d1a53f3ee1",
   "reference_profile": "Microsoft .NET Framework 4.5",
   "framework_assemblies": [
     "System",

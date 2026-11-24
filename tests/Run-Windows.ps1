@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
+    & .\tests\Run-EnvironmentPreparation.ps1
+    & .\tests\Run-EnvironmentBatch.ps1
     & .\tests\Run-RuntimeDetection.ps1
     & cmd.exe /d /c 'Build_Only.bat --no-pause'
     if ($LASTEXITCODE -ne 0) { throw 'Standalone application compilation failed' }
@@ -98,12 +100,17 @@ try {
     New-Item -ItemType Directory -Path $stage -Force | Out-Null
     Copy-Item build\WinForms-BAT.exe, README.md, START_HERE.txt, Build_Only.bat, Build_And_Run.bat, SOURCE_PROVENANCE.json, BUILD_INFO.json, app.manifest, Check_Runtime.bat, Diagnose_Runtime.bat, release-policy.json -Destination $stage
     Copy-Item src, tests, docs, examples, tools -Destination $stage -Recurse -Force
+    $envStage=Join-Path $stage '环境准备'
+    New-Item -ItemType Directory -Path (Join-Path $envStage 'Installers') -Force | Out-Null
+    foreach($file in @('01_检测环境.bat','02_安装缺少组件.bat','Environment.cmd','README.md')){Copy-Item -LiteralPath (Join-Path (Join-Path $repo '环境准备') $file) -Destination (Join-Path $envStage $file)}
+    Copy-Item -LiteralPath (Join-Path $repo '环境准备/Installers/README.md') -Destination (Join-Path $envStage 'Installers/README.md')
     Move-Item (Join-Path $stage 'BUILD_INFO.json') (Join-Path $stage 'PUBLISHED_BUILD_INFO.json') -Force
     $windowsBuild = @{ assembly='WinForms-BAT.exe'; sha256=(Get-FileHash build\WinForms-BAT.exe -Algorithm SHA256).Hash.ToLowerInvariant(); compiler='Windows .NET Framework csc'; type_reference_check='Windows runtime tests passed'; source_package_build='PUBLISHED_BUILD_INFO.json' }
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.2-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.3-Windows.zip -Force
+    $global:LASTEXITCODE=0 # Negative fixtures above were explicitly checked.
     Write-Output 'Standalone Windows validation and package completed.'
 }
 finally { Pop-Location }

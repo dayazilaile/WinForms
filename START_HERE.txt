@@ -1,2 +1,2 @@
-WinForms BAT 自动化独立版 V0.6.2-BAT
-运行根目录 WinForms-BAT.exe，功能范围详见 README。环境助手在“环境准备”文件夹。
+WinForms BAT 自动化独立版 V0.6.3-BAT
+运行WinForms-BAT.exe。环境准备助手可单独使用，安装包目录为Installers。
