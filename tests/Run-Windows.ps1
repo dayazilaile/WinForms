@@ -92,6 +92,7 @@ try {
     if ($result.Contains('All steps complete.') -or -not $result.Contains('FAILED:')) { throw ('Failed retry incorrectly reported success: '+$result) }
     if ([regex]::Matches($result, '步骤 2/3').Count -ne 2) { throw ('Retry did not execute exactly twice: '+$result) }
     Write-Output 'PASS failed retry executes twice and does not report completion'
+    $global:LASTEXITCODE=0 # Negative fixtures above were explicitly checked.
     Write-Output 'All automated checks completed. USB registry policies and printer queues were not modified.'
 }
 finally { Pop-Location }

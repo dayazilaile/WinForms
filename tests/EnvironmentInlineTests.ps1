@@ -83,4 +83,6 @@ case "$v" in ''|missing) exit 1;; wrongtype) printf '    Release    REG_SZ    wr
     Check ($LASTEXITCODE -eq 0 -and [IO.File]::ReadAllLines($env:PREP_LOG_PATH)[3].Contains("`tunread`tunread`t")) 'Unreadable NIC identity is explicit and never fabricated'
     $blocker=Join-Path $temp 'not-a-directory';[IO.File]::WriteAllText($blocker,'fixture');$env:PREP_LOG_PATH=Join-Path $blocker 'cannot-write.tsv';$output=& $exe -NoLogo -NoProfile -NonInteractive -Command ($prefix+$logger) 2>&1;Check ($LASTEXITCODE -eq 14) 'Unwritable portable logging reports failure before any installer'
 }finally{foreach($key in $saved.Keys){[Environment]::SetEnvironmentVariable($key,$saved[$key],'Process')};[IO.Directory]::Delete($temp,$true)}
+# Expected negative child exit codes must not become the CI job result after all assertions pass.
+$global:LASTEXITCODE=0
 Write-Output ('PASS environment preparation: '+$script:checks+' checks; no installers executed.')
