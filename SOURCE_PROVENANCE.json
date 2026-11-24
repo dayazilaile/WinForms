@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.6.3",
-  "base_commit": "6b3246d5d3902ca45eaa64985c05860c0a0c94c5",
+  "base_tag": "v0.6.4",
+  "base_commit": "28e010c722a3d3ed5cf2b81edf36fbc0005def44",
   "unchanged_sources_sha256": {
     "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
     "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
@@ -14,8 +14,8 @@
     "src/BatScriptPackage.cs": "8c094ead0672f0d7f53bc31484f83180c3484189bb496699b9d83421aabb57a8",
     "src/AutomationRandomIp.cs": "649132947a6edcffacbb4d5a895b740a55d051991d3f8abca17fa966b5a47a6a",
     "src/WindowsCompatibility.cs": "4ac2d68216709a7b1e80c04aaf8a7b4931c66e7a48b68310c2bc626dfa7a52d7",
-    "src/AutomationNetworkAudit.cs": "cc116f7ee324ae435f926203f9095a4fc0bc60cee476c11ad6a1923fddfda289",
-    "src/ProductInfo.cs": "8d5e68ecb136bd5df97ffc5ce52fd089da45009c4d15edafcd4949f70181c7b4"
+    "src/AutomationNetworkAudit.cs": "faeb6aa91bb6b64dfe90ad54b2b57aa545b5ce88ae351ea5d62177b08c49f10b",
+    "src/ProductInfo.cs": "0d3e81ad2175db8afb866b6d3dad7110cae9717267ca092f99508a6d0611dff9"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -23,8 +23,8 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.6.3-BAT",
-  "change": "Fresh v0.6.3 extraction. Environment helpers use batch flow and literal commands without PS1 loading or execution-policy changes. Existing automation and toolbox default-app implementation retained.",
+  "standalone_version": "0.6.4-BAT",
+  "change": "Fresh v0.6.4 extraction; 13 shared source files match the toolbox. Automation behavior unchanged; audit/version metadata synchronized. New trial navigation and remote-power diagnostics are toolbox-only.",
   "minimum_framework": "Microsoft .NET Framework 4.5",
   "product_name": "WinForms",
   "version_policy": "23 patches per minor; .23 rolls to the next minor .0"

@@ -39,7 +39,7 @@ class WindowsMetadataTests(unittest.TestCase):
 
     def test_automation_sources_match_the_unchanged_toolkit_origin(self):
         origin = json.loads((ROOT/'SOURCE_PROVENANCE.json').read_text())
-        self.assertEqual(origin['base_tag'], 'v0.6.3')
+        self.assertEqual(origin['base_tag'], 'v0.6.4')
         for name, expected in origin['unchanged_sources_sha256'].items():
             self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(), expected, name)
 
