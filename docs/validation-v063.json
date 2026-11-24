@@ -1,0 +1,54 @@
+{
+  "version": "0.6.3",
+  "issue": "Both environment entries loaded a PS1 file, blocked before any detection by the default Windows execution policy.",
+  "fix": "Batch engine with literal read-only PowerShell commands; no PS1 loading, policy flags/changes, encoded or self-reading payloads.",
+  "environment_command_checks": 39,
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 34,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 68,
+    "NavigationUiTests": 197
+  },
+  "toolkit_total": 627,
+  "standalone": {
+    "version": "0.6.3-BAT",
+    "feature": 98,
+    "ui": 33,
+    "metadata": 4,
+    "shared_sources": 13
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5",
+  "unchanged_default_application_sources_sha256": {
+    "src/DefaultAppsService.cs": "78bcb9b861de2acb15bd365751874db5a0073568984993ebb0f6cb789cc4406f",
+    "src/MainForm.DefaultApps.cs": "dda356e35475ce4ecd0a677a9a3a9ab63dadbad88eafb4ae0b45eb6e86481960"
+  },
+  "verified": [
+    "Exact production command parsing, length and PowerShell 2-compatible API expectations",
+    "Mocked OS/architecture/SP1/PS/.NET registry-view selection, bad registry values and read failures",
+    "Pending restart and empty pending-file-rename handling",
+    "Exact Microsoft signature verification command with simulated signatures",
+    "Exact portable TSV logging, hardware/network identity, control characters, missing identity and write failures",
+    "Production BAT entries do not execute PS1 or change execution policy",
+    "Version metadata builds and toolbox/standalone regression checks"
+  ],
+  "windows_restricted_end_to_end": {
+    "test": "tests/Run-EnvironmentBatch.ps1",
+    "status": "Added to full and standalone Windows runners; not executed in this Linux workspace.",
+    "checks": [
+      "Inert PS1 is blocked in a Restricted child process",
+      "Native BAT detection and already-ready install entry still run",
+      "Unicode/special-character path and missing-engine guard",
+      "Parent/machine/user policy list remains unchanged"
+    ]
+  },
+  "limitations": [
+    "No native cmd.exe or real Windows PowerShell execution-policy enforcement in cloud.",
+    "No real .NET/WMF installation or reboot was performed.",
+    "GitHub Actions results could not be read through the available API access.",
+    "AppLocker/WDAC/program restrictions and real Win7/Server component installation need administrator/Windows validation."
+  ],
+  "frozen_server_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb"
+}

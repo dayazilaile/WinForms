@@ -1,6 +1,16 @@
-# WinForms V0.6.2
+# WinForms V0.6.3
 
 WinForms 是面向 Windows 7 SP1、Windows 10/11 的运维项目，提供系统与硬件信息、网络诊断、机房管理、软件清单与 BAT 自动化等功能。
+
+## V0.6.3 修正环境准备入口被执行策略拦截
+
+用户反馈两个环境准备 BAT 都报 PSSecurityException：旧入口尚未检测系统就被 PowerShell 的 PS1 文件策略挡住。本版改成 **BAT/CMD 主流程 + 可审阅的固定检测命令**，不加载 PS1、不修改执行策略、不使用 Bypass、不编码/隐藏执行。保留微软安装包签名验证、安装前确认、禁止强制重启和软件目录日志。
+
+只需完整替换 [环境准备](环境准备/README.md) 文件夹即可使用助手，无需重编译主程序。安装包放入 **Installers**，旧版“安装包”目录中的文件需移过去；源码不包含微软安装包。组织若限制程序/命令本身，仍需按现有管理规范处理。
+
+用户已反馈 v0.6.2 默认软件功能可用，本版保持其实现不变。版本按规则推进为 0.6.3，同步 [完整工具箱](https://github.com/dayazilaile/WinForms/archive/refs/tags/v0.6.3.zip) 与 [BAT 独立包](https://github.com/dayazilaile/WinForms/archive/refs/tags/v0.6.3-BAT.zip) 的辅助文件和版本信息；Server 继续冻结。
+
+环境助手 **39 项**命令检查、工具箱 **627 项**功能与界面检查、独立包 **135 项**检查通过。详情见 [本版验证记录](docs/validation-v063.json)。新增 Windows Restricted 回归已接入测试入口，云端不具备原生 cmd.exe，不能据此宣称实机受限环境已经全部通过。
 
 ## V0.6.2 原生打开方式与学生机远程电源
 
@@ -646,5 +656,5 @@ V0.4.6 的回收站动作仅在自动化用例中验证生成与结构，测试�
 - 软件标准清单：`EXE目录/Data/software-baseline-v1.tsv`；仅存软件名称/发布者，更新程序或编译不覆盖。可从“标准清单”导出到其他电脑。
 - 学生机清单：`EXE目录/Data/students-v055.tsv`；编译不覆盖本机清单。
 - 操作日志：`EXE目录/Logs/operations-v1.tsv`；策略原值备份：`EXE目录/Data/Computers/电脑名`。
-- 本版文件校验：`SHA256SUMS.txt`。这是 V0.6.2 的完整发布基线，不能与旧版本哈希混用。
+- 本版文件校验：`SHA256SUMS.txt`。这是 V0.6.3 的完整发布基线，不能与旧版本哈希混用。
 - 版本演进与历史记录：[版本更新记录_累计.txt](版本更新记录_累计.txt)。

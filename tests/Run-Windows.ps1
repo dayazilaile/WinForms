@@ -1,9 +1,10 @@
-﻿# Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Windows.ps1
+﻿# Windows PowerShell 5.1 test entry for an approved development/CI session.
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
     & .\tests\Run-EnvironmentPreparation.ps1
+    & .\tests\Run-EnvironmentBatch.ps1
     & .\tests\Run-RuntimeDetection.ps1
     & cmd.exe /d /c 'Build_Only.bat --no-pause'
     if ($LASTEXITCODE -ne 0) { throw 'Application compilation failed' }

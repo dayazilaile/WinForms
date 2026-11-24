@@ -1,14 +1,21 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-set "PREP_PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
-if not exist "%PREP_PS%" (
- echo [ERROR] Windows PowerShell is missing. See README.md in this folder.
- pause
+pushd "%~dp0"
+if errorlevel 1 (
+ echo [ERROR] Could not open the environment-helper directory.
+ if not defined WINFORMS_ENV_NO_PAUSE pause
  exit /b 1
 )
-"%PREP_PS%" -NoLogo -NoProfile -File "%~dp0Environment.ps1"
+if not exist ".\Environment.cmd" (
+ echo [ERROR] Environment.cmd is missing. Extract the complete environment-helper folder.
+ popd
+ if not defined WINFORMS_ENV_NO_PAUSE pause
+ exit /b 1
+)
+call ".\Environment.cmd" --check
 set "PREP_RESULT=%ERRORLEVEL%"
+popd
 echo.
-echo Exit code: %PREP_RESULT%. If scripts are blocked by policy, consult your administrator.
-pause
+echo Exit code: %PREP_RESULT%. 3010 means restart required. No automatic restart.
+if not defined WINFORMS_ENV_NO_PAUSE pause
 exit /b %PREP_RESULT%

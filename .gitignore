@@ -24,3 +24,5 @@ __pycache__/
 /环境准备/Logs/
 /环境准备/安装包/*
 !/环境准备/安装包/README.md
+/环境准备/Installers/*
+!/环境准备/Installers/README.md
