@@ -118,9 +118,41 @@ class StudentWakeTests
         string dir=Path.Combine(Path.GetTempPath(),"power-check-"+Guid.NewGuid());Directory.CreateDirectory(dir);string path=Path.Combine(dir,"check.bat");
         try{File.WriteAllText(path,"old");StudentPowerDiagnostics.ExportLocalCheck(path);Check(File.ReadAllText(path)==script&&Directory.GetFiles(dir).Length==1,"Diagnostic export atomically replaces only its selected BAT and does not execute it");}finally{Directory.Delete(dir,true);}
     }
+    static async Task CrossRoomWake()
+    {
+        var source=WakeNetwork.Create("teacher","192.168.10.8","255.255.255.0");var pc=Machine(ip:"192.168.20.17");string[] local={source.Source.ToString(),"192.168.20.99"};
+        var plan=CrossRoomWakeService.Prepare(new[]{pc},source,24,CrossRoomWakeMode.Unicast,local);
+        Check(CrossRoomWakeService.Destinations(plan,plan.Targets[0]).Single().ToString()=="192.168.20.17:9","Cross-room unicast addresses saved target IP rather than local broadcast");
+        pc.Name="changed";Check(plan.Targets[0].Name!="changed","Cross-room plan snapshots roster before review");
+        foreach(CrossRoomWakeMode mode in Enum.GetValues(typeof(CrossRoomWakeMode))){var p=CrossRoomWakeService.Prepare(new[]{pc},source,24,mode,local);var endpoints=CrossRoomWakeService.Destinations(p,p.Targets[0]);Check(endpoints.Count==(mode==CrossRoomWakeMode.Combined?3:1)&&endpoints.All(e=>e.Port==9),"Each explicit wake mode has bounded destinations and UDP9: "+mode);}
+        plan=CrossRoomWakeService.Prepare(new[]{pc},source,24,CrossRoomWakeMode.Combined,local);
+        Check(CrossRoomWakeService.Destinations(plan,plan.Targets[0]).Select(e=>e.Address.ToString()).SequenceEqual(new[]{"192.168.20.17","192.168.20.255","192.168.10.255"}),"Combination tries target unicast, actual target subnet broadcast then local broadcast");
+        var same=CrossRoomWakeService.Prepare(new[]{Machine(ip:"192.168.10.17")},source,24,CrossRoomWakeMode.Combined,local);Check(CrossRoomWakeService.Destinations(same,same.Targets[0]).Count==2,"Identical local and directed broadcasts are not sent twice");
+        Check(CrossRoomWakeService.Broadcast("192.168.20.17",23).ToString()=="192.168.21.255"&&CrossRoomWakeService.Broadcast("10.2.3.5",30).ToString()=="10.2.3.7","Target broadcasts use configured prefix, not a hardcoded last octet");
+        foreach(string ip in new[]{"","8.8.8.8","127.0.0.1","224.0.0.1","169.254.1.2","192.168.10.8","192.168.20.99","192.168.20.0","192.168.20.255"})Reject(()=>CrossRoomWakeService.Prepare(new[]{Machine(ip:ip)},source,24,CrossRoomWakeMode.Unicast,local),"Cross-room rejects missing/public/special/local/subnet/broadcast target: "+ip);
+        Reject(()=>CrossRoomWakeService.Prepare(new[]{pc,Machine("02:00:00:00:00:02",pc.IPv4)},source,24,CrossRoomWakeMode.Combined,local),"Duplicate target IP fails the whole cross-room preflight");
+        Reject(()=>CrossRoomWakeService.Prepare(new[]{pc,Machine(pc.Mac,"192.168.20.18")},source,24,CrossRoomWakeMode.Combined,local),"Duplicate target MAC fails before any packet");
+        var other=Machine("02:00:00:00:00:02","192.168.30.17");other.Room="另一个机房";Reject(()=>CrossRoomWakeService.Prepare(new[]{pc,other},source,24,CrossRoomWakeMode.Combined,local),"Cross-room batch cannot silently expand across different rooms");
+        foreach(int prefix in new[]{0,15,31,32})Reject(()=>CrossRoomWakeService.Prepare(new[]{pc},source,prefix,CrossRoomWakeMode.Unicast,local),"Invalid or overly broad target prefix rejected: "+prefix);
+        Reject(()=>CrossRoomWakeService.Prepare(new StudentMachine[0],source,24,CrossRoomWakeMode.Unicast,local),"Empty cross-room targets rejected");
+        Reject(()=>CrossRoomWakeService.Prepare(new[]{pc},source,24,(CrossRoomWakeMode)99,local),"Unknown wake mode cannot create endpoints");
+        Reject(()=>CrossRoomWakeService.Prepare(new[]{pc},WakeNetwork.Create("public","192.0.2.2","255.255.255.0"),24,CrossRoomWakeMode.Unicast,local),"Trial requires private source network");
+        var calls=new List<string>();var results=new List<CrossRoomWakeResult>();
+        await CrossRoomWakeService.RunCore(plan,CancellationToken.None,delegate(byte[] packet,IPEndPoint endpoint,short ttl,CancellationToken token){calls.Add(endpoint+"/"+ttl);Check(packet.SequenceEqual(StudentWakeService.MagicPacket(pc.Mac)),"Each cross-room path carries only the reviewed MAC magic packet");return Task.FromResult(0);},results.Add);
+        Check(calls.Count==9&&calls.Take(6).All(x=>x.EndsWith("/16"))&&calls.Skip(6).All(x=>x.EndsWith("/1")),"Routed attempts use TTL16 while local broadcast stays TTL1 with at most three packets per path");
+        Check(results.Single().Packets==9&&results.Single().Failures==0&&results.Single().Summary.Contains("未确认送达/开机")&&results.Single().Details.Contains(pc.IPv4)&&results.Single().Details.Contains(pc.Mac),"Results and portable audit detail never infer delivery or power state from UDP send");
+        calls.Clear();results.Clear();await CrossRoomWakeService.RunCore(plan,CancellationToken.None,delegate(byte[] packet,IPEndPoint endpoint,short ttl,CancellationToken token){calls.Add(endpoint.Address.ToString());if(endpoint.Address.ToString()==pc.IPv4)throw new SocketException((int)SocketError.NetworkUnreachable);return Task.FromResult(0);},results.Add);
+        Check(calls.Count==7&&results.Single().Packets==6&&results.Single().Failures==1&&results.Single().Details.Contains("失败"),"One path failure remains visible while remaining explicit paths can be tried");
+        using(var cancel=new CancellationTokenSource()){calls.Clear();results.Clear();bool stopped=false;try{await CrossRoomWakeService.RunCore(plan,cancel.Token,delegate(byte[] packet,IPEndPoint endpoint,short ttl,CancellationToken token){calls.Add(endpoint.ToString());cancel.Cancel();return Task.FromResult(0);},results.Add);}catch(OperationCanceledException){stopped=true;}Check(stopped&&calls.Count==1&&results.Single().Packets==1&&results.Single().Stopped,"Stop preserves partial sent count and prevents later routes/packets");}
+        using(var cancel=new CancellationTokenSource()){cancel.Cancel();calls.Clear();bool stopped=false;try{await CrossRoomWakeService.RunCore(plan,cancel.Token,delegate{calls.Add("bad");return Task.FromResult(0);},results.Add);}catch(OperationCanceledException){stopped=true;}Check(stopped&&calls.Count==0,"Pre-cancelled cross-room attempt sends nothing");}
+        using(var receiver=new UdpClient(new IPEndPoint(IPAddress.Loopback,0)))using(var sender=new UdpClient(new IPEndPoint(IPAddress.Loopback,0))){
+            var endpoint=(IPEndPoint)receiver.Client.LocalEndPoint;var pending=receiver.ReceiveAsync();byte[] packet=StudentWakeService.MagicPacket(pc.Mac);await CrossRoomWakeService.Send(sender,packet,endpoint,16,CancellationToken.None);if(await Task.WhenAny(pending,Task.Delay(3000))!=pending)throw new Exception("Loopback wake packet timed out");
+            Check((await pending).Buffer.SequenceEqual(packet)&&sender.Ttl==16,"Real UDP loopback transport preserves exactly 102 reviewed bytes and routed TTL");
+        }
+    }
     static void LegacyBranding()
     {
         string text=StudentRoster.Serialize(new[]{new StudentMachine{Room="Room",Name="PC1",IPv4="192.0.2.9",Mac="02:00:00:00:00:09"}});Check(text.StartsWith("# WinForms students")&&StudentRoster.Parse(text.Replace(StudentRoster.Header,StudentRoster.LegacyHeader)).Single().Name=="PC1","WinForms roster export keeps original-brand student lists importable");
     }
-    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Power().GetAwaiter().GetResult();PowerDiagnostics().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
+    static int Main(){try{LegacyBranding();Packets();Storage();Sending().GetAwaiter().GetResult();Discovery().GetAwaiter().GetResult();Power().GetAwaiter().GetResult();PowerDiagnostics().GetAwaiter().GetResult();CrossRoomWake().GetAwaiter().GetResult();Console.WriteLine("STUDENT WAKE TOTAL PASS "+passed);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}
 }

@@ -1,0 +1,59 @@
+{
+  "version": "0.6.5",
+  "scope": "Trial cross-room WOL send attempts using saved room/IP/MAC, without changes to network infrastructure.",
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 37,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 122,
+    "NavigationUiTests": 227
+  },
+  "toolkit_total": 714,
+  "standalone": {
+    "version": "0.6.5-BAT",
+    "feature": 98,
+    "ui": 33,
+    "metadata": 4,
+    "shared_sources": 13
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5",
+  "unchanged_sources_sha256": {
+    "src/DefaultAppsService.cs": "78bcb9b861de2acb15bd365751874db5a0073568984993ebb0f6cb789cc4406f",
+    "src/MainForm.DefaultApps.cs": "dda356e35475ce4ecd0a677a9a3a9ab63dadbad88eafb4ae0b45eb6e86481960",
+    "src/SoftwareCleanupScriptService.cs": "7f8a9aeb8950dbd2b58a6aa9ba455a686486230554dd5f4bdc1fae1bc8955de1",
+    "Scripts/SoftwareCleanup.ps1": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+    "src/StudentWakeService.cs": "566692b1f1ac5460f79d0def81ab7bfbc07667de5d4428d996ecdd9a28b95845",
+    "src/StudentPowerService.cs": "ebf4669723ad691fdf36f34a9606bf732b6b9ae441d1421067c543c045d5a0c9",
+    "src/MainForm.Students.cs": "7270c2e53bc37c501ce2deccb2ab54401fcaaff9048fd4e523b6a67dc53fc204",
+    "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
+    "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
+    "src/AutomationBlockService.cs": "4ec88def6cc862e907e3f9c7b875e457d2f64396c09102cf2ec0547287e38100",
+    "src/MainForm.Automation.cs": "89e2f5566328aefd82b97d73e66891bf5646dc71f685cd601aea8e2828000689",
+    "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367"
+  },
+  "verified": [
+    "All four explicit wake modes derive concrete endpoints; UDP9 is fixed.",
+    "Private IPv4 and one concrete saved room only; empty/public/local/special/network/broadcast/duplicate targets rejected.",
+    "Plan snapshots targets; entire batch validated before network socket creation.",
+    "Directed broadcast uses actual configured prefix; duplicate directed/local destinations collapse.",
+    "At most three 102-byte magic packets per path; routed TTL16 versus local broadcast TTL1.",
+    "Real UDP loopback confirms exact packet bytes and TTL without contacting classroom devices.",
+    "Partial path failure preserves counts and other explicit attempts; cancellation stops subsequent packets/routes.",
+    "UI loads original roster without send; defaults unicast and /24; confirmation lists saved identities and destination addresses.",
+    "Selection and whole-room scopes, cancellation, result wording and trial version navigation checked.",
+    "Startup still requests no child processes; default apps, cleanup kernel, old same-subnet WOL and power dispatch unchanged."
+  ],
+  "limitations": [
+    "Not tested on real classroom networks or Windows NIC sleep/off states.",
+    "IP reachability while powered on does not prove WOL delivery after shutdown.",
+    "Unicast depends on gateway neighbor state and NIC support; directed/local broadcasts depend on existing forwarding/broadcast domains.",
+    "Saved IP/MAC relationship is not directly ARP-verified across subnets.",
+    "No switch/router/firewall/ARP/IP settings are modified; no relay agent is installed.",
+    "UDP handoff is not a delivery or wake confirmation."
+  ],
+  "environment_helpers": "Byte-identical to v0.6.4; not retested because unchanged.",
+  "frozen_server_tag": "v0.5.20-Server",
+  "screenshots": "Synthetic classroom records and injected send result, not evidence of real machine wake."
+}

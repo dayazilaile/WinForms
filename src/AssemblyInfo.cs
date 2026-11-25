@@ -1,7 +1,7 @@
 using System.Reflection;
 [assembly: AssemblyTitle(WinForms.ProductInfo.Name)]
 [assembly: AssemblyProduct(WinForms.ProductInfo.Name)]
-[assembly: AssemblyDescription("WinForms Windows 7 SP1/10/11 运维项目 V0.6.4")]
+[assembly: AssemblyDescription("WinForms Windows 7 SP1/10/11 运维项目 V0.6.5")]
 [assembly: AssemblyVersion(WinForms.ProductInfo.AssemblyVersion)]
 [assembly: AssemblyFileVersion(WinForms.ProductInfo.AssemblyVersion)]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WorkspaceTests")]

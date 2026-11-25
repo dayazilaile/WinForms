@@ -114,6 +114,7 @@ namespace WinForms
                 case "摄像头发现": BuildFieldTool(name,"通过 WS-Discovery 发现支持 ONVIF 的局域网设备。",CameraDiscoveryDialog); break;
                 case "DNS记录查询":case "ICMP路由跟踪":case "本机连接与监听":case "系统代理诊断":case "网络配置核对":BuildDiagnosticWorkspace(name);break;
                 case "学生机与网络唤醒": BuildStudentWorkspace(); break;
+                case "跨机房唤醒": BuildCrossRoomWake(); break;
                 case "学生机远程电源": BuildStudentWorkspace(true); break;
                 case "远程电源诊断": BuildStudentWorkspace(true); break;
                 case "新增功能总览": BuildTrialOverview(); break;
