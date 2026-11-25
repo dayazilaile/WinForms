@@ -121,6 +121,8 @@ namespace WinForms
             RichTextBox box=ReadBox(); split.Panel1.Controls.Add(actions);split.Panel2.Controls.Add(box);
             p.Controls["pageBody"].Controls.Add(ContentCard(split));
             Button refresh=null;
+            Action(actions,"一键系统优化（待试用）",delegate { SelectNavigationPage("一键系统优化"); },true);
+            Action(actions,"开机（解决欢迎加载慢）",delegate { SelectNavigationPage("开机临时文件清理"); },false);
             refresh=Action(actions,"刷新电源状态",delegate { DoJob(box,refresh,PowerService.Status); },true);
             Action(actions,"平衡电源方案",delegate { SetPowerPlan(box,"381b4222-f694-41f0-9685-ff5bb260df2e","平衡模式"); },false);
             Action(actions,"高性能电源方案",delegate { SetPowerPlan(box,"8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c","高性能模式"); },false);

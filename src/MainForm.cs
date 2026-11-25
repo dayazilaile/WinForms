@@ -98,6 +98,8 @@ namespace WinForms
                 case "打印机与服务": BuildPrinter(); break;
                 case "启动项管理": BuildStartup(); break;
                 case "系统优化": BuildOptimize(); break;
+                case "一键系统优化": BuildOptimizationProfile(); break;
+                case "开机临时文件清理": BuildOptimizationTemp(); break;
                 case "共享文件夹": BuildShares(); break;
                 case "BAT 自动化": BuildAutomation(); break;
                 case "Windows 管理入口": BuildToolLaunchers(); break;

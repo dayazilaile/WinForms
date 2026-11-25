@@ -30,6 +30,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Desktop test compilation failed' }
     & .\build\DesktopTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Desktop tests failed' }
+    & $compiler /nologo /codepage:65001 /out:build\OptimizationTests.exe /reference:build\WinForms.exe /reference:System.Core.dll /reference:System.Xml.dll tests\OptimizationTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Optimization tests compilation failed' }
+    & .\build\OptimizationTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Optimization tests failed' }
+    & .\tests\Run-OptimizationScripts.ps1
     & $compiler /nologo /codepage:65001 /out:build\StudentWakeTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\StudentWakeTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'Student wake test compilation failed' }
     & .\build\StudentWakeTests.exe

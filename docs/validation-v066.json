@@ -1,0 +1,75 @@
+{
+  "version": "0.6.6",
+  "scope": "Trial checked system optimization with durable per-setting backups and independent current-user Temp/icon/Explorer maintenance.",
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 37,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 122,
+    "OptimizationTests": 58,
+    "NavigationUiTests": 243
+  },
+  "toolkit_csharp_ui_total": 788,
+  "optimization_powershell_mock_checks": 10,
+  "toolkit_total_including_script_checks": 798,
+  "standalone": {
+    "version": "0.6.6-BAT",
+    "feature": 98,
+    "ui": 33,
+    "metadata": 4,
+    "shared_sources": 13
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5",
+  "unchanged_sources_sha256": {
+    "src/DefaultAppsService.cs": "78bcb9b861de2acb15bd365751874db5a0073568984993ebb0f6cb789cc4406f",
+    "src/MainForm.DefaultApps.cs": "dda356e35475ce4ecd0a677a9a3a9ab63dadbad88eafb4ae0b45eb6e86481960",
+    "src/SoftwareCleanupScriptService.cs": "7f8a9aeb8950dbd2b58a6aa9ba455a686486230554dd5f4bdc1fae1bc8955de1",
+    "src/MainForm.SoftwareBaseline.cs": "093fcac26b7f4f692ff770c2ee53210c13988d7412d739fd4dca9d72399aba92",
+    "Scripts/SoftwareCleanup.ps1": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+    "src/StudentWakeService.cs": "566692b1f1ac5460f79d0def81ab7bfbc07667de5d4428d996ecdd9a28b95845",
+    "src/StudentPowerService.cs": "ebf4669723ad691fdf36f34a9606bf732b6b9ae441d1421067c543c045d5a0c9",
+    "src/CrossRoomWakeService.cs": "4a00ed3598a674ef4ec8f384f8d479e497440da053e90b62d86f0ffbbcbd09b4",
+    "src/MainForm.CrossRoomWake.cs": "7a8ed7b006eb9d71b13cb9f811c09889f164173e9e2719817f975d4c130a347b",
+    "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
+    "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
+    "src/AutomationBlockService.cs": "4ec88def6cc862e907e3f9c7b875e457d2f64396c09102cf2ec0547287e38100",
+    "src/MainForm.Automation.cs": "89e2f5566328aefd82b97d73e66891bf5646dc71f685cd601aea8e2828000689",
+    "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367",
+    "src/SecurityDiagnostics.cs": "46d366552ff727e4886af0cbd1f8fc3c718aeae81270810918baa393d8f9036c"
+  },
+  "verified": [
+    "Backup must exist with captured originals and durable intent before injected mutation.",
+    "Per-item partial verification failure retains recovery information; subsequent selected items have separate outcomes.",
+    "Restore reverses applied/partial entries, exact originals and absent-value/type metadata; repeated restore skips completed entries.",
+    "Context mismatch and unknown actions/phases, XML DTD, oversized backup policy, corrupt/invalid string data and unwritable paths refuse unsafe recovery/mutation.",
+    "Cancellation finishes current write/verification/journal then stops later items.",
+    "Temp fixture retains recent/locked/protected tool files and data outside its root; directory links/root redirection rejected; partial cancellation counts preserved.",
+    "Appx exact plaintext commands parse and execute only mocked volume operations; existing/new/ambiguous/missing/or denied volumes checked.",
+    "New page is idle on entry, confirmation cancel does nothing, selected scope/backup/restore/details, independent maintenance and Temp retention options verified.",
+    "Original startup performs no child process; old default-app, cleanup kernel, WOL, power dispatch and automation logic preserved."
+  ],
+  "not_verified_in_linux": [
+    "Actual Windows power plan creation/activation and hardware AC/DC/lid response.",
+    "Win10/11 UI effects, actual registry policy enforcement and Win7 unsupported-item behavior.",
+    "Physical D drive bus classification, permissions, known-folder redirection and Appx default registration.",
+    "NTP synchronization and time-service restore on actual domain/non-domain devices.",
+    "Actual user Temp handle deletion and current-session Explorer kill/restart.",
+    "Native MoveFileEx backup replacement on real NTFS/FAT32/exFAT USB media.",
+    "Windows-only disposable HKCU restore/native read-only power/fixture handle-deletion checks are included in Run-Windows but not executed here.",
+    "Antivirus verdicts and physical machine deployment."
+  ],
+  "security_scope": "No new automatic Defender, firewall or UAC disabling; read-only safety status and official UAC settings entry only. No policy-bypass, encoded command or executable backup data.",
+  "feature_boundaries": [
+    "Defaults: 10 recommended settings; 4 explicit D/web/update selections.",
+    "Preview enables handlers/thumbnails; current pane remains a supported Alt+P choice.",
+    "Web reset is current-user proxy/PAC/legacy homepage, not universal browser-policy or shortcut repair.",
+    "Default D folders change known-folder paths, never migrate/delete old data; Appx default is distinct from EXE installers.",
+    "Update option writes NoAutoUpdate policy; does not claim permanent disable or universal enforcement.",
+    "Restoration concerns settings, not clock rollback, cache/Temp contents or deletion of D data."
+  ],
+  "environment_helpers": "Unchanged; not retested for this feature.",
+  "frozen_server_tag": "v0.5.20-Server",
+  "screenshots": "Injected mock changes/results, not evidence of real Windows optimization."
+}

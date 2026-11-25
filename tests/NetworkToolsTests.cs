@@ -18,11 +18,11 @@ class NetworkToolsTests
     static void Reject(Action action,string name){try{action();}catch(ArgumentException){Check(true,name);return;}throw new Exception("Should reject: "+name);}
     static void Catalog()
     {
-        var entries=NavigationCatalog.All;Check(entries.Length==35&&entries.Select(e=>e.Key).Distinct().Count()==35,"35 unique reachable navigation entries");
+        var entries=NavigationCatalog.All;Check(entries.Length==37&&entries.Select(e=>e.Key).Distinct().Count()==37,"37 unique reachable navigation entries");
         Check(entries.Select(e=>e.Group).Distinct().Count()==7,"Seven navigation groups (including trial)");
         Check(NavigationCatalog.Search("wifi").Count==2&&NavigationCatalog.Search("  WiFi  分析 ").Single().Key=="Wi-Fi分析","Case-insensitive multi-term WiFi aliases");
         Check(NavigationCatalog.Search("DNS").Any(e=>e.Key=="网络诊断")&&NavigationCatalog.Search("NOT_FOUND_QUERY").Count==0,"Search DNS alias and empty results");
-        Check(new[]{"新增功能总览","跨机房唤醒","学生机远程电源","远程电源诊断","软件清单清理BAT"}.All(k=>NavigationCatalog.Find(k).Trial),"New and unconfirmed power entries stay in trial group");
+        Check(new[]{"新增功能总览","一键系统优化","开机临时文件清理","跨机房唤醒","学生机远程电源","远程电源诊断","软件清单清理BAT"}.All(k=>NavigationCatalog.Find(k).Trial),"New and unconfirmed power entries stay in trial group");
         Check(NavigationCatalog.Find("软件清单清理BAT").Note.Contains("新入口")&&NavigationCatalog.Find("学生机远程电源").Since=="0.6.2"&&NavigationCatalog.Search("0.6.4").Count==3,"Trial metadata separates original capability version from new shortcuts");
         Check(NavigationCatalog.Find("DNS记录查询").DisplayName.Contains("历史")&&NavigationCatalog.Find("软件清单清理BAT").DisplayName.Contains("v0.6.4"),"Trial badges preserve unknown historical versions honestly");
         entries[0]=null;Check(NavigationCatalog.All[0]!=null,"Catalog caller cannot replace internal entries");
