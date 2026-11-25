@@ -1,5 +1,5 @@
 {
-  "version": "0.6.4",
+  "version": "0.6.5",
   "product_name": "WinForms",
   "main_executable": "WinForms.exe",
   "standalone_executable": "WinForms-BAT.exe",
@@ -30,7 +30,7 @@
   ],
   "version_policy": {
     "max_patch": 23,
-    "next_from_0_6_0": "0.6.4",
+    "next_from_0_6_0": "0.6.5",
     "next_from_0_6_23": "0.7.0"
   },
   "native_windows_tested": false,
