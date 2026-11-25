@@ -109,7 +109,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.5-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.6-Windows.zip -Force
     $global:LASTEXITCODE=0 # Negative fixtures above were explicitly checked.
     Write-Output 'Standalone Windows validation and package completed.'
 }

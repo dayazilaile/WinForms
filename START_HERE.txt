@@ -1,2 +1,2 @@
-WinForms BAT 自动化独立版 V0.6.5-BAT
+WinForms BAT 自动化独立版 V0.6.6-BAT
 运行WinForms-BAT.exe。环境准备助手可单独使用，安装包目录为Installers。
