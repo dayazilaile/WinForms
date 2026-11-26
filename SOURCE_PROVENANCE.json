@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/dayazilaile/WinForms",
-  "base_tag": "v0.6.6",
-  "base_commit": "8a5d55e70dbfff982712869f6c3fd14ba6a9e16d",
+  "base_tag": "v0.6.7",
+  "base_commit": "6a061760e6753a2cfbb0f9afa8df148494df7915",
   "unchanged_sources_sha256": {
-    "src/AutomationService.cs": "c3b75a2c8a78f7c5bc7299602d20bd58e502839adf60c2609fa98a16b3cf771e",
-    "src/AutomationFlow.cs": "39f7b329a7b1bef2a3636f2cad11ccc21eeb50b7e6cb83a66f8e750a1278bebd",
+    "src/AutomationService.cs": "d85807b12a0d4ba95f132d4b00b4614d67042ef3e7fef05447d00ed5b114afdb",
+    "src/AutomationFlow.cs": "d5a44346614b5da1c318695a88214ccee3bdb4b5e004102badf12329ecfba719",
     "src/AutomationBlockService.cs": "4ec88def6cc862e907e3f9c7b875e457d2f64396c09102cf2ec0547287e38100",
-    "src/MainForm.Automation.cs": "89e2f5566328aefd82b97d73e66891bf5646dc71f685cd601aea8e2828000689",
+    "src/MainForm.Automation.cs": "df8dc42753c43e0bff946d325ef746fd604a8b92b085d9b66c3e54f4c7c8cf95",
     "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367",
     "src/MouseCoordinateService.cs": "ab65f33ae6084b47b3abeae84be99796b9d58edc7a7ea094c855cde0e230d835",
     "src/KeyCaptureDialog.cs": "425852ae5759e02698f03bf7efe33079b74d1f2b2e68479c4853e5f85b05655c",
@@ -14,8 +14,12 @@
     "src/BatScriptPackage.cs": "8c094ead0672f0d7f53bc31484f83180c3484189bb496699b9d83421aabb57a8",
     "src/AutomationRandomIp.cs": "649132947a6edcffacbb4d5a895b740a55d051991d3f8abca17fa966b5a47a6a",
     "src/WindowsCompatibility.cs": "4ac2d68216709a7b1e80c04aaf8a7b4931c66e7a48b68310c2bc626dfa7a52d7",
-    "src/AutomationNetworkAudit.cs": "ec5bb7513898d06283d42d7d332d0bc247aa1aee5dc260fd7e1fa28a7a4a6a72",
-    "src/ProductInfo.cs": "1ccea10da821754e2a5d44279d7015242b18956d16034e3fca1690d78fa57cce"
+    "src/AutomationNetworkAudit.cs": "911ede76bd03381af7a9aadd9b791b83a52ce03a12f79235a548909d8afe5f30",
+    "src/ProductInfo.cs": "44fd9f1f5a234abe490fc6329a532253779cc4a7b96e22950e65bb9a1fbb4984",
+    "src/AutomationStopActions.cs": "2584856e363c94ac9167ae00a0031b3d1bd1bbaa6b8115f49ffcabc8f50245ec",
+    "src/AutomationServiceCatalog.cs": "0ecba9262ae819244a8d03045d8ef0050cde84a4ab60821a2545b7fc8e54cccd",
+    "src/AutomationRename.cs": "6f8f550728a64613561e4ac5cc719bd33d30207e87bc3bb56eea2a7837dc2130",
+    "src/MainForm.AutomationTargets.cs": "b4df4d6fbf85381bc2ffd7cf1afcb953184e740ee62887e7b44d57fe9479dacb"
   },
   "adapted": [
     "src/MainForm.cs: standalone host plus original visual helpers",
@@ -23,8 +27,8 @@
     "src/Program.cs: standalone entry point",
     "src/AssemblyInfo.cs: standalone product metadata"
   ],
-  "standalone_version": "0.6.6-BAT",
-  "change": "Fresh v0.6.6 extraction; 13 common sources match toolkit. Automation behavior retained, version/audit metadata updated. System optimization and Temp cleanup are toolbox-only.",
+  "standalone_version": "0.6.7-BAT",
+  "change": "Fresh v0.6.7 extraction; 17 shared sources match toolkit. Adds service stop, process-name close/termination and same-directory file/folder rename with selectors.",
   "minimum_framework": "Microsoft .NET Framework 4.5",
   "product_name": "WinForms",
   "version_policy": "23 patches per minor; .23 rolls to the next minor .0"

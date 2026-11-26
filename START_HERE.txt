@@ -1,2 +1,9 @@
-WinForms BAT 自动化独立版 V0.6.6-BAT
+WinForms BAT独立版 V0.6.7-BAT
+添加动作新增停止服务、结束进程、重命名文件、重命名文件夹。
+进程可选EXE自动填名，不用PID；服务从本机只读服务列表选择。
+文件/文件夹先选源路径再填新名称，同目录改名，不覆盖。文件新名称需含后缀。
+详情见README及docs/BAT新增动作.md；17个共用源码与完整工具箱一致。
+
+【以下为历史说明】
+WinForms BAT 自动化独立版 V0.6.7-BAT
 运行WinForms-BAT.exe。环境准备助手可单独使用，安装包目录为Installers。

@@ -1,10 +1,11 @@
 {
   "assembly": "WinForms-BAT.exe",
-  "sha256": "8ea5503d3a861eabab7a2aab641c4bed24d115cdb3eaf129bbca258dc64457c1",
+  "sha256": "1be087f6f8622b6b9fbef746ce8e15bf7413f0795c0b66a139f809c0a2d1f833",
   "reference_profile": "Microsoft .NET Framework 4.5",
   "framework_assemblies": [
     "System",
     "System.Drawing",
+    "System.ServiceProcess",
     "System.Windows.Forms",
     "mscorlib"
   ],
@@ -19,6 +20,7 @@
     "System": "8186c61afa8e04ca6d1ac79d4f5407779b76c42728603e85f2aef9d1d6d49d91",
     "System.Core": "945ed694b31770c40e3471884714ffde19bf4031e6d9c95645c267422034ed67",
     "System.Drawing": "257e1dd4790791a9a669271e692993c1ee4f5b59b5c191363b00c7728f851f56",
-    "System.Windows.Forms": "0811e1e938d66a35c1f03c3e8a08ab53b822d18f67ed0ae64a868294a23872c2"
+    "System.Windows.Forms": "0811e1e938d66a35c1f03c3e8a08ab53b822d18f67ed0ae64a868294a23872c2",
+    "System.ServiceProcess": "d7516701d4e2b27256d46c422465f64f4d0b903374ffc9fa2f96fe5b355274d9"
   }
 }

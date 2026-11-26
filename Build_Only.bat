@@ -30,10 +30,10 @@ if not exist "src\Program.cs" (
 )
 if not exist "build" mkdir "build"
 echo.
-echo ===== WinForms BAT Automation Standalone v0.6.6-BAT =====
+echo ===== WinForms BAT Automation Standalone v0.6.7-BAT =====
 echo Compiler: "%CSC%"
 pushd "src"
-"%CSC%" /nologo /langversion:5 /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\WinForms-BAT.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
+"%CSC%" /nologo /langversion:5 /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\WinForms-BAT.exe" /reference:System.dll /reference:System.Core.dll /reference:System.ServiceProcess.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
 set "RESULT=%ERRORLEVEL%"
 popd
 if not "%RESULT%"=="0" (

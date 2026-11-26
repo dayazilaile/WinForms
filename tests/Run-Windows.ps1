@@ -10,8 +10,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Standalone application compilation failed' }
     $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     if (-not (Test-Path -LiteralPath $compiler)) { $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
-    foreach ($name in @('StandaloneTests', 'StandaloneUiTests')) {
-        & $compiler /nologo /langversion:5 /codepage:65001 "/out:build\$name.exe" /reference:build\WinForms-BAT.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll "tests\$name.cs"
+    foreach ($name in @('StandaloneTests', 'StandaloneUiTests', 'AutomationStopTests')) {
+        $extra=@();if($name -eq 'StandaloneUiTests'){$extra=@('tests\AutomationActionsUiTests.cs')}
+        & $compiler /nologo /langversion:5 /codepage:65001 "/out:build\$name.exe" /reference:build\WinForms-BAT.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll "tests\$name.cs" @extra
         if ($LASTEXITCODE -ne 0) { throw ($name + ' compilation failed') }
     }
     $published = Join-Path ([IO.Path]::GetTempPath()) ('bat-published-' + [Guid]::NewGuid())
@@ -31,6 +32,9 @@ try {
     Write-Output 'PASS exact published EXE on Windows before testing locally rebuilt EXE'
     & .\build\StandaloneTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Standalone tests failed' }
+    & .\build\AutomationStopTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Automation stop and rename tests failed' }
+    & .\tests\Run-AutomationStop.ps1
     $clean = Join-Path ([IO.Path]::GetTempPath()) ('bat-standalone-ui-' + [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $clean | Out-Null
     try {
@@ -109,7 +113,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $stage 'BUILD_INFO.json'), ($windowsBuild | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
     $rows = Get-ChildItem $stage -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $stage 'SHA256SUMS.txt') } | Sort-Object FullName | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.FullName.Substring($stage.Length + 1).Replace('\', '/') }
     [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS.txt'), $rows, (New-Object Text.UTF8Encoding($false)))
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.6-Windows.zip -Force
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath build\WinForms-BAT-v0.6.7-Windows.zip -Force
     $global:LASTEXITCODE=0 # Negative fixtures above were explicitly checked.
     Write-Output 'Standalone Windows validation and package completed.'
 }
