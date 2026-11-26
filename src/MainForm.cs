@@ -101,7 +101,7 @@ namespace WinForms
                 case "一键系统优化": BuildOptimizationProfile(); break;
                 case "开机临时文件清理": BuildOptimizationTemp(); break;
                 case "共享文件夹": BuildShares(); break;
-                case "BAT 自动化": BuildAutomation(); break;
+                case "BAT 自动化": case "BAT新增动作": BuildAutomation(); break;
                 case "Windows 管理入口": BuildToolLaunchers(); break;
                 case "电脑配置对比": BuildFieldTool("电脑配置对比", "采集系统、架构、CPU、主板、内存、显卡、磁盘和网卡配置，导出或对比。", ConfigurationCompareDialog); break;
                 case "网络持续检测": BuildFieldTool("网络持续检测", "持续检测网关/服务器的延迟、响应异常和波动，可导出逐条 CSV。", ContinuousNetworkDialog); break;

@@ -29,11 +29,15 @@ namespace WinForms
 
     public static partial class AutomationService
     {
-        public static readonly string[] Types = { "运行程序", "等待毫秒", "随机等待", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "随机设置 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在" };
+        public static readonly string[] Types = { "运行程序", "等待毫秒", "随机等待", "等待窗口", "激活窗口", "移动鼠标", "鼠标左击", "鼠标双击", "鼠标右击", "按键/组合键", "输入文字", "滚轮", "设置 DNS", "设置默认网关", "设置静态 IPv4", "随机设置 IPv4", "IP及DNS切换 DHCP", "删除指定路径文件", "清空当前用户回收站", "格式化指定卷", "如果文件存在", "如果网络可达", "如果系统版本", "否则", "结束条件", "重试开始", "重试结束", "运行程序并等待", "检查文件存在", "停止服务", "结束进程", "重命名文件", "重命名文件夹" };
         public static string Guide(string type)
         {
             switch(type)
             {
+                case "重命名文件": return "v0.6.7 待试用：选择完整文件路径，填写新文件名（含需要保留的扩展名）。只改同目录名称，不移动/覆盖；改变扩展名不转换文件格式。禁止系统/程序目录和链接，参数3留空。";
+                case "重命名文件夹": return "v0.6.7 待试用：选择文件夹，填写新名称，不填写路径。只改同目录名称，不移动/合并/覆盖；系统/标准用户目录、盘符根目录、链接和当前脚本父目录不允许，参数3留空。";
+                case "停止服务": return "v0.6.7 待试用：点“选择服务”读取本机列表并自动填写内部名称；等待秒数默认30，范围1–120。只停止该服务，不改启动类型、不连带停止依赖服务。权限不足/不接受停止会失败，关键系统及Windows防护服务不支持。";
+                case "结束进程": return "v0.6.7 待试用：点“选择程序文件”选EXE，自动填写进程名，不需要PID。当前会话所有同名实例都会处理；正常关闭不自动转强制。等待默认15秒，范围1–120；强制可能丢失未保存内容。只结束运行，不删除EXE。";
                 case "如果文件存在": return "填写文件完整路径，在两个分支栏添加动作；保存自动补齐否则和结束条件。";
                 case "如果网络可达": return "填写单个 IP 或主机名，在两个分支栏添加动作；保存自动补齐结构。Ping 无响应也可能是 ICMP 被禁用。";
                 case "如果系统版本": return "填写 Windows Build 下限（如22000）和可空的上限，在两个分支栏添加动作；保存自动补齐结构。";
@@ -498,6 +502,8 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
             StringBuilder b = new StringBuilder();
             b.AppendLine("$ErrorActionPreference='Stop'");
             b.AppendLine("$script:itAbortWorkflow=$false");
+            if(steps.Exists(delegate(AutoStep x){return x.Type=="重命名文件"||x.Type=="重命名文件夹";}))b.AppendLine(RenameActionHelper);
+            if(steps.Exists(delegate(AutoStep x){return x.Type=="停止服务"||x.Type=="结束进程";}))b.AppendLine(StopActionHelper);
             if(steps.Exists(delegate(AutoStep x){return AutomationBlockService.IsCondition(x.Type)||x.Type=="等待窗口";})) b.AppendLine(BoundedCheckHelper);
             b.AppendLine("try {");
             string apiClass = engine == BatInputEngine.Legacy ? "ITAutomationLegacy" : "ITAutomationInput";
@@ -601,6 +607,9 @@ function Invoke-ITBoundedCheck([string]$label, [scriptblock]$test, [int]$seconds
                 if(auditNetwork)b.AppendLine("$script:itNetworkLogOperation="+P(s.Type)+"; $script:itNetworkLogId=[guid]::NewGuid().ToString('N'); $script:itNetworkClock=[Diagnostics.Stopwatch]::StartNew(); Write-ITNetworkAudit '开始' '执行中' "+P("网卡选择="+s.A+";参数2="+s.B+";参数3="+s.C+";配置前网卡信息见本行")+"; try {");
                 switch(s.Type)
                 {
+                    case "重命名文件":case "重命名文件夹":b.AppendLine("Invoke-ITRenameItem "+P(CheckRenamePath(s.A))+" "+P(CheckRenameName(s.B))+" "+(s.Type=="重命名文件夹"?"$true":"$false"));break;
+                    case "停止服务":b.AppendLine("Invoke-ITStopService "+P(CheckStopServiceName(s.A))+" "+StopActionTimeout(s.B,30));break;
+                    case "结束进程":b.AppendLine("Invoke-ITEndProcess "+P(CheckEndProcessName(s.A))+" "+P(CheckProcessEndMode(s.B))+" "+StopActionTimeout(s.C,15));break;
                     case "检查文件存在":
                         b.AppendLine("if(-not(Test-Path -LiteralPath "+P(FlowValue(s.A))+" -PathType Leaf)){throw '所需文件不存在'}");break;
                     case "运行程序并等待":

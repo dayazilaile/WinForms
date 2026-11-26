@@ -39,7 +39,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Student wake test compilation failed' }
     & .\build\StudentWakeTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'Student wake tests failed' }
-    & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\WinForms.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs
+    & $compiler /nologo /codepage:65001 /out:build\AutomationStopTests.exe /reference:build\WinForms.exe /reference:System.Core.dll tests\AutomationStopTests.cs
+    if ($LASTEXITCODE -ne 0) { throw 'Automation stop test compilation failed' }
+    & .\build\AutomationStopTests.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Automation stop tests failed' }
+    & .\tests\Run-AutomationStop.ps1
+    & $compiler /nologo /codepage:65001 /out:build\NavigationUiTests.exe /reference:build\WinForms.exe /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll tests\NavigationUiTests.cs tests\AutomationActionsUiTests.cs
     if ($LASTEXITCODE -ne 0) { throw 'UI test compilation failed' }
     & .\build\NavigationUiTests.exe
     if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }

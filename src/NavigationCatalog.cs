@@ -40,6 +40,7 @@ namespace WinForms
             new NavigationEntry("自动化与工具","电脑配置对比","差异 对比 报告"),
             new NavigationEntry("自动化与工具","Windows 管理入口","控制面板 工具"),
             new NavigationEntry("自动化与工具","离线数据库","故障码 数据库 查询"),
+            new NavigationEntry("新增 · 待试用","BAT新增动作","BAT 自动化 停止 服务 结束 进程 EXE 选择 重命名 文件 文件夹", "0.6.7","共享原BAT编辑器：选EXE结束同名进程、只读选择服务、文件/文件夹重命名。"),
             new NavigationEntry("新增 · 待试用","新增功能总览","新增 试用 版本 入口 总览", "0.6.4","集中查看试用入口、加入版本与用途。"),
             new NavigationEntry("新增 · 待试用","一键系统优化","优化 电源 高性能 睡眠 天气 搜索 扩展名 桌面 D盘 时间", "0.6.6","勾选配置、先备份后执行并核验；维护动作单独按钮，支持同机同账户恢复。"),
             new NavigationEntry("新增 · 待试用","开机临时文件清理","开机 欢迎 加载慢 Temp 临时 文件 清理", "0.6.6","单独清理当前用户Local\\Temp，占用/链接/工具目录跳过；删除不可恢复。"),

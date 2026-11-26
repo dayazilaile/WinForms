@@ -18,7 +18,7 @@ class NetworkToolsTests
     static void Reject(Action action,string name){try{action();}catch(ArgumentException){Check(true,name);return;}throw new Exception("Should reject: "+name);}
     static void Catalog()
     {
-        var entries=NavigationCatalog.All;Check(entries.Length==37&&entries.Select(e=>e.Key).Distinct().Count()==37,"37 unique reachable navigation entries");
+        var entries=NavigationCatalog.All;Check(entries.Length==38&&entries.Select(e=>e.Key).Distinct().Count()==38,"38 unique reachable navigation entries");
         Check(entries.Select(e=>e.Group).Distinct().Count()==7,"Seven navigation groups (including trial)");
         Check(NavigationCatalog.Search("wifi").Count==2&&NavigationCatalog.Search("  WiFi  分析 ").Single().Key=="Wi-Fi分析","Case-insensitive multi-term WiFi aliases");
         Check(NavigationCatalog.Search("DNS").Any(e=>e.Key=="网络诊断")&&NavigationCatalog.Search("NOT_FOUND_QUERY").Count==0,"Search DNS alias and empty results");

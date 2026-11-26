@@ -42,3 +42,6 @@ done
 
 "${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/OptimizationTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll -r:System.Xml.dll "$repo/tests/OptimizationTests.cs"
 "${mono[@]}" "$repo/build/OptimizationTests.exe"
+
+"${mono[@]}" "$MONO_PATH/mcs.exe" -out:"$repo/build/AutomationStopTests.exe" -r:"$repo/build/WinForms.exe" -r:System.Core.dll "$repo/tests/AutomationStopTests.cs"
+"${mono[@]}" "$repo/build/AutomationStopTests.exe"

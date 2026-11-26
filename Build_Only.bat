@@ -36,10 +36,10 @@ if not exist "Scripts\SoftwareCleanup.ps1" (
 if not exist "build" mkdir "build"
 if not exist "build\Database" mkdir "build\Database"
 echo.
-echo ===== WinForms V0.6.6 =====
+echo ===== WinForms V0.6.7 =====
 echo Compiler: "%CSC%"
 pushd "src"
-"%CSC%" /nologo /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\WinForms.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
+"%CSC%" /nologo /win32manifest:"%~dp0app.manifest" /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%~dp0build\WinForms.exe" /reference:System.dll /reference:System.Core.dll /reference:System.ServiceProcess.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:Microsoft.CSharp.dll /reference:System.Xml.dll *.cs
 set "RESULT=%ERRORLEVEL%"
 popd
 if not "%RESULT%"=="0" (

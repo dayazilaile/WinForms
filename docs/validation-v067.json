@@ -1,0 +1,68 @@
+{
+  "version": "0.6.7",
+  "scope": "Trial BAT actions: exact service stop, current-session process-name close/termination, same-parent file/folder rename, and target selectors.",
+  "toolkit_checks": {
+    "FeatureTests": 111,
+    "NetworkToolsTests": 37,
+    "WorkspaceTests": 49,
+    "TrialTests": 36,
+    "DesktopTests": 132,
+    "StudentWakeTests": 122,
+    "OptimizationTests": 58,
+    "NavigationUiTests": 257,
+    "AutomationStopTests": 55
+  },
+  "toolkit_csharp_ui_total": 857,
+  "stop_rename_powershell_checks_per_package": 41,
+  "standalone": {
+    "version": "0.6.7-BAT",
+    "feature": 98,
+    "new_actions": 55,
+    "ui": 47,
+    "metadata": 4,
+    "total": 204,
+    "shared_sources": 17
+  },
+  "reference_profile": "Microsoft .NET Framework 4.5; System.ServiceProcess framework assembly",
+  "unchanged_from": "v0.6.6",
+  "unchanged_sources_sha256": {
+    "src/DefaultAppsService.cs": "78bcb9b861de2acb15bd365751874db5a0073568984993ebb0f6cb789cc4406f",
+    "src/MainForm.DefaultApps.cs": "dda356e35475ce4ecd0a677a9a3a9ab63dadbad88eafb4ae0b45eb6e86481960",
+    "src/SoftwareCleanupScriptService.cs": "7f8a9aeb8950dbd2b58a6aa9ba455a686486230554dd5f4bdc1fae1bc8955de1",
+    "src/MainForm.SoftwareBaseline.cs": "093fcac26b7f4f692ff770c2ee53210c13988d7412d739fd4dca9d72399aba92",
+    "Scripts/SoftwareCleanup.ps1": "7f932b9900aacf31f092e98f51b5db6be433dfa4731923f5b5b342424d9c95f4",
+    "src/StudentWakeService.cs": "566692b1f1ac5460f79d0def81ab7bfbc07667de5d4428d996ecdd9a28b95845",
+    "src/StudentPowerService.cs": "ebf4669723ad691fdf36f34a9606bf732b6b9ae441d1421067c543c045d5a0c9",
+    "src/CrossRoomWakeService.cs": "4a00ed3598a674ef4ec8f384f8d479e497440da053e90b62d86f0ffbbcbd09b4",
+    "src/MainForm.CrossRoomWake.cs": "7a8ed7b006eb9d71b13cb9f811c09889f164173e9e2719817f975d4c130a347b",
+    "src/MainForm.AutomationBranches.cs": "81b8c1ca97f05857fad73a417ab0a2da43a2b90fd3af2d30f20c8945cf4a5367",
+    "src/SecurityDiagnostics.cs": "46d366552ff727e4886af0cbd1f8fc3c718aeae81270810918baa393d8f9036c",
+    "src/BatScriptPackage.cs": "8c094ead0672f0d7f53bc31484f83180c3484189bb496699b9d83421aabb57a8",
+    "src/OptimizationService.cs": "dfd3976563b5602304a4b2d38b86e24552cbb3e3e2cd0c7da05263edf5ab4969",
+    "src/OptimizationRegistry.cs": "005184947a47b255c235dbd7238ca7ba9887bb1a42ffe63a6abf621720d1da8f",
+    "src/OptimizationPower.cs": "e7efea6b7ba44c2eb653f463aea3a750c9b7754087e545a31fc60c64bd6d05d5",
+    "src/OptimizationWindowsBackend.cs": "5741e56dd52a08594d37853bcb5f729e741aa6e938827e18112398da106b4566",
+    "src/OptimizationFolders.cs": "f8f3dacf0635783beead15fa6be2a40ec0df64d7975b6f9ebecc55f83d0c25e8",
+    "src/OptimizationMaintenance.cs": "0934ec85a6a4a5f0f1d5c295dcdaa13c476f192b1328662fe369abb3115a3ab3",
+    "src/MainForm.Optimization.cs": "d5ebd295355d1888a3af9dc0f8963f68c2c06479361a584d45851a527331c1c0"
+  },
+  "verified": [
+    "Both engine generation, exact literal quoting, save/load and separate single-BAT exports; unrelated flows omit stop helper.",
+    "EXE selection fills basename only, modes and bounded timeouts; service picker reads mocked rows, filters display name, disables protected rows and fills internal name.",
+    "Service dependency/nonstoppable/missing/access/timeout/pending/restarted cases use mocks; never stops actual system services during cloud checks.",
+    "Process exact name/current-session/held-handle preflight, graceful vs explicit force, shared wait deadline, partial failure and restart checks use mocks; never kills real user processes.",
+    "Exact emitted helpers/full generated scripts parse. Real disposable file and folder rename fixtures preserve data; collisions, type mismatch, traversal, reserved names and BAT self/parent guards checked.",
+    "Both package GUI tests exercise all four new editor actions and cancel/validation behavior. Screenshots use injected paths and service data.",
+    "Manifest, official framework metadata, 17 shared-source hashes and tagged ZIP content checked before push."
+  ],
+  "not_verified_in_linux": [
+    "Actual Windows native service control, service-controller permission and sc.exe invocation.",
+    "Actual Windows process handles, session rights, main-window close prompts and forced termination.",
+    "Actual Windows occupied-file/ACL, case-only rename, and physical USB behavior.",
+    "Win7/10/11 native execution, third-party antivirus verdicts, and GitHub Windows CI outcome."
+  ],
+  "security_scope": "No added hidden execution, obfuscation, security exclusions or policy changes. Original BAT wrapper and protected application modules unchanged. Renames never request overwrite or recursive deletion.",
+  "environment_helpers": "Unchanged; not retested for this feature.",
+  "frozen_server_tag": "v0.5.20-Server",
+  "frozen_server_commit": "b8d6e8545eeb2829288cd9c9dfd4b91edb3b24eb"
+}

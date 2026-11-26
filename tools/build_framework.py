@@ -50,7 +50,7 @@ def main():
             parser.error('Missing Scripts/SoftwareCleanup.ps1; extract the complete source package')
     if args.download_references and not (refs / 'mscorlib.dll').is_file():
         download_references(refs)
-    required = ['mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms']
+    required = ['mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms', 'System.ServiceProcess']
     if not args.standalone:
         required += ['System.Management', 'Microsoft.CSharp', 'System.Xml']
     for name in required:

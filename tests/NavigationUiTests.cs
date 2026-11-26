@@ -213,7 +213,7 @@ class NavigationUiTests
         try{
             Navigate(main,tree,"新增功能总览");Application.DoEvents();var body=Field<Panel>(main,"content");var hub=Find<DataGridView>(body).Single(g=>g.Name=="trialFeaturesGrid");
             Screenshot(main,"trial-hub-v064.png");
-            Check(hub.ReadOnly&&hub.Rows.Count==10&&hub.Rows.Cast<DataGridViewRow>().Any(r=>Convert.ToString(r.Cells[2].Value).Contains("已有功能")),"Trial overview distinguishes existing capability shortcuts from untested additions");
+            Check(hub.ReadOnly&&hub.Rows.Count==11&&hub.Rows.Cast<DataGridViewRow>().Any(r=>Convert.ToString(r.Cells[2].Value).Contains("已有功能")),"Trial overview distinguishes existing capability shortcuts from untested additions");
             var row=hub.Rows.Cast<DataGridViewRow>().Single(r=>(string)r.Tag=="软件清单清理BAT");hub.CurrentCell=row.Cells[0];Field<TextBox>(main,"navigationSearch").Text="总览";Find<Button>(body).Single(b=>b.Text=="打开所选功能").PerformClick();Application.DoEvents();
             Check(Field<string>(main,"currentPage")=="软件清单清理BAT"&&Field<TextBox>(main,"navigationSearch").Text==""&&(string)tree.SelectedNode.Tag=="软件清单清理BAT"&&tree.SelectedNode.Text.Contains("v0.6.4"),"Trial shortcuts clear filtered navigation and select stable feature keys despite version badges");
             System.Collections.Generic.List<SoftwareBaselineEntry> saved=null;bool corrupt=false;int writes=0,exports=0;
@@ -244,17 +244,18 @@ class NavigationUiTests
                 var originalLoad=Field<System.Threading.Tasks.Task<DatabaseService>>(main,"databaseLoad");var gate=new System.Threading.Tasks.TaskCompletionSource<DatabaseService>();main.GetType().GetField("databaseLoad",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,gate.Task);
                 main.Show();Application.DoEvents();Check(main.Visible&&!gate.Task.IsCompleted&&Field<string>(main,"currentPage")=="系统概览","Overview renders while database task is still pending");Pump(()=>originalLoad.IsCompleted,30000);gate.SetResult(originalLoad.GetAwaiter().GetResult());Application.DoEvents();var tree=Field<TreeView>(main,"navigationTree");var search=Field<TextBox>(main,"navigationSearch");
                 Pump(()=>Find<Button>(Field<Panel>(main,"content")).Single(b=>b.Text=="刷新系统信息").Enabled,60000);Check(startupProcesses==0,"Toolbox startup, database load and overview never request a child process or cleanup runner");CommandService.ProcessStarting-=observeProcess;
-                Check(main.Text==ProductInfo.WindowTitle&&main.Text=="WinForms V0.6.6"&&!Find<Label>(main).Any(l=>l.Text.Contains("本地离线运行"))&&Find<Label>(main).Any(l=>l.Text.Contains(ProductInfo.Name+"\r\n")&&l.Text.Contains("V"+ProductInfo.Version)),"Main window and sidebar consistently display WinForms 0.6.6");Screenshot(main,"winforms-v060.png");
-                Check(tree.Nodes.Count==7&&Leaves(tree)==37,"Seven categories / 37 features (including trial), no duplicate system category");
+                Check(main.Text==ProductInfo.WindowTitle&&main.Text=="WinForms V0.6.7"&&!Find<Label>(main).Any(l=>l.Text.Contains("本地离线运行"))&&Find<Label>(main).Any(l=>l.Text.Contains(ProductInfo.Name+"\r\n")&&l.Text.Contains("V"+ProductInfo.Version)),"Main window and sidebar consistently display WinForms 0.6.7");Screenshot(main,"winforms-v060.png");
+                Check(tree.Nodes.Count==7&&Leaves(tree)==38,"Seven categories / 38 features (including trial), no duplicate system category");
                 Check(Field<string>(main,"currentPage")=="系统概览"&&tree.Nodes[0].IsExpanded,"Every launch opens system overview despite saved prior page");
                 DefaultAssociationUi(main,tree);
+                passed+=AutomationActionsUiTests.Run(main);
                 OptimizationUi(main,tree);
                 CrossRoomUi(main,tree);
                 StudentPowerUi(main,tree);
                 TrialEntriesUi(main,tree);
                 Click(tree,tree.Nodes[0]);Check(!tree.Nodes[0].IsExpanded,"Category text click collapses");Click(tree,tree.Nodes[1]);Check(tree.Nodes[1].IsExpanded&&tree.Nodes.Cast<TreeNode>().Count(n=>n.IsExpanded)==1,"Accordion expands only one group");
                 var clearSearch=Find<Button>(main).Single(b=>b.Name=="navigationClear");Check(!clearSearch.Visible,"Search clear icon is hidden for empty input");
-                search.Text="DNS";Application.DoEvents();Check(clearSearch.Visible&&clearSearch.Parent.Name=="navigationSearchFrame"&&clearSearch.FlatAppearance.BorderSize==0,"Clear icon stays inside the search field without a separate border");Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");clearSearch.PerformClick();Application.DoEvents();Check(search.Text==""&&!clearSearch.Visible&&Leaves(tree)==37,"Inline clear resets search and restores all navigation entries");
+                search.Text="DNS";Application.DoEvents();Check(clearSearch.Visible&&clearSearch.Parent.Name=="navigationSearchFrame"&&clearSearch.FlatAppearance.BorderSize==0,"Clear icon stays inside the search field without a separate border");Check(Leaves(tree)==4,"Search DNS aliases including trial");search.Text="不存在的功能XYZ";Application.DoEvents();Check(Leaves(tree)==0,"Empty search result has no fake feature");clearSearch.PerformClick();Application.DoEvents();Check(search.Text==""&&!clearSearch.Visible&&Leaves(tree)==38,"Inline clear resets search and restores all navigation entries");
                 var software=new SoftwareSnapshot();for(int i=0;i<500;i++)software.Entries.Add(new SoftwareEntry{Name="样例软件 "+i,Version="1.0",Publisher="测试发布者",Scope="当前用户",Architecture="64 位登记区",Location="C:\\Example",Key="sample"+i});
                 main.GetType().GetField("softwareBaselineReader",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,new Func<System.Collections.Generic.List<SoftwareBaselineEntry>>(delegate{return null;}));
                 main.GetType().GetField("softwareCache",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(main,software);
